@@ -31,7 +31,7 @@
     "@playwright/test": "1.63.0",
     "@stryker-mutator/core": "10.0.0",
     "@stryker-mutator/vitest-runner": "10.0.0",
-    "@types/node": "24.13.3",
+    "@types/node": "26.6.4",
     "@vitejs/plugin-vue": "6.0.9",
     "@vitest/coverage-v8": "4.1.11",
     "@vue/eslint-config-typescript": "14.9.0",

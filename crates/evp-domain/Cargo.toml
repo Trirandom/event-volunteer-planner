@@ -8,6 +8,7 @@ rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
 authors.workspace      = true
+publish.workspace      = true
 description  = "Pure domain: entities, value objects and the constraint engine. No I/O."
 
 # Nothing here may depend on an evp-* crate, on sqlx, or on axum. The

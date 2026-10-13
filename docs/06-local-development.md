@@ -304,40 +304,49 @@ to silently break:
 
 ## 5. CI
 
-**There is no hosted CI yet.** The gates are the local recipes — `just check`
-and `just test` before every pull request, plus `just e2e`, `just test-tz`,
-`just mutants` and `pnpm mutants` where a change warrants them — and each
-enforcement table ([11 §7](11-engineering-standards.md#7-enforcement-summary)
-and the four it links) says which rows are enforced today and which are
-planned. The table below is the plan for GitHub Actions; nothing in it runs
-yet.
+GitHub Actions runs the rows marked **runs** below, from
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and
+[`codeql.yml`](../.github/workflows/codeql.yml), on every push and pull
+request. The rest are still planned, and for those the local recipes remain the
+gate — `just e2e`, `just mutants` and `pnpm mutants` where a change warrants
+them. `just check` and `just test` are still worth running before a push: they
+are the same commands, minutes sooner. Each enforcement table
+([11 §7](11-engineering-standards.md#7-enforcement-summary) and the four it
+links) says which rows are enforced and where.
 
-| Job | Stage | |
-| --- | --- | --- |
-| `fmt` / `clippy` | check | `-D warnings`, lints inherited from `[workspace.lints]` ([11 §2](11-engineering-standards.md#2-rust)) |
-| `sqlx-check` | check | `cargo sqlx prepare --check` against a service Postgres — meaningful once queries move to the macros ([11 §4](11-engineering-standards.md#4-sql-and-migrations)) |
-| `web-lint` | check | eslint `strictTypeChecked` + `tsc --noEmit` + `vue-tsc --noEmit` ([11 §3](11-engineering-standards.md#3-typescript)) |
-| `no-dynamic-sql` | check | Greps for SQL assembled by string formatting ([12 §3](12-security.md#3-the-database-boundary)) |
-| `api-client-fresh` | check | Regenerates the TS client from OpenAPI and fails on a diff — once there is a generated client |
-| `rust-test` | test | with a `postgres:17` service |
-| `web-test` | test | vitest |
-| `e2e` | test | Playwright against a Compose stack |
-| `build-api` / `build-web` | build | Buildx with layer cache, pushed to `ghcr.io` |
-| `oidc-test` | test | with a `dex` service, so the login path is covered without Google |
-| `mutants` | test | `cargo-mutants` on `evp-domain`, `evp-intake` and the authz extractors; zero survivors required ([13 §9](13-testing-and-tdd.md#9-mutation-testing-the-efficacy-gate)) |
-| `coverage` | test | `cargo-llvm-cov`, ratcheted against the base branch — may not decrease |
-| `mutants-nightly` | test | The rest of the workspace, reported not blocking |
-| `tz-hostile` | test | The whole suite again under `TZ=Pacific/Chatham` (+12:45, own DST) — proves storage is server-timezone independent ([16 §7](16-i18n-and-time.md#7-enforcement)) |
-| `a11y` | test | `@axe-core/playwright`, zero violations; plus the keyboard-only journey ([14 §7](14-accessibility-and-interaction.md#7-enforcement)) |
-| `retention` | test | Asserts every table has a `retention_scope` tier, that the sweep empties the event tier and preserves the accountability tier, and that the two age-based clocks fire — under the default policy **and a non-default one** ([15 §9](15-privacy-and-retention.md#9-enforcement)) |
-| `stryker` | test | Mutation testing over the frontend's pure composables — the time↔pixel scale and the availability merge ([13 §9](13-testing-and-tdd.md#9-mutation-testing-the-efficacy-gate)) |
-| `test-touched` | check | Warns, without blocking, when `src/**` changes with no test change ([13 §12](13-testing-and-tdd.md#12-enforcement)) |
-| CodeQL / secret scanning / Dependabot | security | GitHub's own: static analysis, committed-secret detection, dependency alerts |
-| `container-scanning` | security | An image scanner (e.g. Trivy) over the built images |
-| `dco-check` | check | Every commit carries `Signed-off-by` |
-| `cargo-deny` | security | RUSTSEC advisories, plus the AGPL-compatible licence allow-list; SSPL/BUSL/Elastic denied outright. Runnable by hand today as `cargo deny check` |
-| `web-licences` | security | The same allow-list over the npm tree |
-| `deploy` | deploy | Manual, `main` only |
+On `main`, once every check has passed, `ci.yml` builds the image of each
+service whose inputs changed since the previous push — `api`, `migrate`,
+`web` — scans it, and pushes it to
+`ghcr.io/trirandom/event-volunteer-planner/<service>` tagged `sha-<commit>`
+(what `EVP_VERSION` names) and `main`. Pull requests build and scan the same
+images without pushing them.
+
+| Job | Stage | Status | |
+| --- | --- | --- | --- |
+| `fmt` / `clippy` | check | runs — `rust-lint` | `-D warnings`, lints inherited from `[workspace.lints]` ([11 §2](11-engineering-standards.md#2-rust)) |
+| `sqlx-check` | check | planned | `cargo sqlx prepare --check` against a service Postgres — meaningful once queries move to the macros ([11 §4](11-engineering-standards.md#4-sql-and-migrations)) |
+| `web-lint` | check | runs — `web`, with `prettier --check` | eslint `strictTypeChecked` + `tsc --noEmit` + `vue-tsc --noEmit` ([11 §3](11-engineering-standards.md#3-typescript)) |
+| `no-dynamic-sql` | check | planned | Greps for SQL assembled by string formatting ([12 §3](12-security.md#3-the-database-boundary)) |
+| `api-client-fresh` | check | planned | Regenerates the TS client from OpenAPI and fails on a diff — once there is a generated client |
+| `rust-test` | test | runs — Postgres via `docker compose up db`, so the roles in `docker/db/init/` exist | with a `postgres:17` service |
+| `web-test` | test | runs — `web` | vitest |
+| `e2e` | test | planned | Playwright against a Compose stack |
+| `build-api` / `build-web` | build | runs — `image`, per changed service; pushed from `main` only | Buildx with layer cache, pushed to `ghcr.io` |
+| `oidc-test` | test | planned | with a `dex` service, so the login path is covered without Google |
+| `mutants` | test | planned | `cargo-mutants` on `evp-domain`, `evp-intake` and the authz extractors; zero survivors required ([13 §9](13-testing-and-tdd.md#9-mutation-testing-the-efficacy-gate)) |
+| `coverage` | test | planned | `cargo-llvm-cov`, ratcheted against the base branch — may not decrease |
+| `mutants-nightly` | test | planned | The rest of the workspace, reported not blocking |
+| `tz-hostile` | test | runs — second pass in `rust-test` | The whole suite again under `TZ=Pacific/Chatham` (+12:45, own DST) — proves storage is server-timezone independent ([16 §7](16-i18n-and-time.md#7-enforcement)) |
+| `a11y` | test | planned | `@axe-core/playwright`, zero violations; plus the keyboard-only journey ([14 §7](14-accessibility-and-interaction.md#7-enforcement)) |
+| `retention` | test | planned | Asserts every table has a `retention_scope` tier, that the sweep empties the event tier and preserves the accountability tier, and that the two age-based clocks fire — under the default policy **and a non-default one** ([15 §9](15-privacy-and-retention.md#9-enforcement)) |
+| `stryker` | test | planned | Mutation testing over the frontend's pure composables — the time↔pixel scale and the availability merge ([13 §9](13-testing-and-tdd.md#9-mutation-testing-the-efficacy-gate)) |
+| `test-touched` | check | planned | Warns, without blocking, when `src/**` changes with no test change ([13 §12](13-testing-and-tdd.md#12-enforcement)) |
+| CodeQL / secret scanning / Dependabot | security | runs — `codeql.yml` (Actions, TS, Rust), gitleaks over the whole history (`secrets`), `.github/dependabot.yml`, and `dependency-review` on pull requests | GitHub's own: static analysis, committed-secret detection, dependency alerts |
+| `container-scanning` | security | partial — Grype in `image`, report-only until the base images are clean (see the comment there) | An image scanner over the built images |
+| `dco-check` | check | planned | Every commit carries `Signed-off-by` |
+| `cargo-deny` | security | runs — `cargo-deny` | RUSTSEC advisories, plus the AGPL-compatible licence allow-list; SSPL/BUSL/Elastic denied outright. Also runnable locally as `cargo deny check` |
+| `web-licences` | security | partial — `dependency-review` applies the allow-list to what a pull request adds; `pnpm audit --prod` runs as `npm-audit` | The same allow-list over the npm tree |
+| `deploy` | deploy | planned | Manual, `main` only |
 
 `cargo-deny` is listed separately from Dependabot because the latter's Rust
 coverage is thinner than `RUSTSEC`. It also carries the licence

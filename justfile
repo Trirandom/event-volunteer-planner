@@ -117,8 +117,8 @@ dump-example org festival="":
 
 # ── Checks ───────────────────────────────────────────────────────────────────
 
-# The local gate, in the order that fails fastest. There is no hosted CI yet,
-# so run this (and `just test`) before opening a pull request.
+# The local gate, in the order that fails fastest. CI runs the same checks
+# (docs/06 §5); running this and `just test` first finds the failure sooner.
 check: check-fmt check-rust check-sql check-web
 
 check-fmt:

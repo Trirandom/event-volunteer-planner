@@ -1,0 +1,379 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+#
+# The hosted half of the gates in docs/06 §5: the same commands `just check`
+# and `just test` run, plus the supply-chain checks that were "by hand" until
+# now. On every push and pull request it lints and tests; on `main` it then
+# builds, scans and publishes the image of each service whose inputs changed.
+#
+# Third-party actions are pinned by commit, not tag, for the same reason base
+# images are pinned by digest (docs/12 §8): a tag can be moved under us, and
+# in 2026 more than one popular action's tags were. Dependabot keeps the pins
+# current (.github/dependabot.yml).
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# Superseded runs on a branch are cancelled — but never on `main`. Image
+# publishing diffs each push against the one before it, so a cancelled `main`
+# run would leave the services that push changed unpublished, and the next run
+# would not notice.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Incremental compilation only costs time and cache space on a fresh runner.
+  CARGO_INCREMENTAL: '0'
+
+jobs:
+  # ── Rust ──────────────────────────────────────────────────────────────────
+
+  rust-lint:
+    name: Rust · fmt + clippy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # No argument: installs exactly what rust-toolchain.toml pins, so CI and
+      # every developer compile with the same compiler and the same lints.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      # `just check-sql` is not mirrored here: no query uses the `query!`
+      # macros yet, so `cargo sqlx prepare --check` has nothing to check. Add
+      # it (against the service database in rust-test) with the first macro.
+
+  rust-test:
+    name: Rust · tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      # The dev fixtures from compose.override.yaml — not secrets, and the
+      # database is reachable only from this runner.
+      EVP_MIGRATION_DATABASE_URL: postgres://evp_migrator:devmigrator@localhost:5432/evp
+      EVP_DATABASE_URL: postgres://evp_api:devapi@localhost:5432/evp
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Through Compose rather than a `services:` container, because the roles
+      # come from docker/db/init/ and a service container starts before the
+      # checkout exists to mount them from. This is also exactly the database
+      # `just test` runs against, so the two cannot drift.
+      - run: docker compose up --detach --wait db
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          # The version Dockerfile.dev installs for `just test`.
+          tool: cargo-nextest@0.9.144
+      # The same `evp migrate` the migrate image runs, so a migration that only
+      # works through some other path fails here.
+      - run: cargo run --locked --quiet --bin evp -- migrate
+      - run: cargo nextest run --workspace --locked --no-fail-fast
+      # `just test-tz`: the whole suite again at +12:45 with its own DST rules.
+      # If storage is independent of the server's timezone this passes
+      # identically (ADR-0019, docs/16 §7). Reuses the build above.
+      - name: cargo nextest run (TZ=Pacific/Chatham)
+        run: cargo nextest run --workspace --locked --no-fail-fast
+        env:
+          TZ: Pacific/Chatham
+      - name: Database logs
+        if: failure()
+        run: docker compose logs db
+
+  # ── Web ───────────────────────────────────────────────────────────────────
+
+  web:
+    name: Web · format, lint, typecheck, test, build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Reads the version from `packageManager` in package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # The version docker/web/Dockerfile builds with.
+          node-version: 24.14.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  # ── Supply chain ──────────────────────────────────────────────────────────
+
+  secrets:
+    name: Security · committed secrets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The whole history: a secret removed in a later commit is still
+          # published.
+          fetch-depth: 0
+      # The CLI image rather than gitleaks-action, which needs a paid licence
+      # on organisation repositories.
+      - run: >-
+          docker run --rm --volume "$PWD:/repo:ro"
+          zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git /repo --redact --no-banner --verbose
+
+  cargo-deny:
+    name: Security · cargo-deny
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-deny@0.20.2
+      # RUSTSEC advisories, the AGPL-compatible licence allow-list, bans and
+      # sources — all of deny.toml. An advisory with no fix is silenced there,
+      # with a reason and a date, not here.
+      - run: cargo deny check
+
+  npm-audit:
+    name: Security · pnpm audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.14.1
+      # Production dependencies only: they are what ships to a volunteer's
+      # browser. Build tooling is covered by Dependabot alerts without letting
+      # a dev-server advisory block a deploy.
+      - run: pnpm audit --prod --audit-level high
+
+  dependency-review:
+    name: Security · dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # deny.toml's allow-list, applied to what a pull request adds to
+          # either lockfile — the only licence gate the npm tree has so far.
+          # Changing it is a licence decision (CONTRIBUTING.md#dependencies).
+          allow-licenses: >-
+            MIT, MIT-0, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib,
+            MPL-2.0, Unicode-3.0, CC0-1.0, AGPL-3.0, AGPL-3.0-or-later,
+            GPL-3.0, LGPL-3.0
+
+  # ── Images ────────────────────────────────────────────────────────────────
+
+  changes:
+    name: Changed services
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      images: ${{ github.event_name == 'workflow_dispatch' && '["api","migrate","web"]' || steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # On `main` this diffs against the previous push, on a pull request
+      # against its base. Each filter is what its image is built from; this
+      # workflow is in all three so that changing how an image is built
+      # rebuilds it.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        with:
+          filters: |
+            api: &rust
+              - 'crates/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rust-toolchain.toml'
+              - 'docker/api/Dockerfile'
+              - '.github/workflows/ci.yml'
+            migrate:
+              - *rust
+              - 'migrations/**'
+            web:
+              - 'apps/**'
+              - 'packages/**'
+              - 'patches/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.npmrc'
+              - 'tsconfig.base.json'
+              - 'docker/web/Dockerfile'
+              - '.github/workflows/ci.yml'
+
+  image:
+    name: Image · ${{ matrix.image }}
+    needs: [changes, rust-lint, rust-test, web, secrets, cargo-deny, npm-audit]
+    # Built and scanned for pull requests too, so a broken Dockerfile is found
+    # before it merges; pushed only from `main`. Other branch pushes skip it —
+    # their pull request builds the same thing.
+    if: >-
+      needs.changes.outputs.images != '[]' && (github.event_name ==
+      'pull_request' || github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.changes.outputs.images) }}
+    env:
+      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+      DOCKERFILE: ${{ matrix.image == 'web' && 'docker/web/Dockerfile' || 'docker/api/Dockerfile' }}
+      # Explicit for the same reason compose.yaml is: docker/api/Dockerfile's
+      # last stage is `migrate`, so no target would build the API from it.
+      TARGET: ${{ matrix.image == 'migrate' && 'migrate' || 'runtime' }}
+      # api and migrate share every stage up to the release build, so they
+      # share a cache and whichever runs second skips the compile.
+      CACHE_SCOPE: ${{ matrix.image == 'web' && 'web' || 'rust' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # ghcr.io requires lowercase; compose.prod.yaml pulls
+      # ghcr.io/trirandom/event-volunteer-planner/<service>.
+      - name: Image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/${MATRIX_IMAGE}" >> "$GITHUB_ENV"
+        env:
+          MATRIX_IMAGE: ${{ matrix.image }}
+      - uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        id: meta
+        with:
+          images: ${{ env.IMAGE }}
+          # `sha-<short>` is immutable and is what EVP_VERSION should name;
+          # `main` moves with the branch. No `latest`: a deployment should say
+          # which build it runs.
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=main,enable=${{ env.PUBLISH }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # Build into the local daemon first, so the scan below sees the image
+      # before any registry does.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          target: ${{ env.TARGET }}
+          # The context has no .git; build.rs reads the commit from here, and
+          # without it /api/v1/meta reports `unknown` (AGPL §13).
+          build-args: EVP_BUILD_COMMIT=${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          load: true
+          cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}
+          cache-to: ${{ env.PUBLISH == 'true' && format('type=gha,scope={0},mode=max', env.CACHE_SCOPE) || '' }}
+      # Report-only for now. Both bases carry a critical with an upstream fix
+      # that no published base image contains yet (2026-10-13: libssl3 in
+      # distroless/cc-debian12, Go stdlib and x/net in caddy:2-alpine), so
+      # blocking would stop every publish on something no bump here can fix.
+      # Set `fail-build: true` once a scan of `main` comes back clean; a
+      # finding that must be accepted after that goes in a .grype.yaml with a
+      # reason and a date, as deny.toml does for advisories.
+      - uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        id: scan
+        with:
+          image: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          severity-cutoff: critical
+          only-fixed: true
+          fail-build: false
+          output-format: ${{ env.PUBLISH == 'true' && 'sarif' || 'table' }}
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        if: ${{ !cancelled() && env.PUBLISH == 'true' && steps.scan.outputs.sarif != '' }}
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarif }}
+          category: image-${{ matrix.image }}
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: env.PUBLISH == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Same inputs as the build above, so every layer is a cache hit; this
+      # adds the provenance and SBOM attestations, which a local load cannot
+      # carry, and pushes.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        if: env.PUBLISH == 'true'
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          target: ${{ env.TARGET }}
+          build-args: EVP_BUILD_COMMIT=${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}
+
+  # One stable check name for branch protection. A matrix job's names depend
+  # on which services changed, so they cannot be required directly.
+  ci:
+    name: CI
+    if: always()
+    needs:
+      - rust-lint
+      - rust-test
+      - web
+      - secrets
+      - cargo-deny
+      - npm-audit
+      - dependency-review
+      - changes
+      - image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: All required jobs passed or were skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "$RESULTS"
+          for result in $RESULTS; do
+            case "$result" in
+              success | skipped) ;;
+              *) exit 1 ;;
+            esac
+          done

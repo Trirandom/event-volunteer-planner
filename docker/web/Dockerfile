@@ -30,6 +30,9 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY apps/admin/package.json  apps/admin/package.json
 COPY apps/form/package.json   apps/form/package.json
 COPY packages/shared/package.json packages/shared/package.json
+# pnpm-workspace.yaml's patchedDependencies are applied at install time, so the
+# patch files belong with the manifests; without them the install fails.
+COPY patches patches
 
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
     pnpm install --frozen-lockfile --store-dir /pnpm-store
@@ -40,7 +43,7 @@ COPY apps apps
 
 # Sequential, not parallel: two Vite builds on one build agent contend for CPU
 # and the logs interleave into something nobody can read when it fails.
-RUN pnpm --filter "./apps/*" --sequential build
+RUN pnpm --filter "./apps/*" --workspace-concurrency=1 build
 
 # --------------------------------------------------------------------------
 FROM caddy:${CADDY_VERSION} AS runtime

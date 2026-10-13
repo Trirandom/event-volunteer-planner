@@ -270,9 +270,6 @@ function here(named: PlanSection): RouteLocationRaw {
 </template>
 
 <style scoped>
-.evp-breadcrumb {
-  margin: 0 0 1rem;
-}
 
 .evp-breadcrumb a {
   color: var(--evp-accent);

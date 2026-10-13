@@ -72,9 +72,9 @@ them is out of compliance, and the person running it probably will not notice.
 ## Dependencies
 
 Runtime dependencies must be AGPL-compatible. For Rust, `cargo deny check`
-enforces the allow-list in [`deny.toml`](deny.toml) — run it locally, as it is
-not yet wired into `just check`. An equivalent frontend licence check is
-planned; until then, check new npm packages by hand.
+enforces the allow-list in [`deny.toml`](deny.toml), and CI runs it on every
+push. For npm, CI's dependency review applies the same allow-list to what a
+pull request adds; a check over the whole tree is planned.
 
 **Allowed:** MIT, MIT-0, Apache-2.0, BSD-2/3-Clause, ISC, Zlib, MPL-2.0,
 Unicode-3.0, CC0-1.0, AGPL-3.0(-or-later), GPL-3.0, LGPL-3.0.
@@ -122,8 +122,9 @@ just test       # cargo nextest (against the dev database) + vitest
 just e2e        # Playwright; needs the stack up (`just up`)
 ```
 
-There is no hosted CI yet, so these are the gate: run them before opening a
-pull request.
+CI runs these on every push and pull request
+([docs/06 §5](docs/06-local-development.md#5-ci)); run them first anyway, it
+is faster than waiting for the build.
 
 - A change to behaviour needs a test. A change to a **hard constraint** needs a
   test that *attempts the violation* and asserts the database refuses it.

@@ -254,7 +254,7 @@ Status as in [11 §7](11-engineering-standards.md#7-enforcement-summary).
 | No `timestamp without time zone` | Schema assertion over `information_schema` | test | planned |
 | Session timezone is UTC | Connection-hook test asserting `SHOW TimeZone` | test | partial — every pooled connection runs `SET TIME ZONE 'UTC'`; the assertion is planned |
 | The process timezone is **not** pinned | The suite sets no `TZ` of its own, so the hostile run below actually exercises something. Tests that care about a zone name it explicitly ([13 §8](13-testing-and-tdd.md#8-determinism-and-the-flaky-test-policy)) | test | enforced |
-| **Suite passes under a hostile server timezone** | `just test-tz` runs the whole suite a second time with `TZ=Pacific/Chatham` (+12:45, with DST) | test | partial — `just test-tz`, Rust suite only, run by hand |
+| **Suite passes under a hostile server timezone** | `just test-tz` runs the whole suite a second time with `TZ=Pacific/Chatham` (+12:45, with DST) | test | partial — Rust suite only, in CI (`rust-test`) and `just test-tz` |
 | DST correctness | Named tests: duplication across a transition, a 23-hour day, a nonexistent local time, an ambiguous one | test | partial — generator tests for a nonexistent local time and a spring-forward window; duplication is not built |
 | No `Date` arithmetic | ESLint `no-restricted-globals` / `no-restricted-syntax` on `Date` methods | check | enforced (`pnpm lint`) |
 | No `toLocaleString` without `timeZone` | ESLint rule | check | enforced (`pnpm lint`) |

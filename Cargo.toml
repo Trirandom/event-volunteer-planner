@@ -24,6 +24,10 @@ rust-version = "1.94"
 license      = "AGPL-3.0-or-later"
 repository   = "https://github.com/Trirandom/event-volunteer-planner"
 authors      = ["Tristan Grunert and contributors"]
+# An application, not a library: nothing here goes to crates.io. Saying so is
+# also what lets cargo-deny accept the versionless `path` dependencies below
+# (`allow-wildcard-paths` in deny.toml).
+publish      = false
 
 # `rust-version` is the MSRV and is deliberately *lower* than the pinned
 # toolchain in rust-toolchain.toml. 1.94 is sqlx 0.9's floor, which is the

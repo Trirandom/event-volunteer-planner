@@ -9,8 +9,8 @@ language strictness, type discipline, testing and review.
 enforced by a compiler flag, a lint, or a test or check run by `just check` /
 `just test` — or it is explicitly marked *judgement*, meaning it is a review
 conversation and nothing more. A gate that is specified but not yet built is
-marked *planned* in §7; there is no hosted CI yet, so the local recipes are
-the gate.
+marked *planned* in §7. GitHub Actions runs the local recipes' checks on every
+push and pull request ([06 §5](06-local-development.md#5-ci)).
 
 Two corollaries that matter more than the rules themselves:
 
@@ -291,7 +291,8 @@ code shape:
 
 Status: **enforced** runs today in `just check` or `just test`; **partial**
 exists but covers less than the rule; **planned** is specified and not built.
-There is no hosted CI yet ([06 §5](06-local-development.md#5-ci)).
+GitHub Actions runs the same gates on every push and pull request
+([06 §5](06-local-development.md#5-ci)).
 
 | Standard | Gate | Stage | Status |
 | --- | --- | --- | --- |
@@ -309,9 +310,9 @@ There is no hosted CI yet ([06 §5](06-local-development.md#5-ci)).
 | Hard constraints hold | integration suite (`just test`) | test | enforced |
 | Tenant isolation | dedicated suite | test | partial — per-module RLS tests; schema-wide check covers the form tables only |
 | Route authorisation matrix | dedicated suite | test | partial — festivals and events only |
-| Dependency licences | `cargo deny check` (`deny.toml`), npm licence check | security | partial — `cargo deny` by hand; npm check planned |
-| Advisories | `cargo deny check`, `pnpm audit`, Dependabot | security | planned (by hand today) |
-| Container hardening | image scanning, non-root assertion | security | planned |
+| Dependency licences | `cargo deny check` (`deny.toml`), npm licence check | security | partial — `cargo deny` in CI; npm: `dependency-review` on pull requests only |
+| Advisories | `cargo deny check`, `pnpm audit`, Dependabot | security | enforced — CI (`pnpm audit --prod`, high and above) |
+| Container hardening | image scanning, non-root assertion | security | partial — Grype in CI, report-only; non-root assertion planned |
 | Commit sign-off | DCO check | check | planned |
 
 ### Gates that live in other documents

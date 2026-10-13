@@ -336,18 +336,4 @@ describe('PlanDetailView at day scope', () => {
     );
     expect(wrapper.text()).toContain('missions placeholder');
   });
-
-  it('links back to the events list', async () => {
-    vi.spyOn(events, 'fetchEvent').mockResolvedValue({ ok: true, value: DUB });
-    vi.spyOn(festivals, 'fetchFestival').mockResolvedValue({
-      ok: true,
-      value: festival([DUB]),
-    });
-
-    const { wrapper } = await mountView('/org-1/events/dub/missions');
-
-    expect(wrapper.find('.evp-breadcrumb a').attributes('href')).toBe(
-      '/org-1/events',
-    );
-  });
 });

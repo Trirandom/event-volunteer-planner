@@ -8,6 +8,7 @@ rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
 authors.workspace      = true
+publish.workspace      = true
 description  = "Source connectors, the mapping/transform engine, and reconciliation."
 
 # Depends on `evp-domain` and NOT on `evp-db`, deliberately. The mapping and

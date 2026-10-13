@@ -52,8 +52,12 @@ out of order, driven by the first real festival, Soundclash 26):
   writes; outbox/worker (the OVH `SmsSender` exists, unwired), publishing
   rosters, emails, ICS, PDF; foreign intake sources (CSV/Sheets/webhook);
   retention sweep and rights routes; `/metrics`; OpenAPI and the generated TS
-  client; `evp-cli` `create-org`/`seed`/`rotate-app-key` (stubs that `bail!`);
-  hosted CI.
+  client; `evp-cli` `create-org`/`seed`/`rotate-app-key` (stubs that `bail!`).
+- **CI (`.github/workflows/`, docs/06 §5):** on every push and PR — fmt,
+  clippy, nextest (+ `TZ=Pacific/Chatham`) against Compose's `db`, prettier,
+  eslint, typecheck, vitest, build, cargo-deny, `pnpm audit --prod`, gitleaks,
+  CodeQL, dependency review. On `main` it then builds, Grype-scans and pushes
+  `api`/`migrate`/`web` to ghcr.io, only for services whose inputs changed.
 
 ## Commands
 
@@ -77,7 +81,7 @@ just dump-example <org> [festival]  # regenerate example.json — mock-volunteer
 # just bootstrap / just seed call evp-cli stubs and fail; use EVP_BOOTSTRAP_* and
 # "Load the example festival" instead.
 
-just check        # the local gate (no hosted CI): fmt, prettier, clippy -D warnings, sqlx prepare --check, eslint, tsc/vue-tsc
+just check        # the local gate (CI runs the same): fmt, prettier, clippy -D warnings, sqlx prepare --check, eslint, tsc/vue-tsc
 just test         # cargo nextest + vitest
 just test-tz      # whole Rust suite again under TZ=Pacific/Chatham
 just mutants      # cargo-mutants over evp-domain + evp-intake (slow; pre-PR only)
@@ -178,9 +182,9 @@ are ICU (FormatJS), and dates go in pre-formatted by `@evp/shared/intl`.
 
 ## Non-negotiables
 
-These are policy, not style preferences. There is no hosted CI yet: where a gate
-exists it is `just check` / `just test` (and `just e2e`, `just test-tz`), and the
-tables mark what is still planned. `docs/11 §7` maps each standard to its gate;
+These are policy, not style preferences. Where a gate exists it is `just check`
+/ `just test` (and `just e2e`, `just test-tz`), mirrored in CI (docs/06 §5), and
+the tables mark what is still planned. `docs/11 §7` maps each standard to its gate;
 `docs/13 §12`, `14 §7`, `15 §9`, `16 §7` hold the other four tables. Anything in
 none of those five tables is judgement, not policy (ADR-0015).
 
@@ -225,7 +229,7 @@ none of those five tables is judgement, not policy (ADR-0015).
 - **New mutating endpoints record their inverse** and return an operation id
   (ADR-0024).
 - **Dependencies** must be AGPL-compatible (`cargo deny check` with
-  `deny.toml`, run by hand; npm licence check planned). npm packages must be ≥7
+  `deny.toml`, in CI; npm: dependency review on PRs, full-tree check planned). npm packages must be ≥7
   days old (`minimumReleaseAge`). Never commit real volunteer data:
   `docs/googleSheets/example_data/` is gitignored and stays that way, and
   `just dump-example` must only target an org of mock volunteers.

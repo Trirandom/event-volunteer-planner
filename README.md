@@ -87,7 +87,7 @@ spreadsheet got right.
 - The soft-warning constraint engine, coverage view, event duplication, undo
 - Volunteer token links and self-service rights (export, correction, erasure)
 - CSV / Sheets / webhook intake, skills, retention sweep, audit log, metrics
-- OpenAPI and a generated TypeScript client; hosted CI
+- OpenAPI and a generated TypeScript client
 
 The [roadmap](docs/07-roadmap.md) has the milestones. The documentation in
 [`docs/`](docs/) was written before the code and describes the intended

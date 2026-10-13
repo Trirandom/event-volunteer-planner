@@ -8,6 +8,7 @@ rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
 authors.workspace      = true
+publish.workspace      = true
 description  = "Axum routers, extractors, DTOs, OpenAPI and error mapping."
 
 [dependencies]

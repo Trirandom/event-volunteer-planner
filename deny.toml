@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Tristan Grunert and contributors
 #
 # cargo-deny: RUSTSEC advisories and the AGPL-compatible licence allow-list.
-# Run with `cargo deny check`; no recipe or hosted CI runs it yet (docs/06 §5).
+# Run with `cargo deny check`; CI runs it on every push (docs/06 §5).
 # It is kept separate from GitHub's Dependabot because the latter's Rust coverage
 # is thinner than RUSTSEC's, and because the licence half matters more than
 # usual under AGPL: a source-available dependency cannot legally be combined,
@@ -56,6 +56,9 @@ confidence-threshold = 0.9
 [bans]
 multiple-versions = "warn"
 wildcards         = "deny"
+# The workspace's own crates depend on each other by `path` alone. That is only
+# a wildcard if a crate could be published, and none can (`publish = false`).
+allow-wildcard-paths = true
 # Duplicate majors are a warning, not an error: openidconnect 4 holds part of
 # the tree on thiserror 1, rand 0.8, sha2 0.10, getrandom 0.2 and base64 0.21
 # while the workspace is on the current majors. That is recorded in

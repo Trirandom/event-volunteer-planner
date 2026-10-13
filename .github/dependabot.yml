@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+#
+# Dependency update pull requests (docs/06 §5). Each one runs the full CI,
+# including cargo-deny's licence allow-list and dependency review, so a bump
+# that brings in an incompatible licence fails like any other change.
+#
+# The seven-day cooldown is pnpm-workspace.yaml's `minimumReleaseAge` applied
+# to every ecosystem: the compromises that matter are caught within days of
+# publication. Dependabot ignores the cooldown for security updates, which is
+# the exception we want.
+#
+# Base images are not listed: the Dockerfiles take them from `ARG` defaults
+# pinned by digest, which Dependabot cannot rewrite, so they are bumped by hand
+# (and the image scan in ci.yml fails when one needs it).
+
+version: 2
+
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      cargo-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      npm-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ['*']

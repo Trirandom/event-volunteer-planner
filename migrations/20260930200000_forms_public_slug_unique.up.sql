@@ -1,0 +1,23 @@
+-- At most one form per slug is served on the public route, deployment-wide.
+--
+-- `forms` is `UNIQUE (org_id, slug)` (docs/03 §3.11), but the public URL is
+-- `/f/{form_slug}` with no organisation in it (docs/09 §4) — the slug is a
+-- global name the moment a form is live and open. Without this index two
+-- organisations could both serve `/f/benevoles`, and whichever the resolver
+-- picked, the other's volunteers would be sent to a stranger's form.
+-- Refusing to serve an ambiguous slug instead would be worse: it would let one
+-- tenant take another's live form offline by publishing a namesake.
+--
+-- Partial rather than a plain `UNIQUE (slug)`, because only the served set
+-- has to be unambiguous: drafts, never-published forms and closed forms
+-- (token links keep working when `public_open` is false, and resolve by
+-- token, not slug) may share a slug across organisations exactly as before.
+-- The predicate is the same one the public-slug read policy (`…200100`)
+-- selects on, so "the form this URL names" is unique by construction.
+--
+-- What it discloses: an organisation whose publish (or reopen) collides
+-- learns that the slug is served elsewhere — which `GET /f/{slug}` already
+-- tells anyone on the internet. Nothing about a draft or a closed form is
+-- revealed, because those are outside the predicate.
+CREATE UNIQUE INDEX forms_public_slug ON forms (slug)
+  WHERE live_version_id IS NOT NULL AND public_open;

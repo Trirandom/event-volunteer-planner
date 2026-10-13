@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+[package]
+name         = "evp-api"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+description  = "Axum routers, extractors, DTOs, OpenAPI and error mapping."
+
+[dependencies]
+evp-db     = { workspace = true }
+evp-domain = { workspace = true }
+
+axum       = { workspace = true }
+axum-extra = { workspace = true }
+jiff       = { workspace = true }
+secrecy    = { workspace = true }
+serde      = { workspace = true }
+# The public form's answers are `string | boolean | string[] | null` keyed by
+# question id, read as raw JSON so a wrong-typed one is refused by question
+# rather than failing the whole body (`public_form.rs`).
+serde_json = { workspace = true }
+uuid       = { workspace = true }
+sqlx      = { workspace = true }
+thiserror = { workspace = true }
+tracing   = { workspace = true }
+tower_governor = { workspace = true }
+utoipa    = { workspace = true }
+
+# The extractor tests drive a real `Router` through `tower::ServiceExt::oneshot`
+# rather than calling `from_request` directly: what is being asserted is the
+# response a caller receives — status, media type and body — and only a router
+# produces that.
+[dev-dependencies]
+tokio      = { workspace = true }
+tower      = { workspace = true }
+
+[lints]
+workspace = true

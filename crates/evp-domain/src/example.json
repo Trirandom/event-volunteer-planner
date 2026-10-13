@@ -1,0 +1,2756 @@
+{
+  "festival": {
+    "name": "Soundclash 26",
+    "slug": "soundclash-26",
+    "timezone": "Europe/Paris",
+    "period": [
+      "2026-09-05T00:00:00+02:00",
+      "2026-09-15T00:00:00+02:00"
+    ]
+  },
+  "events": [
+    {
+      "name": "Open Air",
+      "slug": "open-air",
+      "period": [
+        "2026-09-05T10:00:00+02:00",
+        "2026-09-06T01:00:00+02:00"
+      ],
+      "public_period": null,
+      "color": 0,
+      "max_hours_per_day": "10.00",
+      "min_rest_minutes": 480,
+      "max_consecutive_days": 5,
+      "night_starts_at": "22:00:00",
+      "night_ends_at": "06:00:00",
+      "availability_step_minutes": 30,
+      "locations": [
+        {
+          "name": "Bar",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 4,
+          "max_volunteers": 8
+        },
+        {
+          "name": "Montage",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": "Aider au montage de l'événement",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        },
+        {
+          "name": "Entrée",
+          "parent": null,
+          "sort_order": 2,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Prévention VHSS",
+          "parent": null,
+          "sort_order": 3,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Catering",
+          "parent": null,
+          "sort_order": 4,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 3,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Vestiaire",
+          "parent": null,
+          "sort_order": 7,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 3
+        },
+        {
+          "name": "Démontage",
+          "parent": null,
+          "sort_order": 9,
+          "colour": null,
+          "description": "aider au démontage",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        }
+      ],
+      "shifts": [
+        {
+          "location": 0,
+          "period": [
+            "2026-09-05T14:00:00+02:00",
+            "2026-09-05T16:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-05T16:00:00+02:00",
+            "2026-09-05T18:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-05T18:00:00+02:00",
+            "2026-09-05T20:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-05T20:00:00+02:00",
+            "2026-09-05T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 1,
+          "period": [
+            "2026-09-05T10:00:00+02:00",
+            "2026-09-05T12:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 1,
+          "period": [
+            "2026-09-05T12:00:00+02:00",
+            "2026-09-05T14:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-05T14:00:00+02:00",
+            "2026-09-05T16:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-05T16:00:00+02:00",
+            "2026-09-05T18:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-05T18:00:00+02:00",
+            "2026-09-05T20:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-05T20:00:00+02:00",
+            "2026-09-05T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-05T10:00:00+02:00",
+            "2026-09-05T14:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 6,
+          "period": [
+            "2026-09-05T22:00:00+02:00",
+            "2026-09-06T01:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "name": "Montage Molo",
+      "slug": "montage-molo",
+      "period": [
+        "2026-09-10T13:00:00+02:00",
+        "2026-09-10T20:00:00+02:00"
+      ],
+      "public_period": null,
+      "color": 1,
+      "max_hours_per_day": "10.00",
+      "min_rest_minutes": 480,
+      "max_consecutive_days": 5,
+      "night_starts_at": "22:00:00",
+      "night_ends_at": "06:00:00",
+      "availability_step_minutes": 30,
+      "locations": [
+        {
+          "name": "Démontage",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": "aider au démontage",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        },
+        {
+          "name": "Montage",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": "Aider au montage de l'événement",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        }
+      ],
+      "shifts": [
+        {
+          "location": 1,
+          "period": [
+            "2026-09-10T13:00:00+02:00",
+            "2026-09-10T20:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "name": "Dub & 2step",
+      "slug": "dub-and-2step",
+      "period": [
+        "2026-09-11T13:00:00+02:00",
+        "2026-09-12T08:00:00+02:00"
+      ],
+      "public_period": null,
+      "color": 2,
+      "max_hours_per_day": "10.00",
+      "min_rest_minutes": 480,
+      "max_consecutive_days": 5,
+      "night_starts_at": "22:00:00",
+      "night_ends_at": "06:00:00",
+      "availability_step_minutes": 30,
+      "locations": [
+        {
+          "name": "Bar",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 4,
+          "max_volunteers": 8
+        },
+        {
+          "name": "Montage",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": "Aider au montage de l'événement",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        },
+        {
+          "name": "Entrée",
+          "parent": null,
+          "sort_order": 2,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Prévention VHSS",
+          "parent": null,
+          "sort_order": 3,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Catering",
+          "parent": null,
+          "sort_order": 4,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 3,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Vestiaire",
+          "parent": null,
+          "sort_order": 7,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 3
+        },
+        {
+          "name": "Démontage",
+          "parent": null,
+          "sort_order": 9,
+          "colour": null,
+          "description": "aider au démontage",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        }
+      ],
+      "shifts": [
+        {
+          "location": 0,
+          "period": [
+            "2026-09-11T20:00:00+02:00",
+            "2026-09-11T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-11T22:00:00+02:00",
+            "2026-09-12T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-12T00:00:00+02:00",
+            "2026-09-12T01:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-12T01:00:00+02:00",
+            "2026-09-12T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-12T02:00:00+02:00",
+            "2026-09-12T03:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-12T03:00:00+02:00",
+            "2026-09-12T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-12T04:00:00+02:00",
+            "2026-09-12T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-11T20:00:00+02:00",
+            "2026-09-11T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-11T22:00:00+02:00",
+            "2026-09-12T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-12T00:00:00+02:00",
+            "2026-09-12T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-12T02:00:00+02:00",
+            "2026-09-12T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-12T04:00:00+02:00",
+            "2026-09-12T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-11T20:00:00+02:00",
+            "2026-09-11T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-11T22:00:00+02:00",
+            "2026-09-12T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-12T00:00:00+02:00",
+            "2026-09-12T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-12T02:00:00+02:00",
+            "2026-09-12T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-12T04:00:00+02:00",
+            "2026-09-12T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-11T13:00:00+02:00",
+            "2026-09-11T20:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-11T20:00:00+02:00",
+            "2026-09-11T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-11T22:00:00+02:00",
+            "2026-09-12T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-12T00:00:00+02:00",
+            "2026-09-12T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-12T02:00:00+02:00",
+            "2026-09-12T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-12T04:00:00+02:00",
+            "2026-09-12T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-12T05:00:00+02:00",
+            "2026-09-12T08:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-11T20:00:00+02:00",
+            "2026-09-11T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-11T22:00:00+02:00",
+            "2026-09-12T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-12T00:00:00+02:00",
+            "2026-09-12T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-12T02:00:00+02:00",
+            "2026-09-12T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-12T04:00:00+02:00",
+            "2026-09-12T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 6,
+          "period": [
+            "2026-09-12T05:00:00+02:00",
+            "2026-09-12T08:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "name": "Dnb & Dubstep",
+      "slug": "dnb-and-dubstep",
+      "period": [
+        "2026-09-12T14:00:00+02:00",
+        "2026-09-13T09:00:00+02:00"
+      ],
+      "public_period": null,
+      "color": 3,
+      "max_hours_per_day": "10.00",
+      "min_rest_minutes": 480,
+      "max_consecutive_days": 5,
+      "night_starts_at": "22:00:00",
+      "night_ends_at": "06:00:00",
+      "availability_step_minutes": 30,
+      "locations": [
+        {
+          "name": "Bar",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 4,
+          "max_volunteers": 8
+        },
+        {
+          "name": "Montage",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": "Aider au montage de l'événement",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        },
+        {
+          "name": "Entrée",
+          "parent": null,
+          "sort_order": 2,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Prévention VHSS",
+          "parent": null,
+          "sort_order": 3,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Catering",
+          "parent": null,
+          "sort_order": 4,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 3,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Vestiaire",
+          "parent": null,
+          "sort_order": 7,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 3
+        },
+        {
+          "name": "Démontage",
+          "parent": null,
+          "sort_order": 9,
+          "colour": null,
+          "description": "aider au démontage",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        }
+      ],
+      "shifts": [
+        {
+          "location": 0,
+          "period": [
+            "2026-09-12T20:00:00+02:00",
+            "2026-09-12T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-12T22:00:00+02:00",
+            "2026-09-13T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-13T00:00:00+02:00",
+            "2026-09-13T01:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-13T01:00:00+02:00",
+            "2026-09-13T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-13T02:00:00+02:00",
+            "2026-09-13T03:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-13T03:00:00+02:00",
+            "2026-09-13T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-13T04:00:00+02:00",
+            "2026-09-13T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-12T20:00:00+02:00",
+            "2026-09-12T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-12T22:00:00+02:00",
+            "2026-09-13T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-13T00:00:00+02:00",
+            "2026-09-13T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-13T02:00:00+02:00",
+            "2026-09-13T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-13T04:00:00+02:00",
+            "2026-09-13T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-12T20:00:00+02:00",
+            "2026-09-12T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-12T22:00:00+02:00",
+            "2026-09-13T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-13T00:00:00+02:00",
+            "2026-09-13T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-13T02:00:00+02:00",
+            "2026-09-13T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-13T04:00:00+02:00",
+            "2026-09-13T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-12T14:00:00+02:00",
+            "2026-09-12T20:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-12T20:00:00+02:00",
+            "2026-09-12T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-12T22:00:00+02:00",
+            "2026-09-13T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-13T00:00:00+02:00",
+            "2026-09-13T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-13T02:00:00+02:00",
+            "2026-09-13T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
+          "period": [
+            "2026-09-13T04:00:00+02:00",
+            "2026-09-13T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 6,
+          "period": [
+            "2026-09-13T05:00:00+02:00",
+            "2026-09-13T09:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "name": "After",
+      "slug": "after",
+      "period": [
+        "2026-09-13T10:00:00+02:00",
+        "2026-09-14T01:00:00+02:00"
+      ],
+      "public_period": null,
+      "color": 4,
+      "max_hours_per_day": "10.00",
+      "min_rest_minutes": 480,
+      "max_consecutive_days": 5,
+      "night_starts_at": "22:00:00",
+      "night_ends_at": "06:00:00",
+      "availability_step_minutes": 30,
+      "locations": [
+        {
+          "name": "Bar",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 4,
+          "max_volunteers": 8
+        },
+        {
+          "name": "Montage",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": "Aider au montage de l'événement",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        },
+        {
+          "name": "Entrée",
+          "parent": null,
+          "sort_order": 2,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Prévention VHSS",
+          "parent": null,
+          "sort_order": 3,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Catering",
+          "parent": null,
+          "sort_order": 4,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 3,
+          "max_volunteers": 6
+        },
+        {
+          "name": "Vestiaire",
+          "parent": null,
+          "sort_order": 7,
+          "colour": null,
+          "description": null,
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 2,
+          "max_volunteers": 3
+        },
+        {
+          "name": "Démontage",
+          "parent": null,
+          "sort_order": 9,
+          "colour": null,
+          "description": "aider au démontage",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        }
+      ],
+      "shifts": [
+        {
+          "location": 0,
+          "period": [
+            "2026-09-13T14:00:00+02:00",
+            "2026-09-13T16:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-13T16:00:00+02:00",
+            "2026-09-13T18:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-13T18:00:00+02:00",
+            "2026-09-13T20:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 0,
+          "period": [
+            "2026-09-13T20:00:00+02:00",
+            "2026-09-13T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-13T14:00:00+02:00",
+            "2026-09-13T16:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-13T16:00:00+02:00",
+            "2026-09-13T18:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-13T18:00:00+02:00",
+            "2026-09-13T20:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 3,
+          "period": [
+            "2026-09-13T20:00:00+02:00",
+            "2026-09-13T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 6,
+          "period": [
+            "2026-09-13T20:00:00+02:00",
+            "2026-09-13T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 6,
+          "period": [
+            "2026-09-13T22:00:00+02:00",
+            "2026-09-14T01:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "name": "Démontage Molo",
+      "slug": "demontage-molo",
+      "period": [
+        "2026-09-14T10:00:00+02:00",
+        "2026-09-14T18:00:00+02:00"
+      ],
+      "public_period": null,
+      "color": 5,
+      "max_hours_per_day": "10.00",
+      "min_rest_minutes": 480,
+      "max_consecutive_days": 5,
+      "night_starts_at": "22:00:00",
+      "night_ends_at": "06:00:00",
+      "availability_step_minutes": 30,
+      "locations": [
+        {
+          "name": "Démontage",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": "aider au démontage",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        },
+        {
+          "name": "Montage",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
+          "description": "Aider au montage de l'événement",
+          "address": null,
+          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 8,
+          "max_volunteers": 20
+        }
+      ],
+      "shifts": [
+        {
+          "location": 0,
+          "period": [
+            "2026-09-14T10:00:00+02:00",
+            "2026-09-14T18:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        }
+      ]
+    }
+  ],
+  "volunteers": [
+    {
+      "display_name": "Camille 🐚",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-04T13:09:00+02:00",
+      "answers": [
+        {
+          "value": "Bar, Entrées",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "open-air",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-05T10:00:00+02:00",
+                "2026-09-05T23:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "dub-and-2step",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-11T20:00:00+02:00",
+                "2026-09-12T00:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "dnb-and-dubstep",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-12T20:00:00+02:00",
+                "2026-09-13T00:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "after",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-13T14:00:00+02:00",
+                "2026-09-13T16:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "demontage-molo",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-14T10:00:00+02:00",
+                "2026-09-14T18:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Bastien poire",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-04T14:06:00+02:00",
+      "answers": [
+        {
+          "value": "Bar, Entrées",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dnb-and-dubstep",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-12T20:00:00+02:00",
+                "2026-09-13T00:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "MARCHAND Aurel",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T11:22:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dub-and-2step",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-11T13:00:00+02:00",
+                "2026-09-12T08:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "dnb-and-dubstep",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-12T14:00:00+02:00",
+                "2026-09-13T00:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "after",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-13T10:00:00+02:00",
+                "2026-09-14T01:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "demontage-molo",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-14T10:00:00+02:00",
+                "2026-09-14T18:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Jo",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T11:27:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "C'est ma première soirée en tant que bénévole",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "open-air",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-05T10:00:00+02:00",
+                "2026-09-05T23:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "montage-molo",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-10T13:00:00+02:00",
+                "2026-09-10T20:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "dub-and-2step",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-11T13:00:00+02:00",
+                "2026-09-11T20:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "dnb-and-dubstep",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-12T14:00:00+02:00",
+                "2026-09-12T20:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "after",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-13T14:00:00+02:00",
+                "2026-09-13T22:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "demontage-molo",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-14T10:00:00+02:00",
+                "2026-09-14T18:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Delmas",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T12:38:00+02:00",
+      "answers": [
+        {
+          "value": "Je peux encadrer une équipe de bénévole",
+          "question": "Niveau d'expérience au bar et en évent"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dub-and-2step",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-11T13:00:00+02:00",
+                "2026-09-12T08:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Lise Chapuis",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T13:10:00+02:00",
+      "answers": [
+        {
+          "value": "Bar, Entrées, Équipe de prévention VSS",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "open-air",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-05T10:00:00+02:00",
+                "2026-09-05T23:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Perret Amélie",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T13:34:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dnb-and-dubstep",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-13T00:00:00+02:00",
+                "2026-09-13T05:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Margaux Fischbach",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T14:01:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS, Juges",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "montage-molo",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-10T13:00:00+02:00",
+                "2026-09-10T20:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "BENALI Yasmîn",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T14:05:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Entrées, Communication",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "open-air",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-05T14:00:00+02:00",
+                "2026-09-05T23:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Chevalier Olivier",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T14:08:00+02:00",
+      "answers": [
+        {
+          "value": "Entrées",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dub-and-2step",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-11T20:00:00+02:00",
+                "2026-09-12T00:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Solene Cerf",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T15:21:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dnb-and-dubstep",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-12T20:00:00+02:00",
+                "2026-09-13T05:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "BARTHE Maelle",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T16:28:00+02:00",
+      "answers": [
+        {
+          "value": "Bar",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai sais changer un fut les yeux fermés",
+          "question": "Niveau d'expérience au bar et en évent"
+        }
+      ],
+      "participations": [
+        {
+          "event": "after",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-13T16:00:00+02:00",
+                "2026-09-13T22:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Weber Margot",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T17:53:00+02:00",
+      "answers": [
+        {
+          "value": "Bar, Entrées",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": []
+    },
+    {
+      "display_name": "Anouk rousset",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-05T18:35:00+02:00",
+      "answers": [
+        {
+          "value": "Bar, Catering",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "Je peux encadrer une équipe de bénévole",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dnb-and-dubstep",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-12T20:00:00+02:00",
+                "2026-09-13T05:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Elyne lavigne djcolibri",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-06T19:41:00+02:00",
+      "answers": [
+        {
+          "value": "Bar",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dub-and-2step",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-11T20:00:00+02:00",
+                "2026-09-12T00:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Guyot basile",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-06T20:38:00+02:00",
+      "answers": [
+        {
+          "value": "Bar, Entrées",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai sais changer un fut les yeux fermés",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "open-air",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-05T10:00:00+02:00",
+                "2026-09-05T20:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Kev",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-07T13:11:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "Je peux encadrer une équipe de bénévole",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "open-air",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-05T10:00:00+02:00",
+                "2026-09-05T23:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        },
+        {
+          "event": "montage-molo",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-10T13:00:00+02:00",
+                "2026-09-10T20:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "GONÇALVES Lina",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-07T14:23:00+02:00",
+      "answers": [
+        {
+          "value": "Bar, Entrées, Équipe de prévention VSS",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "open-air",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-05T10:00:00+02:00",
+                "2026-09-05T23:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Steinmetz Fabien",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-07T21:05:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Équipe de prévention VSS, Run",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "after",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-13T10:00:00+02:00",
+                "2026-09-13T14:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            },
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-13T16:00:00+02:00",
+                "2026-09-14T01:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Bertaud Maëlys",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-09T12:49:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "montage-molo",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-10T13:00:00+02:00",
+                "2026-09-10T20:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "LEFEBVRE Soline",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-10T12:31:00+02:00",
+      "answers": [
+        {
+          "value": "Équipe de prévention VSS",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "Je peux encadrer une équipe de bénévole",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "after",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-13T14:00:00+02:00",
+                "2026-09-13T22:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Renaud Oriane",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-10T13:53:00+02:00",
+      "answers": [
+        {
+          "value": "Bar, Entrées",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "after",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-13T14:00:00+02:00",
+                "2026-09-13T22:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Léna HARRISON",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-11T21:28:00+02:00",
+      "answers": [
+        {
+          "value": "Bar",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dub-and-2step",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-11T20:00:00+02:00",
+                "2026-09-12T05:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "PASQUALE Barnabé",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-12T13:35:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Entrées",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "open-air",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-05T10:00:00+02:00",
+                "2026-09-05T23:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Grégoire",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-15T20:16:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "Oui",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "dnb-and-dubstep",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-12T20:00:00+02:00",
+                "2026-09-13T00:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "Moustache",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-18T13:21:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Light",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "J'ai de la bouteille",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": [
+        {
+          "event": "demontage-molo",
+          "status": "invited",
+          "windows": [
+            {
+              "kind": "available",
+              "period": [
+                "2026-09-14T10:00:00+02:00",
+                "2026-09-14T18:00:00+02:00"
+              ],
+              "note": null,
+              "declared": false
+            }
+          ],
+          "assignments": []
+        }
+      ]
+    },
+    {
+      "display_name": "HAMDAOUI Sana",
+      "first_name": null,
+      "last_name": null,
+      "email": null,
+      "phone": null,
+      "tshirt_size": null,
+      "dietary": null,
+      "notes": null,
+      "is_core_team": false,
+      "submitted_at": "2026-08-18T23:38:00+02:00",
+      "answers": [
+        {
+          "value": "Montage / Démontage, Bar, Entrées",
+          "question": "Postes préférés lors des événements"
+        },
+        {
+          "value": "C'est ma première soirée en tant que bénévole",
+          "question": "Niveau d'expérience au bar et en évent"
+        },
+        {
+          "value": "Non",
+          "question": "Avez vous le permis"
+        }
+      ],
+      "participations": []
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  // The tooling configs: ESLint, Vitest, Playwright and the end-to-end specs.
+  // Nothing here is shipped to a browser.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // The one place `skipLibCheck` is relaxed, and only here.
+    //
+    // docs/11 §3 argues for checking dependency types because they are part of
+    // the build's correctness. That argument holds for `apps/*` and
+    // `packages/*`, which is where it stays on. It does not hold for the lint
+    // and test harness: `eslint-plugin-vue` pulls in `vue-eslint-parser`,
+    // whose ESTree interfaces do not satisfy `exactOptionalPropertyTypes`, and
+    // the alternatives are patching an ESLint plugin's type definitions or
+    // leaving these files untyped. Neither is worth it for code that never
+    // reaches a user.
+    "skipLibCheck": true
+  },
+  "include": [
+    "eslint.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "e2e/**/*.ts"
+  ]
+}

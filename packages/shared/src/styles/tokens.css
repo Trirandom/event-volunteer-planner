@@ -1,0 +1,75 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Tristan Grunert and contributors
+ *
+ * Restates src/tokens.ts as custom properties. tokens.test.ts asserts the two
+ * agree, so the values here cannot drift away from the ones proved conformant.
+ *
+ * Literal hexes rather than `var(--color-muted-teal-700)` references into
+ * brand.css: this file then works with or without Tailwind, and the test can
+ * compare it to tokens.ts without resolving an indirection. Which ramp step
+ * each token is, is recorded in tokens.ts, which is where that decision lives.
+ *
+ * Every token has a value on bare :root. Nothing is defined only inside a
+ * media query, so a viewer whose preference is unreadable still gets a
+ * complete palette (docs/14 §6).
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --evp-surface: #ffffff;
+  --evp-surface-raised: #eff6f0;
+  --evp-text: #0e1613;
+  --evp-text-muted: #3b5e50;
+  --evp-border: #4f7d6b;
+  --evp-accent: #38613d;
+  --evp-accent-hover: #254128;
+  --evp-on-accent: #ffffff;
+  --evp-focus: #8b5b0e;
+  --evp-danger: #b81714;
+  --evp-warning: #794d20;
+  --evp-success: #254128;
+  --evp-mark: #4a8251;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --evp-surface: #0e1613;
+    --evp-surface-raised: #141f1b;
+    --evp-text: #eff6f0;
+    --evp-text-muted: #82b09e;
+    --evp-border: #4f7d6b;
+    --evp-accent: #9ec7a3;
+    --evp-accent-hover: #bedac1;
+    --evp-on-accent: #0e1613;
+    --evp-focus: #edad45;
+    --evp-danger: #f07775;
+    --evp-warning: #dfb386;
+    --evp-success: #bedac1;
+    --evp-mark: #9ec7a3;
+  }
+}
+
+/* docs/14 §2 — focus is never removed, and the indicator must survive
+ * forced-colors, which is why it is an outline rather than a background.
+ *
+ * Gold, not the brand green: the ring has to be visible against a green
+ * primary button as well as against the page, and a green ring on a green
+ * button is not an indicator. The 2px offset keeps it on the page's ground,
+ * which is the background the 3:1 requirement is measured against. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--evp-focus);
+  outline-offset: 2px;
+}
+
+/* docs/14 §2 — prefers-reduced-motion disables transitions outright. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

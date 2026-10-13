@@ -1,0 +1,22 @@
+-- One concern: `events.public_period` stops being a side effect of widening
+-- the operational window and becomes a field a coordinator sets.
+--
+-- `20260916190000_events_public_period` split the two windows and, in the same
+-- breath, guessed at the public one: the first time `period` grew, whatever it
+-- had been was kept as `public_period`. The guess is wrong. What an event's
+-- period happened to be the first time somebody dragged a bar past the end of
+-- it is not when the doors open — it is the last state of a number a
+-- coordinator had been editing for other reasons, frozen by an unrelated
+-- gesture and then, because the rule only fires once, never corrected. An
+-- event created with a rough 12:00–23:00 placeholder and later refined is
+-- published at the placeholder.
+--
+-- Doors are a fact about the event that somebody knows and nobody can derive.
+-- They are typed in, they are optional (plenty of editions never publish a
+-- door time at all), and they stay NULL until they are. Nothing in the schema
+-- changes: the containment CHECK is still right — the doors are open during
+-- the event, not outside it — and so is NULL meaning "not stated". Only the
+-- meaning recorded against the column was wrong, and the code that wrote it
+-- (`evp_db::catalog::update_event`) goes with it.
+COMMENT ON COLUMN events.public_period IS
+  'When the doors are open to the public, if that has been decided. Set and cleared by hand; NULL means no public hours have been stated, never "same as period".';

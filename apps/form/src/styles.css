@@ -1,0 +1,140 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Tristan Grunert and contributors */
+
+@import 'tailwindcss';
+@import '@evp/shared/brand.css';
+@import '@evp/shared/tokens.css';
+
+@source "../../../packages/shared/src";
+
+/* See apps/admin/src/styles.css for why this is `@theme inline`. */
+@theme inline {
+  --color-evp-surface: var(--evp-surface);
+  --color-evp-surface-raised: var(--evp-surface-raised);
+  --color-evp-text: var(--evp-text);
+  --color-evp-text-muted: var(--evp-text-muted);
+  --color-evp-border: var(--evp-border);
+  --color-evp-accent: var(--evp-accent);
+  --color-evp-accent-hover: var(--evp-accent-hover);
+  --color-evp-on-accent: var(--evp-on-accent);
+  --color-evp-danger: var(--evp-danger);
+  --color-evp-warning: var(--evp-warning);
+  --color-evp-success: var(--evp-success);
+  --color-evp-mark: var(--evp-mark);
+}
+
+/* WCAG 2.4.11: the sticky send bar must not cover the field that focus,
+ * an error-summary link or the browser's own scrolling brings into view. */
+html {
+  scroll-padding-bottom: 6rem;
+}
+
+body {
+  background: var(--evp-surface);
+  color: var(--evp-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* docs/14 §5 — single column, no horizontal scroll, down to 320 px. */
+.evp-page {
+  margin: 0 auto;
+  max-width: 40rem;
+  /* Never a `padding` shorthand: the side gutter is the thing that must hold at
+     320 px, and a shorthand added later for vertical spacing would zero it. */
+  padding-inline: 1rem;
+  padding-block: 1rem 2rem;
+}
+
+/* The one branded band on the form. A volunteer arrives here from a link in a
+ * message and has no other cue that this is the organisation's own tooling, so
+ * the mark and the product name are wayfinding rather than decoration. */
+.evp-form-header {
+  align-items: center;
+  border-bottom: 1px solid var(--evp-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+}
+
+.evp-form-header-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  /* Not `accent`: this is a label, not a link, and colouring it like one is a
+     promise that it can be activated (docs/14 §2). */
+  color: var(--evp-text);
+  letter-spacing: -0.01em;
+}
+
+/* Shared form controls. Native elements, restyled only as far as a 44 px
+ * touch target and a visible border need (docs/14 §5). */
+.evp-input,
+.evp-page input[type='text'],
+.evp-page input[type='email'],
+.evp-page input[type='tel'],
+.evp-page input[type='date'],
+.evp-page select,
+.evp-page textarea {
+  background: var(--evp-surface);
+  border: 1px solid var(--evp-border);
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+  color: var(--evp-text);
+  font: inherit;
+  /* 16 px: iOS zooms the page into any smaller input on focus. */
+  font-size: 1rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.evp-page [aria-invalid='true'] {
+  border-color: var(--evp-danger);
+  border-width: 2px;
+}
+
+.evp-button-primary,
+.evp-button-secondary {
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+}
+
+.evp-button-primary {
+  background: var(--evp-accent);
+  border: 1px solid var(--evp-accent);
+  color: var(--evp-on-accent);
+}
+
+.evp-button-primary:hover {
+  background: var(--evp-accent-hover);
+}
+
+.evp-button-primary:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+.evp-button-secondary {
+  background: var(--evp-surface);
+  border: 1px solid var(--evp-border);
+  color: var(--evp-text);
+}
+
+.evp-visually-hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}

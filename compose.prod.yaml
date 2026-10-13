@@ -1,0 +1,142 @@
+# Self-hosted production.
+#
+#   export COMPOSE_FILE=compose.yaml:compose.prod.yaml
+#   docker compose pull
+#   docker compose up -d --no-build
+#
+# `--no-build`, because the base file carries a `build:` section for development
+# and production must run a released image, built and scanned once, not one
+# built on the host from whatever happens to be checked out there. (No release
+# pipeline publishes these images yet — docs/06 §5.)
+#
+# Every credential here is a Compose secret — a file mounted at /run/secrets —
+# so no value appears in `docker inspect`, in the image, or in a crash dump of
+# the environment (docs/06 §2). Create them before the first start:
+#
+#   mkdir -p secrets && chmod 700 secrets
+#   openssl rand -base64 32 > secrets/postgres_password
+#   openssl rand -base64 32 > secrets/db_migrator_password
+#   openssl rand -base64 32 > secrets/db_api_password
+#   openssl rand -out secrets/session_key 32
+#   openssl rand -out secrets/app_key 32
+#   printf 'postgres://evp_api:%s@db:5432/evp' "$(cat secrets/db_api_password)" > secrets/database_url
+#   printf 'postgres://evp_migrator:%s@db:5432/evp' "$(cat secrets/db_migrator_password)" > secrets/migration_database_url
+#   : > secrets/sms_credentials            # empty is fine when EVP_SMS_PROVIDER=none
+#
+# The connection strings are secrets in their own right because a URL embeds its
+# password. Passing one as an environment value would put the database password
+# in `docker inspect` however carefully the password itself was handled.
+#
+# `secrets/` is git-ignored. Rotating session_key signs everyone out; rotating
+# app_key requires `evp-cli rotate-app-key` first, because it encrypts values
+# that must stay recoverable.
+
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      EVP_DB_MIGRATOR_PASSWORD_FILE: /run/secrets/db_migrator_password
+      EVP_DB_API_PASSWORD_FILE: /run/secrets/db_api_password
+    secrets:
+      - postgres_password
+      - db_migrator_password
+      - db_api_password
+    # No `ports`. The database is reachable only from the Compose network; the
+    # development override is the only place it is published.
+    shm_size: 256mb
+
+  migrate:
+    image: ${EVP_REGISTRY:-ghcr.io/trirandom/event-volunteer-planner}/migrate:${EVP_VERSION:?set EVP_VERSION to a released tag}
+    pull_policy: always
+    environment:
+      EVP_MIGRATION_DATABASE_URL_FILE: /run/secrets/migration_database_url
+    secrets:
+      - migration_database_url
+
+  api:
+    image: ${EVP_REGISTRY:-ghcr.io/trirandom/event-volunteer-planner}/api:${EVP_VERSION:?set EVP_VERSION to a released tag}
+    pull_policy: always
+    environment:
+      EVP_DATABASE_URL_FILE: /run/secrets/database_url
+      EVP_PUBLIC_URL: ${EVP_PUBLIC_URL:?set the public URL, it builds every magic link and ICS URL}
+      EVP_SESSION_KEY_FILE: /run/secrets/session_key
+      EVP_SECRET_KEY_FILE: /run/secrets/app_key
+      EVP_AUTH_CONFIG: /etc/evp/providers.toml
+      EVP_OIDC_ALLOWED_REDIRECTS: ${EVP_OIDC_ALLOWED_REDIRECTS:-/,/events,/pool}
+      EVP_SMTP_URL: ${EVP_SMTP_URL:?set the SMTP relay}
+      EVP_MAIL_FROM: ${EVP_MAIL_FROM:?set the From address}
+      EVP_SMS_PROVIDER: ${EVP_SMS_PROVIDER:-none}
+      EVP_SMS_CREDENTIALS_FILE: /run/secrets/sms_credentials
+      EVP_SMS_SENDER: ${EVP_SMS_SENDER:-}
+      # Never false in production: without the sweep, personal data is retained
+      # past its lawful basis and nothing errors (docs/15).
+      EVP_RETENTION_SWEEP_ENABLED: 'true'
+      EVP_RUST_LOG: ${EVP_RUST_LOG:-evp=info,tower_http=info}
+    secrets:
+      - database_url
+      - session_key
+      - app_key
+      - sms_credentials
+    volumes:
+      - ./providers.toml:/etc/evp/providers.toml:ro
+      # A read-only root filesystem needs somewhere to write. These are the only
+      # two places the process may, and both are wiped on restart.
+      - type: tmpfs
+        target: /tmp
+    read_only: true
+    user: '10001:10001'
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    image: ${EVP_REGISTRY:-ghcr.io/trirandom/event-volunteer-planner}/web:${EVP_VERSION:?set EVP_VERSION to a released tag}
+    volumes:
+      # Configuration only. The built frontend assets are baked into the image
+      # above, so there is no `web` service in production and no Node at runtime.
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    cap_add:
+      # Binding 80 and 443 as a non-root user. Nothing else is granted.
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+
+  backup:
+    image: postgres:17-alpine
+    # `pg_dump` on a schedule to a mounted volume, with retention. The restore
+    # script lives beside it and a restore drill is part of the release
+    # checklist, because an untested backup is not a backup (docs/06 §1).
+    entrypoint: ['/bin/sh', '/opt/backup.sh']
+    environment:
+      PGHOST: db
+      PGUSER: evp_migrator
+      PGDATABASE: evp
+      PGPASSFILE_SOURCE: /run/secrets/db_migrator_password
+      EVP_BACKUP_INTERVAL_SECONDS: ${EVP_BACKUP_INTERVAL_SECONDS:-86400}
+      EVP_BACKUP_KEEP: ${EVP_BACKUP_KEEP:-14}
+    volumes:
+      - ./docker/db/backup.sh:/opt/backup.sh:ro
+      - evp-backups:/backups
+    secrets:
+      - db_migrator_password
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  evp-backups:
+
+secrets:
+  postgres_password: { file: ./secrets/postgres_password }
+  db_migrator_password: { file: ./secrets/db_migrator_password }
+  db_api_password: { file: ./secrets/db_api_password }
+  database_url: { file: ./secrets/database_url }
+  migration_database_url: { file: ./secrets/migration_database_url }
+  session_key: { file: ./secrets/session_key }
+  app_key: { file: ./secrets/app_key }
+  sms_credentials: { file: ./secrets/sms_credentials }

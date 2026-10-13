@@ -1,0 +1,48 @@
+# The pseudonymised spreadsheet export. Referenced by docs/googleSheets/README.md
+# but not committed.
+docs/googleSheets/example_data/*
+
+# Production key material. Development fixtures live in docker/dev-secrets/ and
+# ARE committed on purpose; this directory is the one that must never be.
+/secrets/
+# The root one only — it is the production provider list, mounted by
+# compose.prod.yaml. docker/dev-config/providers.toml is a committed fixture.
+/providers.toml
+
+# Local environment overrides. .env.example is committed; .env is not.
+.env
+.env.*
+!.env.example
+
+# Rust
+/target/
+**/*.rs.bk
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+.pnpm-store/
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Key material, logs and database dumps that must never be published
+*.pem
+*.key
+*.p12
+*.log
+*.dump
+*.sqlite
+/*.sql
+
+# Local Claude Code settings
+.claude/settings.local.json

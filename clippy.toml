@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+#
+# Lint *levels* live in [workspace.lints] in Cargo.toml (docs/11 §2). This file
+# is the configuration those lints read.
+
+msrv = "1.94"
+
+# The panicking group is denied workspace-wide. Relaxing it for tests here,
+# rather than with `#![cfg_attr(test, allow(...))]` in every file, means a test
+# needs no suppression and a non-test module gets no accidental free pass.
+allow-unwrap-in-tests       = true
+allow-expect-in-tests       = true
+allow-panic-in-tests        = true
+allow-indexing-slicing-in-tests = true
+allow-dbg-in-tests          = false   # dbg! is not debugging, it is a leftover
+
+# pedantic is on for the workspace's own code, and none of it is a published
+# API, so there is no breaking change to avoid.
+avoid-breaking-exported-api = false
+
+# `..` keeps clippy's own list and appends to it. Without these, `doc_markdown`
+# (pedantic) demands backticks around the project's ordinary nouns, and the
+# result is documentation written for the linter.
+doc-valid-idents = [
+  "..",
+  "PostgreSQL",
+  "SQLx",
+  "UUIDv7",
+  "OpenAPI",
+  "OpenID",
+  "TypeScript",
+  "JavaScript",
+  "GitLab",
+  "MessageFormat",
+]
+
+# The wall clock is injected, never read (docs/11 §2, ADR-0019). This is the
+# lint that makes "no test reads the wall clock" a compiler error rather than a
+# review note.
+disallowed-methods = [
+  { path = "std::time::SystemTime::now", reason = "time comes from the injected Clock — ADR-0019" },
+  { path = "jiff::Timestamp::now", reason = "time comes from the injected Clock — ADR-0019" },
+  { path = "jiff::Zoned::now", reason = "time comes from the injected Clock — ADR-0019" },
+]
+
+# One date library is enough (docs/11 §2). chrono and time both arrive
+# transitively — openidconnect pulls chrono — and this is what stops them
+# spreading from there into code we write.
+disallowed-types = [
+  { path = "chrono::DateTime", reason = "jiff — ADR-0019" },
+  { path = "chrono::NaiveDateTime", reason = "jiff — ADR-0019" },
+  { path = "time::OffsetDateTime", reason = "jiff — ADR-0019" },
+  { path = "time::PrimitiveDateTime", reason = "jiff — ADR-0019" },
+  { path = "std::time::SystemTime", reason = "jiff — ADR-0019" },
+]

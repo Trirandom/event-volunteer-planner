@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+#
+# Exact, not "stable": every developer and every build compiles with the
+# same compiler, so a lint that fires for one fires for all (docs/11 §2).
+# Bumping this is a deliberate commit, and it is the commit where new clippy
+# lints get fixed.
+[toolchain]
+channel    = "1.98.1"
+components = ["rustfmt", "clippy", "llvm-tools-preview"]
+profile    = "minimal"

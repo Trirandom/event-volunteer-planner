@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    // No `baseUrl`: TypeScript 6 deprecates it and 7 drops it. `paths` alone
+    // resolves relative to this file, which is what was wanted anyway.
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
+}

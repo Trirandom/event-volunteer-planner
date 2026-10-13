@@ -1,0 +1,101 @@
+# The services that exist in every environment.
+#
+#   docker compose up                                         # dev  (override applies automatically)
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d  # self-hosted production
+#
+# Production is a *subset* of development, not a separate file: a service that
+# exists in only one of them is visible at a glance (docs/06 §1). Nothing here
+# carries a credential — how secrets are supplied is the one thing that genuinely
+# differs between the two, so it lives in the two environment files and not in
+# this one.
+
+name: evp
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: evp
+      POSTGRES_USER: postgres
+    volumes:
+      - evp-pgdata:/var/lib/postgresql/data
+      # Roles, ownership and default privileges, applied once on an empty data
+      # directory. See docker/db/init/ — this is where the API's unprivileged,
+      # RLS-bound role comes from, and it has to exist before the first table.
+      - ./docker/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # -U postgres, not the API role: this asks whether the server is accepting
+      # connections, and answering that must not depend on a role the init
+      # scripts may not have created yet.
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d evp']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: migrate
+    # Runs `evp migrate` as evp_migrator and exits — not `sqlx migrate run`
+    # directly, because sqlx-cli only understands DATABASE_URL and this image
+    # has no shell to translate EVP_MIGRATION_DATABASE_URL_FILE into it
+    # (docs/06 §2, ADR-0030). A separate step with a separate, privileged role
+    # is what lets the API's own role stay unprivileged and RLS-bound
+    # (docs/06 §1) — one process may create tables, the other may only use them.
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      # Explicit, and load-bearing: the Dockerfile's last stage is `migrate`,
+      # not `runtime`, so an unspecified target here would build the API
+      # container from the migration image by accident.
+      target: runtime
+    environment:
+      EVP_BIND: 0.0.0.0:3000
+      EVP_RUN_WORKER: 'true'
+      EVP_LOG_FORMAT: json
+      EVP_SOURCE_URL: ${EVP_SOURCE_URL:-https://github.com/Trirandom/event-volunteer-planner}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        # The API never starts against a schema that has not been migrated. This
+        # is the line that makes a failed migration a failed deploy rather than a
+        # running server answering 500s.
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', '/app/evp', 'healthcheck']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    # No `ports` here: development publishes one plaintext port and production
+    # publishes 80/443 for automatic TLS. Declaring both and overriding one is
+    # how a production deployment ends up quietly serving on 8080 as well.
+    volumes:
+      # The Caddyfile itself is mounted by the environment file, not here: in
+      # development Caddy proxies to a Vite dev server, and in production it
+      # serves the built assets from its own image. Those are different
+      # directives, not different values, so they are different files.
+      - evp-caddy-data:/data
+      - evp-caddy-config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  evp-pgdata:
+  evp-caddy-data:
+  evp-caddy-config:

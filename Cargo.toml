@@ -1,0 +1,230 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+#
+# The dependency register — what each crate is for, what was rejected and why —
+# is docs/17-backend-stack.md. Versions are decided here and nowhere else:
+# member crates say `workspace = true` so a bump is one line in one file.
+
+[workspace]
+resolver = "3"
+members = [
+  "crates/evp-domain",
+  "crates/evp-db",
+  "crates/evp-api",
+  "crates/evp-intake",
+  "crates/evp-worker",
+  "crates/evp-cli",
+  "crates/evp-bin",
+]
+
+[workspace.package]
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.94"
+license      = "AGPL-3.0-or-later"
+repository   = "https://github.com/Trirandom/event-volunteer-planner"
+authors      = ["Tristan Grunert and contributors"]
+
+# `rust-version` is the MSRV and is deliberately *lower* than the pinned
+# toolchain in rust-toolchain.toml. 1.94 is sqlx 0.9's floor, which is the
+# highest floor in the tree; the pin is what every build and developer actually
+# compile with. Bumping either is a deliberate commit (docs/11 §2).
+
+[workspace.dependencies]
+
+# ---------------------------------------------------------------------------
+# HTTP and async runtime
+# ---------------------------------------------------------------------------
+axum        = { version = "0.8.9", default-features = false, features = ["http1", "json", "macros", "matched-path", "original-uri", "query", "tokio", "tracing"] }
+axum-extra  = { version = "0.12.6", default-features = false, features = ["cookie", "tracing", "typed-header"] }
+tokio       = { version = "1.53.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal", "fs"] }
+tower       = { version = "0.5.3", features = ["util"] }
+tower-http  = { version = "0.7.1", features = ["catch-panic", "cors", "limit", "normalize-path", "request-id", "sensitive-headers", "set-header", "timeout", "trace"] }
+# `default-features = false` drops the `tonic` half of the defaults: this is an
+# HTTP API, and a gRPC stack compiled into the binary for nothing is a
+# dependency nobody audits. `tracing` is not a default and is not optional for
+# us — it logs the exceeded quota, and evp-api's own key extractor implements
+# the two trait methods that feature gates.
+tower_governor = { version = "0.8.0", default-features = false, features = ["axum", "tracing"] }
+
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
+# `tls-rustls-ring-native-roots` rather than the default `-webpki` variant:
+# webpki-roots is CDLA-Permissive-2.0, which is not on the AGPL-compatible
+# allow-list in CONTRIBUTING.md. Native roots come from the image's
+# ca-certificates, which distroless provides.
+sqlx     = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-native-roots", "postgres", "macros", "migrate", "uuid", "json", "rust_decimal"] }
+jiff-sqlx = { version = "0.2.0", default-features = false, features = ["postgres"] }
+
+# ---------------------------------------------------------------------------
+# Domain vocabulary types
+# ---------------------------------------------------------------------------
+# jiff's default features read the platform tzdb (/usr/share/zoneinfo) rather
+# than bundling one, so a tzdata update arrives with the base image instead of
+# a rebuild — and the API and PostgreSQL stay on comparable data.
+jiff         = { version = "0.2.35", features = ["serde"] }
+rust_decimal = { version = "1.43.0", default-features = false, features = ["std", "serde", "macros"] }
+uuid         = { version = "1.26.1", default-features = false, features = ["std", "v7", "serde", "rng-getrandom"] }
+
+# ---------------------------------------------------------------------------
+# Serialisation and API contract
+# ---------------------------------------------------------------------------
+serde       = { version = "1.0.229", features = ["derive"] }
+serde_json  = "1.0.151"
+utoipa      = { version = "5.5.0", features = ["axum_extras", "uuid", "preserve_order"] }
+utoipa-axum = "0.2.0"
+
+# ---------------------------------------------------------------------------
+# Errors, logging, configuration
+# ---------------------------------------------------------------------------
+thiserror          = "2.0.20"
+anyhow             = "1.0.104"
+tracing            = "0.1.44"
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["std", "fmt", "json", "env-filter", "ansi", "registry"] }
+figment            = { version = "0.10.19", features = ["env", "toml"] }
+
+# ---------------------------------------------------------------------------
+# Secrets and cryptography
+# ---------------------------------------------------------------------------
+# Two hashing primitives, for two different inputs, and the distinction is the
+# whole point.
+#
+# SHA-256 hashes *tokens* — session cookies, magic links, capability URLs. Those
+# are >=32 CSPRNG bytes, so there is no dictionary to stretch against and the
+# hash sits on the path of every authenticated request. Argon2 there would be
+# cargo-culted cost.
+#
+# Argon2 hashes *passwords*, which are chosen by humans and therefore guessable.
+# It was absent until the bootstrap credential landed, when ADR-0005's "nothing
+# in this system stores a password" stopped being true; using SHA-256 for that
+# input instead would be the actual mistake. See docs/17.
+argon2    = { version = "0.5.3", features = ["std"] }
+secrecy   = { version = "0.10.3", features = ["serde"] }
+getrandom = "0.4.3"
+sha2      = "0.11.0"
+hmac      = "0.13.0"
+subtle    = "2.6.1"
+# AEAD for `EVP_SECRET_KEY_FILE`-protected values that must be recoverable
+# rather than hashed — webhook signing secrets, and now per-org OVH SMS
+# credentials (ADR-0034, docs/17). No AES-NI assumption, unlike `aes-gcm`.
+chacha20poly1305 = "0.11.0"
+# OVH's SMS API signs requests with a plain (non-HMAC) SHA-1 digest over
+# secret+consumer+method+url+body+timestamp — OVH's own scheme, not a choice
+# this project made (docs/17). Used only by the OVH `SmsSender`.
+sha1      = "0.10.6"
+
+# ---------------------------------------------------------------------------
+# Outbound: mail, templates, HTTP, SMS, calendars
+# ---------------------------------------------------------------------------
+lettre    = { version = "0.11.23", default-features = false, features = ["smtp-transport", "pool", "builder", "tokio1", "tokio1-rustls-tls", "ring"] }
+minijinja = { version = "2.24.0", features = ["loader"] }
+# Held on the 0.12 line, not 0.13, deliberately: openidconnect 4 reaches
+# reqwest through oauth2 5, which requires ^0.12. Taking 0.13 here would
+# compile two reqwest trees and two TLS stacks into one binary for no gain.
+# It moves to 0.13 when openidconnect does — see docs/17.
+reqwest   = { version = "0.12.28", default-features = false, features = ["json", "rustls-tls-native-roots", "http2"] }
+deunicode = "1.6.2"
+ics       = "0.5.8"
+
+# ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+openidconnect = { version = "4.0.1", default-features = false, features = ["reqwest", "rustls-tls"] }
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+clap = { version = "4.6.6", features = ["derive", "env"] }
+
+# ---------------------------------------------------------------------------
+# Metrics (registered here; wired when /metrics lands)
+# ---------------------------------------------------------------------------
+metrics                     = "0.24.6"
+metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
+axum-prometheus             = "0.10.1"
+
+# ---------------------------------------------------------------------------
+# Intake
+# ---------------------------------------------------------------------------
+csv = "1.4.0"
+
+# ---------------------------------------------------------------------------
+# Test-only
+# ---------------------------------------------------------------------------
+insta    = { version = "1.48.0", features = ["json", "redactions"] }
+proptest = "1.11.0"
+rstest   = "0.27.0"
+
+# ---------------------------------------------------------------------------
+# Internal
+# ---------------------------------------------------------------------------
+evp-domain = { path = "crates/evp-domain" }
+evp-db     = { path = "crates/evp-db" }
+evp-api    = { path = "crates/evp-api" }
+evp-intake = { path = "crates/evp-intake" }
+evp-worker = { path = "crates/evp-worker" }
+
+# ---------------------------------------------------------------------------
+# Lints — docs/11 §2. Declared once, inherited by every crate with
+# `[lints] workspace = true`. One place to look, impossible to forget.
+# ---------------------------------------------------------------------------
+[workspace.lints.rust]
+unsafe_code                   = "forbid"   # not "deny" — cannot be re-allowed locally
+unreachable_pub               = "warn"
+unused_qualifications         = "warn"
+unused_must_use               = "deny"
+missing_debug_implementations = "warn"
+rust_2018_idioms              = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all      = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+# Panicking constructs. A server must not have them in library code.
+unwrap_used              = "deny"
+expect_used              = "deny"
+panic                    = "deny"
+indexing_slicing         = "deny"
+unreachable              = "deny"
+todo                     = "deny"
+unimplemented            = "deny"
+
+# Silent-wrong-answer constructs
+arithmetic_side_effects  = "deny"   # forces checked_/saturating_ on time maths
+as_conversions           = "deny"   # forces TryFrom, so truncation is handled
+float_arithmetic         = "deny"   # hours are Decimal, never f64
+cast_possible_truncation = "deny"
+lossy_float_literal      = "deny"
+
+# Hygiene
+dbg_macro                = "deny"
+print_stdout             = "deny"   # use tracing
+print_stderr             = "deny"
+mem_forget               = "deny"
+
+# The escape hatches for the panicking group are configured in clippy.toml
+# (allow-unwrap-in-tests and friends) rather than sprinkled as crate-level
+# attributes, so a test module needs no suppression and a non-test one gets no
+# free pass.
+disallowed_types         = "deny"
+disallowed_methods       = "deny"
+
+[profile.release]
+overflow-checks = true       # NOT the default in release (docs/11 §2)
+debug           = 1          # line tables, so production panics have locations
+lto             = "thin"
+# Explicit, because the default is easy to "optimise" away: CatchPanicLayer
+# (docs/11 §2) turns a panicked handler into a 500 by unwinding. `panic =
+# "abort"` would make that layer silently useless and take the process — and
+# every in-flight request — with the bug.
+panic           = "unwind"
+
+[profile.dev]
+# Dependencies are compiled once and never stepped through; the workspace is
+# compiled constantly. Optimising only the former costs nothing in iteration
+# time and makes `sqlx::test` suites materially faster.
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 2

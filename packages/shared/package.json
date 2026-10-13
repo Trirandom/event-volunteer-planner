@@ -1,0 +1,32 @@
+{
+  "name": "@evp/shared",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./i18n": "./src/i18n/index.ts",
+    "./intl": "./src/intl/index.ts",
+    "./time": "./src/time/index.ts",
+    "./brand.css": "./src/styles/brand.css",
+    "./tokens.css": "./src/styles/tokens.css"
+  },
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@formatjs/icu-messageformat-parser": "3.5.20",
+    "intl-messageformat": "12.1.2",
+    "temporal-polyfill": "1.0.4",
+    "valibot": "1.4.2",
+    "vue-i18n": "11.4.12"
+  },
+  "peerDependencies": {
+    "vue": "3.5.42"
+  },
+  "devDependencies": {
+    "vue": "3.5.42",
+    "vue-tsc": "3.3.11"
+  }
+}

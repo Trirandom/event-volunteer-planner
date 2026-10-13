@@ -1,0 +1,37 @@
+# Development auth providers. Empty on purpose.
+#
+# With no providers declared, the deployment offers magic links only — and that
+# is the default `docker compose up` experience deliberately, because it needs
+# no Google Cloud Console, no OAuth client and no internet access
+# ([ADR-0014](../../docs/adr/0014-pluggable-oidc-providers.md),
+# [01 §4 S0b](../../docs/01-product-spec.md#setting-up)). Mail goes to Mailpit at
+# http://localhost:8025, so the link is one click away.
+#
+# To exercise the full authorization-code-with-PKCE path offline, start Dex and
+# uncomment the block below:
+#
+#     docker compose --profile oidc up
+#
+# Because the OIDC client is generic, testing against Dex tests the same code
+# that will run against Google or Entra. There is no Dex-specific path.
+
+# [[provider]]
+# id            = "dex"          # IMMUTABLE: stored in identities.provider.
+#                                # Renaming it orphans every identity that used
+#                                # it, and startup refuses to boot if a
+#                                # previously-seen id has vanished.
+# display_name  = "Dev SSO (Dex)"
+# issuer        = "http://dex:5556/dex"
+# client_id     = "evp-dev"
+# client_secret_file = "/etc/evp/dex-client-secret"
+#
+# # false by default, and left false here on purpose: an untrusted provider never
+# # links to an existing account by email address. Attaching it requires being
+# # signed in by a trusted method first, which proves control of both sides.
+# # Dev is exactly where that path should be exercised, not bypassed.
+# trust_email_verified = false
+#
+# [provider.claims]
+# subject = "sub"                # never the address: emails change, `sub` does not
+# email   = "email"
+# name    = "name"

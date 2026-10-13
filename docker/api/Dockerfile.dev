@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+#
+# Development image for the `api` service, and for the `migrate` init job.
+#
+#   docker build -f docker/api/Dockerfile.dev --target dev     .
+#   docker build -f docker/api/Dockerfile.dev --target migrate .
+#
+# It contains a toolchain and no application code: the workspace is
+# bind-mounted at /app and rebuilt in place, so a source change does not
+# rebuild an image.
+#
+# Mounts this image expects (compose.override.yaml owns them):
+#   /app                        bind mount, the repository root
+#   /app/target                 named volume — incremental builds survive
+#                               `docker compose down`
+#   /usr/local/cargo/registry   named volume — the crate index and sources
+#                               survive too, which is most of a cold start
+#
+# Nothing is COPYed into either volume path. A COPY there would be shadowed by
+# the mount at runtime and would silently do nothing.
+
+# syntax=docker/dockerfile:1
+
+ARG RUST_IMAGE=rust:1.98.1-bookworm@sha256:9a73a5088750b4c95158ab26629c854c3d6fc4b173cb7bc8079ad252d8ed7bfa
+
+FROM ${RUST_IMAGE} AS dev
+
+# `watchexec`, not `cargo-watch`. cargo-watch's last release is October 2024 and
+# its own README directs people here; a supply-chain policy that pins digests
+# (docs/12 §8) should not also depend on an abandoned build tool. The command
+# below is the exact equivalent of `cargo watch -x run`.
+#
+# sqlx-cli is present so `migrate add` works from this image and so a developer
+# can run `sqlx database reset` by hand.
+#
+# cargo-nextest and cargo-mutants back the `just test` and `just mutants`
+# recipes (docs/06). Neither ships with the Rust toolchain, so without them
+# here `just test` fails on a fresh clone with "no such command: nextest".
+RUN cargo install watchexec-cli --locked --version 2.7.2 \
+ && cargo install sqlx-cli --locked --version 0.9.0 \
+      --no-default-features --features postgres,rustls,sqlx-toml \
+ && cargo install cargo-nextest --locked --version 0.9.144 \
+ && cargo install cargo-mutants --locked --version 27.1.0 \
+ && rm -rf "${CARGO_HOME}/registry"
+
+WORKDIR /app
+EXPOSE 3000
+
+# Restart the server when Rust, manifest or migration files change. `--watch`
+# is narrowed to the source trees so that writes into /app/target — which
+# happen constantly during a build — do not trigger a rebuild loop.
+CMD ["watchexec", \
+     "--restart", \
+     "--watch", "crates", \
+     "--watch", "migrations", \
+     "--watch", "Cargo.toml", \
+     "--watch", "Cargo.lock", \
+     "--exts", "rs,toml,sql", \
+     "--", \
+     "cargo", "run", "--bin", "evp"]
+
+# ---------------------------------------------------------------------------
+# The `migrate` init job, development flavour.
+#
+# It runs the same `evp migrate` the production image runs, through `cargo run`
+# so that migrations are applied by the code currently checked out. It shares
+# /app/target with the `api` service, so the compile it does is the compile
+# `api` would otherwise have done.
+#
+# `sqlx` is on PATH, so `just migrate-new X` —
+#   docker compose run --rm --entrypoint sqlx migrate migrate add -r X
+# — writes the new pair of files into the bind-mounted /app/migrations.
+# ---------------------------------------------------------------------------
+FROM dev AS migrate
+WORKDIR /app
+ENTRYPOINT ["cargo", "run", "--quiet", "--bin", "evp", "--"]
+CMD ["migrate"]

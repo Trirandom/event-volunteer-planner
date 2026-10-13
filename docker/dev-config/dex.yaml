@@ -1,0 +1,40 @@
+# Dex, development and CI only. Started by `docker compose --profile oidc up`.
+#
+# Its purpose is to be an ordinary OIDC provider — nothing here is specific to
+# this application, which is the point: the client is generic, so exercising
+# this path exercises the code that will run against Google or Entra
+# ([ADR-0014](../../docs/adr/0014-pluggable-oidc-providers.md)).
+#
+# Everything below is a fixture in public version control. The client secret and
+# the static password are not secrets and must never reach a deployment.
+
+issuer: http://dex:5556/dex
+
+storage:
+  # In memory: a restart resets it, which is correct for a fixture and makes CI
+  # runs independent of each other.
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  # No consent screen — the flow under test is the code exchange, not the
+  # provider's UI.
+  skipApprovalScreen: true
+
+staticClients:
+  - id: evp-dev
+    name: Event Volunteer Planner (dev)
+    secret: dev-only-client-secret-not-a-secret
+    redirectURIs:
+      - http://localhost:8080/api/v1/auth/oidc/dex/callback
+
+enablePasswordDB: true
+staticPasswords:
+  # bcrypt of "password". The address matters more than the password: it is what
+  # the invitation flow matches against, so it should look like a real member's.
+  - email: coordinator@evp.localhost
+    hash: '$2a$10$2b2cu/tnrLCehw3eC7X0.OFWsAjnhEcD3.15ei7tpLYhtBZO1Kp4y'
+    username: coordinator
+    userID: 00000000-0000-0000-0000-000000000001

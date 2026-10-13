@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+[package]
+name         = "evp-db"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+description  = "SQLx repositories, migrations and RLS session handling."
+
+[dependencies]
+evp-domain = { workspace = true }
+# The reconciliation ladder and the form's field mapping are decided there,
+# over values read here (`intake.rs`). The direction is still inward:
+# evp-intake depends on evp-domain alone.
+evp-intake = { workspace = true }
+
+chacha20poly1305 = { workspace = true }
+getrandom  = { workspace = true }
+jiff       = { workspace = true }
+jiff-sqlx  = { workspace = true }
+secrecy    = { workspace = true }
+# `jsonb` question columns decode into `evp_domain::form` types through serde.
+serde      = { workspace = true }
+serde_json = { workspace = true }
+sqlx       = { workspace = true }
+thiserror  = { workspace = true }
+tracing    = { workspace = true }
+uuid       = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[lints]
+workspace = true

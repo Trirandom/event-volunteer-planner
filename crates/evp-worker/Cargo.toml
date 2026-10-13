@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+[package]
+name         = "evp-worker"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+description  = "Outbox consumer: email, SMS, ICS, sheet polling, the retention sweep."
+
+[dependencies]
+evp-db     = { workspace = true }
+evp-domain = { workspace = true }
+evp-intake = { workspace = true }
+
+# `lettre` is pinned in [workspace.dependencies] and deliberately not linked
+# yet. Its only rustls feature combination — `tokio1-rustls-tls` — expands to
+# `webpki-roots`, which is CDLA-Permissive-2.0 and therefore outside the
+# allow-list in CONTRIBUTING.md. Adding it needs a licence decision, not a
+# feature flag, and the outbox it serves does not exist until M3. See
+# docs/17 §7.
+jiff       = { workspace = true }
+minijinja  = { workspace = true }
+reqwest    = { workspace = true }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+# OVH's SMS API signature (docs/02 §"Async work", ADR-0034) — see
+# `sms::ovh` for why this is SHA-1 rather than the HMAC-SHA family the rest
+# of the system uses.
+sha1       = { workspace = true }
+sqlx       = { workspace = true }
+thiserror  = { workspace = true }
+tokio      = { workspace = true }
+tracing    = { workspace = true }
+
+[lints]
+workspace = true

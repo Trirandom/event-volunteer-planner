@@ -1,0 +1,1 @@
+ALTER TABLE assignments DROP CONSTRAINT IF EXISTS assignments_participation_is_this_edition;

@@ -1,0 +1,178 @@
+# Development. Applied automatically by `docker compose up`, which is why a
+# fresh clone needs no arguments and no external account (docs/01 S0b).
+#
+# Everything credential-shaped in here is a plain environment value with a
+# committed default, and that is deliberate: these are not secrets, they are
+# fixtures. The production file supplies the same things as Compose secrets,
+# which is the whole difference between the two.
+
+services:
+  db:
+    # Dev tuning only. `fsync=off` makes the test suite noticeably faster and
+    # would be reckless in production, which is exactly why it is here and not
+    # in compose.yaml: losing a dev database costs `just db-reset`.
+    command: >
+      postgres
+        -c fsync=off
+        -c synchronous_commit=off
+        -c full_page_writes=off
+        -c log_statement=none
+    environment:
+      POSTGRES_PASSWORD: ${EVP_DB_SUPERUSER_PASSWORD:-devsuper}
+      EVP_DB_MIGRATOR_PASSWORD: ${EVP_DB_MIGRATOR_PASSWORD:-devmigrator}
+      EVP_DB_API_PASSWORD: ${EVP_DB_API_PASSWORD:-devapi}
+    ports:
+      # Exposed so psql, a GUI client and `sqlx prepare` on the host can reach
+      # it. Not exposed in production.
+      - '127.0.0.1:${EVP_DB_PORT:-5432}:5432'
+
+  migrate:
+    build:
+      dockerfile: docker/api/Dockerfile.dev
+      target: migrate
+    environment:
+      EVP_MIGRATION_DATABASE_URL: postgres://evp_migrator:${EVP_DB_MIGRATOR_PASSWORD:-devmigrator}@db:5432/evp
+    volumes:
+      # The whole repository: `cargo run` needs Cargo.toml and every workspace
+      # member, not just migrations/ — a mount of migrations/ alone leaves /app
+      # without a Cargo.toml and `cargo run` fails before it opens a single SQL
+      # file. Named volumes layered on top so this build's compile is the one
+      # `api` reuses, same as the `api` service below.
+      - .:/app
+      - evp-cargo-target:/app/target
+      - evp-cargo-registry:/usr/local/cargo/registry
+
+  api:
+    build:
+      dockerfile: docker/api/Dockerfile.dev
+      # Dockerfile.dev's last stage is `migrate`; without this, an unspecified
+      # target builds the API dev container from the migration image instead.
+      target: dev
+    environment:
+      EVP_DATABASE_URL: postgres://evp_api:${EVP_DB_API_PASSWORD:-devapi}@db:5432/evp
+      EVP_MIGRATION_DATABASE_URL: postgres://evp_migrator:${EVP_DB_MIGRATOR_PASSWORD:-devmigrator}@db:5432/evp
+      # sqlx-cli understands only this spelling (docs/06 §2 explains why the
+      # binary itself reads the EVP_-prefixed / _FILE forms instead). `just
+      # check-sql` runs `cargo sqlx prepare` in this container, and without
+      # this it fails before evaluating a single query! macro. Pointed at the
+      # migrator, which is what `cargo sqlx prepare` needs to introspect the
+      # full schema rather than only what evp_api's grants expose.
+      DATABASE_URL: postgres://evp_migrator:${EVP_DB_MIGRATOR_PASSWORD:-devmigrator}@db:5432/evp
+      EVP_PUBLIC_URL: http://localhost:${EVP_HTTP_PORT:-8080}
+      EVP_SESSION_KEY_FILE: /run/dev-secrets/session_key
+      EVP_SECRET_KEY_FILE: /run/dev-secrets/app_key
+      EVP_SMTP_URL: smtp://mailpit:1025
+      EVP_MAIL_FROM: planner@evp.localhost
+      EVP_SMS_PROVIDER: none
+      EVP_LOG_FORMAT: pretty
+      EVP_RUST_LOG: ${EVP_RUST_LOG:-evp=debug,tower_http=debug,sqlx=warn}
+      # Off in development, and only in development. A production deployment
+      # without the sweep silently retains personal data (docs/06 §2).
+      EVP_RETENTION_SWEEP_ENABLED: 'false'
+      EVP_AUTH_CONFIG: /etc/evp/providers.toml
+      EVP_OIDC_ALLOWED_REDIRECTS: /,/events,/pool
+      # The first owner on an empty deployment. Read only while `users` is
+      # empty, so leaving them set is a no-op on every restart after the first.
+      # Unset by default: a bootstrap credential with a value baked into a
+      # committed compose file would be the same password on every clone.
+      EVP_BOOTSTRAP_USERNAME: ${EVP_BOOTSTRAP_USERNAME:-}
+      EVP_BOOTSTRAP_PASSWORD: ${EVP_BOOTSTRAP_PASSWORD:-}
+      EVP_BOOTSTRAP_ORG_NAME: ${EVP_BOOTSTRAP_ORG_NAME:-My organisation}
+      CARGO_TERM_COLOR: always
+    # compose.yaml's healthcheck runs `/app/evp`, which only exists in the
+    # production image built by docker/api/Dockerfile. The dev target instead
+    # builds in place via `cargo run`, so the binary lands at
+    # target/debug/evp — without this override `api` reports unhealthy
+    # forever in development.
+    healthcheck:
+      test: ['CMD', '/app/target/debug/evp', 'healthcheck']
+    volumes:
+      # The whole repository, not a list of individual files. Docker creates an
+      # empty *directory* for a bind mount whose host path does not exist, so
+      # `./Cargo.lock:/app/Cargo.lock` silently produces a directory named
+      # Cargo.lock on a clone that has not built yet — and the error you then
+      # get is about TOML parsing.
+      - .:/app
+      # Named volumes layered on top: incremental builds survive container
+      # restarts, and the host never sees a multi-gigabyte target directory.
+      - evp-cargo-target:/app/target
+      - evp-cargo-registry:/usr/local/cargo/registry
+      - ./docker/dev-secrets:/run/dev-secrets:ro
+      - ./docker/dev-config:/etc/evp:ro
+    depends_on:
+      mailpit:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile.dev
+    environment:
+      # Vite serves from inside the container; the browser reaches it through
+      # Caddy on one origin, so HMR has to be told which port to call back on.
+      VITE_HMR_CLIENT_PORT: ${EVP_HTTP_PORT:-8080}
+    volumes:
+      - .:/app
+      # Named volumes layered on top, so a node_modules installed on the host —
+      # for a different platform, with different optional binaries — never
+      # shadows the container's. That is the usual cause of "it works outside
+      # Docker but not in it".
+      #
+      # One per workspace package, and not only the root, because `hoist: false`
+      # is a security boundary (pnpm-workspace.yaml): every package gets a real
+      # link to each dependency it declares in its *own* node_modules, and
+      # `@evp/shared` is one of them. Left on the bind mount those directories
+      # are shared with the host, so whichever pnpm ran last wins — a host
+      # install on Windows writes junctions, which arrive in here as
+      # /mnt/host/c/… and resolve to nothing, and a container install writes
+      # links the host in turn cannot follow. Either way the symptom is Vite
+      # failing to resolve "@evp/shared/intl" in whichever of the two lost.
+      - evp-node-modules:/app/node_modules
+      - evp-node-modules-admin:/app/apps/admin/node_modules
+      - evp-node-modules-form:/app/apps/form/node_modules
+      - evp-node-modules-shared:/app/packages/shared/node_modules
+      - evp-pnpm-store:/pnpm-store
+    restart: unless-stopped
+
+  caddy:
+    ports:
+      - '127.0.0.1:${EVP_HTTP_PORT:-8080}:8080'
+    volumes:
+      - ./docker/caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - web
+
+  mailpit:
+    image: axllent/mailpit:latest
+    # Dev only. Catches every outbound message, so nothing in development can
+    # email a real volunteer — which matters because the test data is imported
+    # from a real spreadsheet (docs/06 §1).
+    ports:
+      - '127.0.0.1:${EVP_MAILPIT_UI_PORT:-8025}:8025'
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: '1'
+      MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+    restart: unless-stopped
+
+  dex:
+    # Optional, and off by default: `docker compose --profile oidc up`.
+    # A ~20 MB static-config OIDC provider, declared in providers.toml like any
+    # other, so the whole authorization-code-with-PKCE path can be exercised
+    # offline with no real provider credentials (docs/06 §1). Nothing uses it
+    # until the OIDC client lands; sign-in today is the bootstrap password,
+    # which is what keeps `docker compose up` dependency-free.
+    image: dexidp/dex:latest
+    profiles: ['oidc']
+    command: dex serve /etc/dex/config.yaml
+    volumes:
+      - ./docker/dev-config/dex.yaml:/etc/dex/config.yaml:ro
+    restart: unless-stopped
+
+volumes:
+  evp-cargo-target:
+  evp-cargo-registry:
+  evp-node-modules:
+  evp-node-modules-admin:
+  evp-node-modules-form:
+  evp-node-modules-shared:
+  evp-pnpm-store:

@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+[package]
+name         = "evp-domain"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+description  = "Pure domain: entities, value objects and the constraint engine. No I/O."
+
+# Nothing here may depend on an evp-* crate, on sqlx, or on axum. The
+# dependency direction is inward (docs/02 §3) and this manifest is where a
+# violation is visible.
+[dependencies]
+# argon2 and secrecy are the exception that proves the rule above: both are
+# pure computation over values, with no I/O and no opinion about storage or
+# transport, which is exactly what this crate is allowed to contain.
+argon2       = { workspace = true }
+# The form's proof-of-work challenge is signed, so a client cannot mint its
+# own easy one (`captcha.rs`). Pure computation, like sha2 beside it.
+hmac         = { workspace = true }
+jiff         = { workspace = true }
+secrecy      = { workspace = true }
+sha2         = { workspace = true }
+rust_decimal = { workspace = true }
+serde        = { workspace = true }
+# Parses the worked example's embedded structure (`include_str!`, so still no
+# I/O at runtime) — see `example.rs` and `just dump-example`.
+serde_json   = { workspace = true }
+thiserror    = { workspace = true }
+uuid         = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+rstest   = { workspace = true }
+
+[lints]
+workspace = true

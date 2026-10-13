@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+#
+# Development web image: two Vite dev servers behind Caddy.
+#
+#   admin  0.0.0.0:5173   base "/"    → Caddy  /*
+#   form   0.0.0.0:5174   base "/f/"  → Caddy  /f/*
+#
+# Nothing is COPYed: the sources arrive as bind mounts and /app/node_modules
+# and /pnpm-store are named volumes, so the image is only a toolchain.
+#
+# HMR: the browser is on localhost:8080 and cannot see 5173 or 5174, so the
+# HMR client is told to dial 8080 (VITE_HMR_CLIENT_PORT) and Vite's WebSocket
+# endpoint is reached at each server's `base` — "/" for admin, "/f/" for the
+# form — which is exactly how Caddy tells the two apart. The dev Caddyfile must
+# therefore route /f/* WITHOUT stripping the prefix.
+
+ARG NODE_VERSION=24.14.1
+ARG PNPM_VERSION=12.3.4
+
+FROM node:${NODE_VERSION}-alpine
+ARG PNPM_VERSION
+
+RUN npm install --global --no-fund --no-audit "pnpm@${PNPM_VERSION}"
+
+WORKDIR /app
+
+ENV npm_config_store_dir=/pnpm-store \
+    # Bind mounts from a Windows or macOS host do not deliver inotify events,
+    # so the watcher polls. Costs a little CPU; the alternative is edits that
+    # silently do not reload.
+    VITE_USE_POLLING=true \
+    VITE_HMR_CLIENT_PORT=8080 \
+    VITE_ALLOWED_HOSTS=localhost,127.0.0.1,web
+
+EXPOSE 5173 5174
+
+# Install on start rather than at build time: node_modules is a named volume,
+# so a layer built here would be masked by the mount anyway. The lockfile is
+# frozen, so this is a no-op once the volume is warm.
+CMD ["sh", "-c", "pnpm install --frozen-lockfile && exec pnpm --filter './apps/*' --parallel dev"]

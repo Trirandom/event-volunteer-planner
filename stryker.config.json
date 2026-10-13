@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Mutation testing over the frontend's PURE composables only — the time-to-pixel scale and the availability merge (docs/13 §9). Never over components: a surviving mutant in a template tells you nothing actionable, and the run is slow enough that a noisy report is a report nobody reads.",
+  "packageManager": "pnpm",
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "vitest.config.ts"
+  },
+  "reporters": ["progress", "clear-text", "html"],
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "packages/shared/src/**/*.ts",
+    "!packages/shared/src/**/*.test.ts",
+    "!packages/shared/src/index.ts",
+    "!packages/shared/src/components/**",
+    "apps/form/src/availability/**/*.ts",
+    "apps/admin/src/board/scale.ts"
+  ],
+  "thresholds": {
+    "high": 100,
+    "low": 100,
+    "break": 100
+  }
+}

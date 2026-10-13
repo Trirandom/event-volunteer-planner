@@ -1,0 +1,21 @@
+diff --git a/dist/vue-i18n.d.ts b/dist/vue-i18n.d.ts
+index c65abbd8e7c98b477a26dcc7ef3ff696c50228c5..08db46f91588670601c05e9246a960b3257eac2b 100644
+--- a/dist/vue-i18n.d.ts
++++ b/dist/vue-i18n.d.ts
+@@ -7,7 +7,6 @@ import { FallbackLocale } from '@intlify/core-base';
+ import type { FallbackLocales } from '@intlify/core-base';
+ import type { GeneratedLocale } from '@intlify/core-base';
+ import { GeneratedTypeConfig } from '@intlify/core-base';
+-import type { GenericComponentInstance } from 'vue';
+ import { InjectionKey } from 'vue';
+ import { DateTimeFormat as IntlDateTimeFormat } from '@intlify/core-base';
+ import { DateTimeFormats as IntlDateTimeFormats } from '@intlify/core-base';
+@@ -1866,7 +1865,7 @@ export { MessageFunctions }
+ export { MessageResolver }
+ 
+ /** @VueI18nComposition */
+-export declare type MissingHandler = (locale: Locale, key: Path, instance?: ComponentInternalInstance | GenericComponentInstance, type?: string) => string | void;
++export declare type MissingHandler = (locale: Locale, key: Path, instance?: ComponentInternalInstance, type?: string) => string | void;
+ export { NamedValue }
+ 
+ /**

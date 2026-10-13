@@ -1,0 +1,172 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Tristan Grunert and contributors */
+
+@import 'tailwindcss';
+@import '@evp/shared/brand.css';
+@import '@evp/shared/tokens.css';
+
+/* Tailwind v4 discovers sources by scanning. The shared package sits outside
+ * this app's directory, so it is declared explicitly or its classes are
+ * dropped from the build. */
+@source "../../../packages/shared/src";
+
+/* Expose the semantic tokens to Tailwind's utility generation, so
+ * `text-evp-danger` resolves to the value the contrast test proved rather than
+ * to a second, unverified palette. The brand ramps arrive already themed from
+ * brand.css — `bg-muted-teal-600` exists without anything here.
+ *
+ * `inline` rather than a plain `@theme`: it makes the utility carry
+ * `var(--evp-accent)` directly instead of going through a second variable
+ * declared on `:root`. Both follow `prefers-color-scheme`, since that override
+ * also lands on `:root` — but only the inlined form follows a token overridden
+ * on a subtree, which is what a per-event or high-contrast theme would be. */
+@theme inline {
+  --color-evp-surface: var(--evp-surface);
+  --color-evp-surface-raised: var(--evp-surface-raised);
+  --color-evp-text: var(--evp-text);
+  --color-evp-text-muted: var(--evp-text-muted);
+  --color-evp-border: var(--evp-border);
+  --color-evp-accent: var(--evp-accent);
+  --color-evp-accent-hover: var(--evp-accent-hover);
+  --color-evp-on-accent: var(--evp-on-accent);
+  --color-evp-danger: var(--evp-danger);
+  --color-evp-warning: var(--evp-warning);
+  --color-evp-success: var(--evp-success);
+  --color-evp-mark: var(--evp-mark);
+}
+
+body {
+  background: var(--evp-surface);
+  color: var(--evp-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  margin: 0;
+  /* The coordinator application is read for hours at a time; the form is read
+     once. Line height is set here rather than in the shared tokens for that
+     reason. */
+  line-height: 1.5;
+}
+
+/* A modal `<dialog>` is centred by the UA stylesheet's `inset: 0; margin:
+ * auto`, but Tailwind's preflight resets every element's margin to 0, which
+ * pins it to the top-left of the viewport. Restored here, unlayered, so it wins
+ * over the `@layer base` reset for every dialog rather than per component. */
+dialog:modal {
+  inset: 0;
+  margin: auto;
+}
+
+/* ── Shared controls ─────────────────────────────────────────────────────────
+ *
+ * Two views now render a button and one renders a text field, which is the
+ * point at which copying the declarations into each `<style scoped>` block
+ * starts producing two slightly different buttons. They live here, on the
+ * tokens the contrast test proved (packages/shared/src/tokens.test.ts), rather
+ * than as Tailwind utility soup repeated per element.
+ *
+ * Sizes are floors from docs/14 §2: every target is at least 24×24 CSS px, and
+ * these sit comfortably above it. Nothing here removes a focus ring — the
+ * `:focus-visible` rule in the shared tokens stylesheet owns that, and it is an
+ * outline so that it survives forced-colors mode. */
+
+.evp-button {
+  border: 1px solid var(--evp-border);
+  border-radius: 0.375rem;
+  background: var(--evp-surface-raised);
+  color: var(--evp-text);
+  cursor: pointer;
+  display: inline-block;
+  font: inherit;
+  font-weight: 500;
+  min-height: 2.75rem;
+  padding: 0.625rem 1.25rem;
+  text-align: center;
+  text-decoration: none;
+  /* Only colour transitions, and the shared reduced-motion rule switches even
+     that off. Nothing here moves, so nothing can move under a pointer. */
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.evp-button:hover {
+  background: var(--evp-surface);
+  border-color: var(--evp-accent);
+}
+
+.evp-button--primary {
+  background: var(--evp-accent);
+  border-color: var(--evp-accent);
+  color: var(--evp-on-accent);
+}
+
+/* `onAccent` is proved against `accentHover` as well as `accent`, so the label
+   stays conformant while the pointer is down (packages/shared/src/tokens.ts). */
+.evp-button--primary:hover {
+  background: var(--evp-accent-hover);
+  border-color: var(--evp-accent-hover);
+}
+
+/* Disabled is carried by more than colour (docs/14 §2): the cursor changes and
+ * the control stops responding, and every disabled control in this application
+ * is a control whose label already says what it is doing ("Signing in…"). */
+.evp-button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* A disabled control must not answer the hover styling either — it looks
+   interactive and then is not. */
+.evp-button[disabled]:hover {
+  background: var(--evp-surface-raised);
+  border-color: var(--evp-border);
+}
+
+.evp-button--primary[disabled]:hover {
+  background: var(--evp-accent);
+  border-color: var(--evp-accent);
+}
+
+.evp-field {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.evp-field label > span {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.evp-field input {
+  background: var(--evp-surface);
+  border: 1px solid var(--evp-border);
+  border-radius: 0.375rem;
+  color: var(--evp-text);
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  width: 100%;
+}
+
+/* An invalid field is outlined *and* described by the message below it. Colour
+ * alone would fail docs/14 §2, and a red border with no text fails it twice. */
+.evp-field input[aria-invalid='true'] {
+  border-color: var(--evp-danger);
+}
+
+/* ── Surfaces ────────────────────────────────────────────────────────────────
+ *
+ * One panel, used by the About box, the placeholder notice and the
+ * organisation list. Three views had grown three copies of the same border
+ * and radius. */
+
+.evp-panel {
+  background: var(--evp-surface-raised);
+  border: 1px solid var(--evp-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}

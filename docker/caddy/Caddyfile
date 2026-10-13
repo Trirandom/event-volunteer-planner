@@ -1,0 +1,73 @@
+# Production. Automatic TLS, static assets, and the security headers.
+#
+# The built frontend bundles are baked into this image (docs/02 §9), so there is
+# no `web` service and no Node at runtime. Set EVP_SITE_ADDRESS to the hostname
+# in your DNS; Caddy obtains and renews the certificate itself.
+
+{
+	admin off
+	email {$EVP_ACME_EMAIL:admin@localhost}
+}
+
+{$EVP_SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		# no-referrer, not the usual same-origin: the volunteer routes are
+		# reached by a capability URL whose token is in the query string
+		# (docs/04 §3), and a Referer header would leak it to anything the page
+		# links to.
+		Referrer-Policy "no-referrer"
+		Cross-Origin-Opener-Policy "same-origin"
+		X-Frame-Options "DENY"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+		# Do not advertise the server or its version.
+		-Server
+	}
+
+	# `script-src 'self'` with no 'unsafe-inline' is the one that matters and is
+	# the one docs/02 §8 names. `style-src` keeps 'unsafe-inline' because Vue
+	# renders static `style` attributes into the markup and CSP blocks those;
+	# removing it is a frontend change (hashing or nonce-ing every one), not a
+	# proxy change, and pretending otherwise here would just mean the header is
+	# relaxed later by someone debugging a blank page.
+
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	# Outside /api/v1 on purpose: a calendar subscription URL is pasted into a
+	# client by hand and lives for years (docs/04 §3).
+	handle /calendar/* {
+		reverse_proxy api:3000
+	}
+
+	# The public volunteer form. A separate bundle at a separate prefix, so the
+	# coordinator application's code and API client are not served to an
+	# unauthenticated visitor (docs/02 §7). handle_path strips /f, so the bundle
+	# is built with base = "/f/" and served from its own root.
+	handle_path /f/* {
+		root * /srv/form
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+
+	# The coordinator application.
+	handle {
+		root * /srv/admin
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+
+	# index.html itself must never be cached: it is the only file whose name is
+	# stable, so a cached copy pins the browser to a deleted asset bundle after
+	# a deploy.
+	@html path / /index.html /f/ /f/index.html
+	header @html Cache-Control "no-cache"
+}

@@ -1,0 +1,89 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Tristan Grunert and contributors
+ *
+ * The brand ramps, as Tailwind theme colours.
+ *
+ * Restates src/brand.ts. tokens.test.ts asserts the two agree, so a ramp
+ * cannot be edited in one place only.
+ *
+ * `@theme` rather than plain custom properties: under Tailwind v4 a variable
+ * declared in the `--color-*` namespace both lands on `:root` *and* generates
+ * the utility family for it, so `bg-muted-teal-600`, `text-deep-teal-700` and
+ * `var(--color-sandy-clay-300)` all exist from this one declaration. Two
+ * mechanisms would be two palettes.
+ *
+ * This file is the raw material, not the design system. The tokens that carry
+ * meaning — and that the contrast gate proves — are in tokens.css, and they are
+ * what application code should use. Reach in here for decoration only: a hero
+ * wash, a logo plate, a divider. See src/brand.ts.
+ *
+ * Requires Tailwind: import it after `@import 'tailwindcss'`. tokens.css has
+ * no such requirement and deliberately keeps none.
+ */
+
+@theme {
+  /* The mark's green. #4a8251 — step 600 — is the green in logo.svg. */
+  --color-muted-teal-50: #eff6f0;
+  --color-muted-teal-100: #dfece0;
+  --color-muted-teal-200: #bedac1;
+  --color-muted-teal-300: #9ec7a3;
+  --color-muted-teal-400: #7db584;
+  --color-muted-teal-500: #5da265;
+  --color-muted-teal-600: #4a8251;
+  --color-muted-teal-700: #38613d;
+  --color-muted-teal-800: #254128;
+  --color-muted-teal-900: #132014;
+  --color-muted-teal-950: #0d170e;
+
+  /* Structure: text, borders, and the dark theme's grounds. */
+  --color-deep-teal-50: #eff5f3;
+  --color-deep-teal-100: #e0ebe7;
+  --color-deep-teal-200: #c0d8ce;
+  --color-deep-teal-300: #a1c4b6;
+  --color-deep-teal-400: #82b09e;
+  --color-deep-teal-500: #629d85;
+  --color-deep-teal-600: #4f7d6b;
+  --color-deep-teal-700: #3b5e50;
+  --color-deep-teal-800: #273f35;
+  --color-deep-teal-900: #141f1b;
+  --color-deep-teal-950: #0e1613;
+
+  /* Gold. The focus ring, and highlights that must not read as green. */
+  --color-apricot-cream-50: #fdf5e8;
+  --color-apricot-cream-100: #faead1;
+  --color-apricot-cream-200: #f6d6a2;
+  --color-apricot-cream-300: #f1c174;
+  --color-apricot-cream-400: #edad45;
+  --color-apricot-cream-500: #e89817;
+  --color-apricot-cream-600: #ba7a12;
+  --color-apricot-cream-700: #8b5b0e;
+  --color-apricot-cream-800: #5d3d09;
+  --color-apricot-cream-900: #2e1e05;
+  --color-apricot-cream-950: #201503;
+
+  /* Caution. The overridable soft rules (ADR-0007). */
+  --color-sandy-clay-50: #faf2eb;
+  --color-sandy-clay-100: #f4e6d7;
+  --color-sandy-clay-200: #eaccae;
+  --color-sandy-clay-300: #dfb386;
+  --color-sandy-clay-400: #d4995e;
+  --color-sandy-clay-500: #c98036;
+  --color-sandy-clay-600: #a1662b;
+  --color-sandy-clay-700: #794d20;
+  --color-sandy-clay-800: #513315;
+  --color-sandy-clay-900: #281a0b;
+  --color-sandy-clay-950: #1c1207;
+
+  /* Refusal. A hard constraint the database will not accept. */
+  --color-light-coral-50: #fce8e8;
+  --color-light-coral-100: #fad2d1;
+  --color-light-coral-200: #f5a5a3;
+  --color-light-coral-300: #f07775;
+  --color-light-coral-400: #eb4a47;
+  --color-light-coral-500: #e61d19;
+  --color-light-coral-600: #b81714;
+  --color-light-coral-700: #8a110f;
+  --color-light-coral-800: #5c0c0a;
+  --color-light-coral-900: #2e0605;
+  --color-light-coral-950: #200404;
+}

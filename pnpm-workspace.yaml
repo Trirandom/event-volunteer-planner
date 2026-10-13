@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# --------------------------------------------------------------------------
+# Supply chain
+# --------------------------------------------------------------------------
+# No package enters the lockfile until it has been on the registry for a week.
+# The npm compromises that matter are caught within hours to days of
+# publication, and nothing in this project needs a release the day it lands.
+# `minimumReleaseAgeStrict` makes an exception a prompt rather than something
+# pnpm writes into this file by itself.
+minimumReleaseAge: 10080 # minutes — 7 days
+minimumReleaseAgeStrict: true
+
+# Install scripts run only where they are the package's actual mechanism.
+# vue-demi's postinstall selects its Vue 3 entry point; without it
+# @tanstack/vue-query resolves to the Vue 2 shim.
+allowBuilds:
+  vue-demi: true
+
+# --------------------------------------------------------------------------
+# Resolution
+# --------------------------------------------------------------------------
+# A peer range that is not satisfied is a compatibility claim nobody checked.
+# Failing the install is cheaper than discovering it in a build.
+strictPeerDependencies: true
+autoInstallPeers: false
+dedupePeerDependents: true
+resolutionMode: highest
+
+# Every package may import only what it declares. Without this, a hoisted
+# transitive dependency resolves from anywhere in the tree, and `apps/form`
+# can import something only `apps/admin` listed. The bundle split in
+# docs/09 §6 is a security boundary, so that has to be a resolution error
+# rather than a review comment.
+hoist: false
+shamefullyHoist: false
+
+# --------------------------------------------------------------------------
+# packages/api-client — the generated OpenAPI client — is NOT declared as a
+# dependency yet, because a `workspace:*` reference to a package that does not
+# exist fails `pnpm install` for everyone, including the backend developer
+# generating it. The moment packages/api-client/package.json lands, add
+#   "@evp/api-client": "workspace:*"
+# to apps/admin (and to apps/form only if the public routes need it).
+# --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Patches
+# --------------------------------------------------------------------------
+# vue-router: one line in the EXPERIMENTAL resolver types — `name?: RecordName`
+# where a subtype narrows it to `undefined`, which does not compile under
+# `exactOptionalPropertyTypes` (docs/11 §3). We do not use that API; the error
+# only reaches us because `skipLibCheck` is false, which is deliberate.
+# Patched rather than worked around by holding an old minor, so security fixes
+# keep arriving and the patch fails loudly when upstream changes the file.
+# Report upstream and delete this when it lands.
+#
+# vue-i18n: its typings import `GenericComponentInstance`, which Vue only
+# exports from 3.6, into the parameter list of `MissingHandler`. We pin Vue
+# 3.5 and never pass a missing handler; the patch drops the 3.6-only member of
+# that union. Every vue-i18n from 11.3 on has the import, so holding an older
+# minor is not an option. Delete this with the move to Vue 3.6.
+patchedDependencies:
+  vue-i18n@11.4.12: patches/vue-i18n@11.4.12.patch
+  vue-router@4.6.4: patches/vue-router@4.6.4.patch

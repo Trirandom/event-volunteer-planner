@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tristan Grunert and contributors
+#
+# cargo-deny: RUSTSEC advisories and the AGPL-compatible licence allow-list.
+# Run with `cargo deny check`; no recipe or hosted CI runs it yet (docs/06 §5).
+# It is kept separate from GitHub's Dependabot because the latter's Rust coverage
+# is thinner than RUSTSEC's, and because the licence half matters more than
+# usual under AGPL: a source-available dependency cannot legally be combined,
+# and the failure mode is discovering it after publication.
+#
+# Table names below are cargo-deny's schema and are spelled the American way.
+# Prose in this repository is not.
+
+[graph]
+all-features = true
+
+[advisories]
+yanked = "deny"
+ignore = []
+# No ignores. An advisory with no fix available is a decision, and it gets an
+# entry here with a reason and a date — not a silent pass.
+
+[licenses]
+# Verbatim from CONTRIBUTING.md#dependencies. Changing this list is a licence
+# decision, not a build fix.
+allow = [
+  "MIT",
+  "MIT-0",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "CC0-1.0",
+  "AGPL-3.0",
+  "AGPL-3.0-or-later",
+  "GPL-3.0",
+  "LGPL-3.0",
+]
+confidence-threshold = 0.9
+
+# Deliberately NOT listed, so they fail the build:
+#   SSPL, BUSL-1.1, Elastic-2.0, Commons Clause, and anything
+#   source-available-but-not-free. These are not open source and cannot be
+#   combined with AGPL-3.0 code.
+#
+# Also deliberately not listed: CDLA-Permissive-2.0. `webpki-roots` carries it,
+# and both sqlx's default rustls feature and lettre's `webpki-roots` feature
+# pull it in. The workspace selects the native-roots variants instead, so this
+# allow-list is what stops the default creeping back. If webpki-roots is ever
+# genuinely wanted, that is a discussion under CONTRIBUTING.md#dependencies,
+# not a line added here in a hurry.
+
+[bans]
+multiple-versions = "warn"
+wildcards         = "deny"
+# Duplicate majors are a warning, not an error: openidconnect 4 holds part of
+# the tree on thiserror 1, rand 0.8, sha2 0.10, getrandom 0.2 and base64 0.21
+# while the workspace is on the current majors. That is recorded in
+# docs/17-backend-stack.md and a build failure would not help with it today.
+
+deny = [
+  # One date library (docs/11 §2, ADR-0019). chrono arrives through
+  # openidconnect and may not become a direct dependency of a workspace crate.
+  { name = "chrono", wrappers = ["openidconnect", "oauth2"] },
+  { name = "openssl-sys", reason = "rustls everywhere; a C TLS stack in a distroless image is a build and a patch liability" },
+  { name = "native-tls", reason = "same" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git      = "deny"
+allow-registry   = ["https://github.com/rust-lang/crates.io-index"]

@@ -1,0 +1,28 @@
+{
+  "name": "@evp/form",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "//": "No pinia, no TanStack Query, no api-client: this bundle has no session and no coordinator routes (docs/09 §6). Every addition here is weighed against the <1.5 s cold-load budget in docs/01 §5.",
+  "dependencies": {
+    "@evp/shared": "workspace:*",
+    "temporal-polyfill": "1.0.4",
+    "valibot": "1.4.2",
+    "vue": "3.5.42",
+    "vue-router": "4.6.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@vitejs/plugin-vue": "6.0.8",
+    "tailwindcss": "4.3.3",
+    "vite": "8.2.2",
+    "vue-tsc": "3.3.11"
+  }
+}

@@ -1,0 +1,49 @@
+# Development. Everything on one origin, http://localhost:8080.
+#
+# One origin is the point, and it is not a convenience: the session cookie is
+# `SameSite=Lax; HttpOnly`, and CSRF is a double-submit token (docs/02 §8). A
+# dev setup where the browser talks to Vite on :5173 and the API on :3000 is
+# cross-origin, so it needs CORS and a different cookie policy, and then every
+# cookie bug is discovered in production. Proxying through Caddy means the
+# browser sees exactly what it will see when deployed.
+
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	encode zstd gzip
+
+	# The API. `/calendar/*` is deliberately outside `/api/v1` — it is pasted
+	# into calendar clients by hand and lives for years, so it gets a short,
+	# stable path that no future API version renumbers (docs/04 §3).
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+	handle /calendar/* {
+		reverse_proxy api:3000
+	}
+
+	# The public volunteer form, on its own path prefix and its own bundle. The
+	# split is a security boundary before it is anything else: the form must not
+	# ship the coordinator application's code, routes or API client
+	# (docs/02 §7).
+	handle /f/* {
+		reverse_proxy web:5174
+	}
+
+	# The coordinator application. Caddy upgrades WebSocket connections through
+	# `reverse_proxy` without configuration, which is what carries Vite's HMR
+	# channel — the dev server is told to advertise port 8080 to the client
+	# (VITE_HMR_CLIENT_PORT), because the browser cannot reach 5173.
+	handle {
+		reverse_proxy web:5173
+	}
+
+	# No CSP here, unlike production. Vite's dev server injects inline scripts
+	# and uses eval for HMR, so a production-equivalent policy would simply be
+	# switched off by whoever hit it first — and a policy people switch off is
+	# worse than an honest absence. The real one is in the production Caddyfile
+	# and is exercised by the e2e suite against a built bundle.
+}

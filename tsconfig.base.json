@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    // Baseline Widely Available is the browser-support policy (docs/14 §6), so
+    // the target is a released ES version rather than a browserslist nobody
+    // revisits. Vite downlevels nothing below this.
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+    "useDefineForClassFields": true,
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+
+    "strict": true,
+
+    // The two that `strict` does not include (docs/11 §3).
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true,
+    "noEmit": true,
+    "skipLibCheck": false
+  }
+}

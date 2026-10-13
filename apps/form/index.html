@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Copyright (C) 2026 Tristan Grunert and contributors -->
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- A form reached by capability URL is not a page to be crawled. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <!-- One file, from packages/shared/public — the same mark the coordinator
+         application uses. The path is spelled with the /f/ prefix because Vite
+         rewrites asset *imports* by `base` but leaves an absolute path in
+         index.html exactly as written. -->
+    <link rel="icon" type="image/svg+xml" href="/f/logo.svg" />
+    <!-- The mark's green, so the browser chrome matches the page instead of
+         framing it in the platform default. muted-teal-600 in both themes:
+         the mark itself does not change with prefers-color-scheme. -->
+    <meta name="theme-color" content="#4a8251" />
+    <title>Formulaire bénévoles</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

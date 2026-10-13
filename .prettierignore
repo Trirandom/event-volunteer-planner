@@ -1,0 +1,23 @@
+dist/
+coverage/
+node_modules/
+target/
+reports/
+playwright-report/
+test-results/
+pnpm-lock.yaml
+patches/
+LICENSE
+
+# Prior art: the Google Apps Script this application replaces (docs/10).
+docs/googleSheets/
+
+# Markdown is hand-wrapped at 80 columns, and the tables in docs/ are aligned
+# by hand to stay readable in a plain editor. Prettier reflows both. Formatting
+# is judgement here, not a gate (docs/11 §6), so the documentation is left
+# alone rather than rewritten by a tool that does not know what it is for.
+*.md
+
+# Machine-written by `just dump-example`, and rewritten whole by every dump:
+# formatting it by hand would only be undone by the next one.
+crates/evp-domain/src/example.json

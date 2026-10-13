@@ -1,0 +1,34 @@
+diff --git a/dist/router-CWoNjPRp.d.mts b/dist/router-CWoNjPRp.d.mts
+index babd93952f483cbabe79c52d1a1a19d32d47cd5d..4599c13b0743979ce56b75b507095c54d0b97484 100644
+--- a/dist/router-CWoNjPRp.d.mts
++++ b/dist/router-CWoNjPRp.d.mts
+@@ -1568,24 +1568,24 @@ interface EXPERIMENTAL_ResolverRecord_Base {
+    * Name of the matcher. Unique across all matchers. If missing, this record
+    * cannot be matched. This is useful for grouping records.
+    */
+-  name?: RecordName;
++  name?: RecordName | undefined;
+   /**
+    * {@link MatcherPattern} for the path section of the URI.
+    */
+-  path?: MatcherPatternPath;
++  path?: MatcherPatternPath | undefined;
+   /**
+    * {@link MatcherPattern} for the query section of the URI.
+    */
+-  query?: MatcherPatternQuery[];
++  query?: MatcherPatternQuery[] | undefined;
+   /**
+    * {@link MatcherPattern} for the hash section of the URI.
+    */
+-  hash?: MatcherPatternHash;
++  hash?: MatcherPatternHash | undefined;
+   /**
+    * Parent record. The parent can be a group or a matchable record.
+    * It will be included in the `matched` array of a resolved location.
+    */
+-  parent?: EXPERIMENTAL_ResolverRecord | null;
++  parent?: EXPERIMENTAL_ResolverRecord | null | undefined;
+ }
+ /**
+  * A group can contain other useful properties like `meta` defined by the router.

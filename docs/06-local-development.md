@@ -130,7 +130,7 @@ exits on anything missing or malformed rather than failing later.
 | `EVP_SECRET_KEY_FILE` | `/run/secrets/app_key` | 32 random bytes. Encrypts the values that must be *recoverable* rather than hashed — per-org OVH SMS credentials today ([ADR-0034](adr/0034-per-org-ovh-sms-credentials.md)), webhook signing secrets later ([08 §3](08-volunteer-intake.md#webhook-specifics)). Rotating it requires re-encrypting those; `evp-cli rotate-app-key` is reserved for that and is a stub today |
 | `EVP_AUTH_CONFIG` | `/etc/evp/providers.toml` | The provider list. Absent → no OIDC provider, which is a valid deployment. Parsed at startup; the OIDC client that uses it is not built yet |
 | `EVP_OIDC_ALLOWED_REDIRECTS` | `/,/events,/pool` | App-relative allow-list for `redirect_to` |
-| `EVP_SMTP_URL` | `smtp://mailpit:1025` | Required at startup, though nothing sends mail until the outbox lands |
+| `EVP_SMTP_URL` | `smtp://mailpit:1025` | Required at startup. `smtps://user:pass@host:465` or `smtp://user:pass@host:587?tls=required` for a real relay; the URL embeds credentials, so production supplies it as a secret file. Nothing sends mail until the outbox lands |
 | `EVP_MAIL_FROM` | `planner@evp.example` | Required at startup, likewise unused today |
 | `EVP_BOOTSTRAP_USERNAME` | `owner@example.org` | The first owner's email address. Read only while `users` is empty, so leaving it set is a no-op after the first start ([ADR-0031](adr/0031-password-bootstrap-credential.md)). Set with the password or not at all |
 | `EVP_BOOTSTRAP_PASSWORD` | — | At least 12 characters. Prefer `EVP_BOOTSTRAP_PASSWORD_FILE` in production; startup warns on the plain form |

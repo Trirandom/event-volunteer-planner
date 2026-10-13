@@ -53,6 +53,15 @@ confidence-threshold = 0.9
 # genuinely wanted, that is a discussion under CONTRIBUTING.md#dependencies,
 # not a line added here in a hurry.
 
+# One crate, not one licence. lettre's message builder requires
+# `quoted_printable`, which is 0BSD: OSI-approved, no conditions at all (not
+# even attribution), so nothing in it constrains AGPL distribution. It is
+# granted to that crate alone so that the next 0BSD dependency still gets the
+# discussion CONTRIBUTING.md#dependencies asks for (docs/17 §7).
+exceptions = [
+  { crate = "quoted_printable", allow = ["0BSD"] },
+]
+
 [bans]
 multiple-versions = "warn"
 wildcards         = "deny"

@@ -49,7 +49,7 @@ out of order, driven by the first real festival, Soundclash 26):
   soft-warning engine (`acknowledge_warnings` is accepted but nothing computes
   warnings; no `/assignments/check` or move), coverage view, event duplication;
   undo endpoints (operations are recorded, nothing reads them), audit-log
-  writes; outbox/worker (the OVH `SmsSender` exists, unwired), publishing
+  writes; outbox/worker (the OVH `SmsSender` and the SMTP `MailSender` exist, unwired), publishing
   rosters, emails, ICS, PDF; foreign intake sources (CSV/Sheets/webhook);
   retention sweep and rights routes; `/metrics`; OpenAPI and the generated TS
   client; `evp-cli` `create-org`/`seed`/`rotate-app-key` (stubs that `bail!`).
@@ -84,6 +84,7 @@ just dump-example <org> [festival]  # regenerate example.json — mock-volunteer
 just check        # the local gate (CI runs the same): fmt, prettier, clippy -D warnings, sqlx prepare --check, eslint, tsc/vue-tsc
 just test         # cargo nextest + vitest
 just test-tz      # whole Rust suite again under TZ=Pacific/Chatham
+just test-mail    # SMTP sender against Mailpit (ignored by `just test`)
 just mutants      # cargo-mutants over evp-domain + evp-intake (slow; pre-PR only)
 just e2e          # Playwright; needs the stack up
 just openapi      # planned: regenerate openapi.json + the TS client (fails today)

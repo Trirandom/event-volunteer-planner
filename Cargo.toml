@@ -116,7 +116,7 @@ chacha20poly1305 = "0.11.0"
 # OVH's SMS API signs requests with a plain (non-HMAC) SHA-1 digest over
 # secret+consumer+method+url+body+timestamp — OVH's own scheme, not a choice
 # this project made (docs/17). Used only by the OVH `SmsSender`.
-sha1      = "0.10.6"
+sha1      = "0.11.0"
 
 # ---------------------------------------------------------------------------
 # Outbound: mail, templates, HTTP, SMS, calendars

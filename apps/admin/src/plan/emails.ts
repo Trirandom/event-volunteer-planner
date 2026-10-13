@@ -14,9 +14,16 @@
  * break the HTML?" is the whole question this page exists to answer, and it
  * is not one to check by looking at five hundred rows.
  */
-import { nameCollator, type ViewerLocale } from '@evp/shared/intl';
+import {
+  eventTimeZone,
+  formatDay,
+  formatTime,
+  nameCollator,
+  type ViewerLocale,
+} from '@evp/shared/intl';
 
 import { isAssignable, type Participation } from '../api/participations';
+import { locale, t } from '../i18n';
 import type { RosterRow } from './roster';
 
 /** One line of somebody's schedule: a post, on a day, for some hours. */
@@ -137,6 +144,33 @@ export function recipientsOf(
         collator.compare(a.name, b.name) ||
         (a.volunteerId < b.volunteerId ? -1 : 1),
     );
+}
+
+/**
+ * One schedule line as the volunteer reads it, in the event's own timezone.
+ *
+ * The server writes the same line in `evp_domain::schedule::locale` when it
+ * sends; `fixtures/schedule_render.json` holds the two to one output.
+ */
+export function formatLine(line: ScheduleLine): string {
+  const options = {
+    locale: locale.value,
+    timeZone: eventTimeZone(line.timezone),
+  };
+  const day = formatDay(line.startMs, options);
+  // The last millisecond, not the end instant: a shift ending at midnight
+  // ended on the day it started, and "samedi 22:00 – dimanche 00:00" says a
+  // night nobody worked.
+  const endDay = formatDay(line.endMs - 1, options);
+  const parts = {
+    day,
+    start: formatTime(line.startMs, options),
+    end: formatTime(line.endMs, options),
+    mission: line.mission,
+  };
+  return day === endDay
+    ? t('emails.message.line', parts)
+    : t('emails.message.lineAcrossDays', { ...parts, endDay });
 }
 
 // ---------------------------------------------------------------------------

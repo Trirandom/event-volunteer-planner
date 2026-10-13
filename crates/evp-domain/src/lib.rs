@@ -13,6 +13,7 @@ pub mod example;
 pub mod form;
 pub mod generate;
 pub mod password;
+pub mod schedule;
 pub mod submission;
 pub mod token;
 

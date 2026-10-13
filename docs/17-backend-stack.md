@@ -197,8 +197,8 @@ alongside the ciphertext.
 
 | Crate | Version | Why this one | Rejected | Licence |
 | --- | --- | --- | --- | --- |
-| `lettre` | 0.11.23 | 02 §2. `default-features = false` because the default enables `native-tls`, which means OpenSSL, a C toolchain in the builder and an OpenSSL CVE cadence in a distroless image. **Pinned but not yet linked** — its only rustls feature combination pulls a licence that needs a decision first (§7). | `mail-send`, an SMTP SaaS SDK | MIT |
-| `minijinja` | 2.24.0 | Jinja syntax, so an email template is readable by someone who has never written Rust, and templates load at runtime rather than at compile time — which is what lets a deployment override one. | `askama` (compile-time, so a template change is a rebuild), `tera` (larger), `handlebars` | Apache-2.0 |
+| `lettre` | 0.11.23 | 02 §2. `default-features = false` because the default enables `native-tls`, which means OpenSSL, a C toolchain in the builder and an OpenSSL CVE cadence in a distroless image. Features `tokio1-rustls` + `rustls-native-certs` + `ring`, **not** `tokio1-rustls-tls`, which expands to `webpki-roots` — the same choice as SQLx's native roots above (§7). Linked by `evp-worker` (`mail.rs`); it brings `quoted_printable`, the one 0BSD crate in the tree, allowed by name in `deny.toml`. | `mail-send`, an SMTP SaaS SDK | MIT |
+| `minijinja` | 2.24.0 | Jinja syntax, so an email template is readable by someone who has never written Rust, and templates load at runtime rather than at compile time — which is what lets a deployment override one. **Not used for coordinator-written schedule templates:** those already say `{{eventName|festivalName}}` meaning "the first non-empty of the two", which Jinja reads as a filter call; `evp_domain::schedule::render` is a small port of the admin app's renderer instead. | `askama` (compile-time, so a template change is a rebuild), `tera` (larger), `handlebars` | Apache-2.0 |
 | `reqwest` | 0.12.28 | The SMS provider behind `SmsSender`, and `openidconnect`'s HTTP client. **Held on 0.12, not 0.13**: `openidconnect` 4 reaches reqwest through `oauth2` 5, which requires `^0.12`. Taking 0.13 here would compile two reqwest trees and two TLS stacks into one binary for nothing. It costs one duplicate — reqwest 0.12 depends on `tower-http` 0.6 while the server is on 0.7 — which is the cheaper of the two duplications. | `ureq`, `hyper` directly | MIT OR Apache-2.0 |
 | `deunicode` | 1.6.2 | GSM-7 transliteration, in part. See below. | `any_ascii` 0.3.3 (larger tables, same job), `unicode-normalization` + hand-rolled folding | BSD-3-Clause |
 | `ics` | 0.5.8 | RFC 5545 writer: 75-octet line folding, `\` `,` `;` and newline escaping, CRLF. Those are the parts of ICS that are actually easy to get wrong. It has no dependencies and takes `&str`, so jiff formats the instants. **Last released September 2022** — accepted, because RFC 5545 is from 2009 and has not moved, the crate is small enough to vendor in an afternoon, and the alternative is worse. | `icalendar` 0.17.13 — maintained, and it hard-depends on `chrono`. Taking it would put a second date library in the tree and make *our own* ICS code construct `chrono::DateTime` values, which [11 §2](11-engineering-standards.md#2-rust) forbids. A maintained crate that forces the wrong type is not the safer choice | MIT OR Apache-2.0 |
@@ -322,28 +322,27 @@ Stated so that the gaps are visible rather than discovered.
 | PDF rendering | M5 | See §7 — one of the two candidates conflicts with the image-size constraint, and the decision needs that resolved first. |
 | Symmetric encryption for recoverable secrets | M1 | `chacha20poly1305` or `aes-gcm`. The choice follows the key-rotation design, not the other way round. |
 | A seeded PRNG for `evp-cli seed` | M2 | `rand` 0.10, when there is something to seed. |
-| ICU collation / message formatting in Rust | M3 | Server-rendered mail and SMS format with the recipient's locale ([16 §6](16-i18n-and-time.md#6-localisation)). The frontend's ICU story is settled; the backend's is not, and guessing now would pin a large dependency for an unwritten template. |
+| ICU collation / message formatting in Rust | M3 | Server-rendered mail and SMS format with the recipient's locale ([16 §6](16-i18n-and-time.md#6-localisation)). **Schedule emails do not wait for it:** `evp_domain::schedule::locale` formats days, times and lines from hand-written fr/en tables, held to the admin app's `Intl` output by `crates/evp-domain/fixtures/schedule_render.json`, which both test suites read. An ICU crate is still the answer once a third language or collation is needed; two languages and twelve month names did not justify pinning one. |
 
 ## 7. Known tensions
 
-Five things in this document are honest problems rather than settled answers.
+Four things in this document are honest problems rather than settled answers, and one that was is kept below with its resolution.
 
-**`lettre` cannot reach a TLS relay without a licence decision.** Its feature
-graph is `tokio1-rustls-tls → rustls-tls → webpki-roots`, and there is no
-native-roots path: `webpki-roots` is the *only* root store lettre 0.11 knows
-how to build. `webpki-roots` is **CDLA-Permissive-2.0**, which is not on the
-allow-list in [CONTRIBUTING.md](../CONTRIBUTING.md#dependencies), so
-`cargo-deny` refuses it. That list exists precisely so this question gets asked
-rather than answered by a transitive feature flag, and the answer is probably
-"add CDLA-Permissive-2.0" — it is a permissive *data* licence over Mozilla's
-root store, it imposes nothing on the software that reads it, and the
-alternative is an OpenSSL dependency in a distroless image. But it is a licence
-decision under AGPL and it belongs to whoever owns that call, so `lettre` is
-pinned here and deliberately not yet a dependency of `evp-worker`. It has to be
-settled before M3, and the three options are: extend the allow-list; supply a
-`rustls::ClientConfig` built from `rustls-native-certs` and use lettre's bare
-`tokio1-rustls`; or accept `tokio1-native-tls` and the OpenSSL that comes with
-it.
+**`lettre` and its root store — resolved.** An earlier version of this
+section said lettre 0.11's only rustls path was `tokio1-rustls-tls →
+rustls-tls → webpki-roots` (CDLA-Permissive-2.0, outside the allow-list), and
+left the choice between extending the allow-list, OpenSSL, or a hand-built
+`ClientConfig`. That was wrong, and the reason is worth keeping: 0.11.23 also
+declares `rustls-native-certs` as an optional dependency *without* a `dep:`
+prefix, which makes it an implicit feature — and crates.io's feature list does
+not show implicit features. Enabling `tokio1-rustls` + `rustls-native-certs` +
+`ring` loads the operating system's roots (distroless/cc ships
+`ca-certificates`), exactly as SQLx and reqwest already do, and `webpki-roots`
+never enters the graph. The cost moved one crate over instead: lettre's
+message builder requires `quoted_printable`, which is **0BSD** — no conditions
+at all, AGPL-compatible — and is allowed as a per-crate exception in
+`deny.toml` (mirrored in CI's dependency review) rather than by adding 0BSD to
+the allow-list, so the next 0BSD crate still gets asked about.
 
 **`figment` has not released since May 2024.** It is a single-maintainer crate
 (Rocket's author) and Rocket itself has not released since 2024 either, so this

@@ -16,13 +16,10 @@ evp-db     = { workspace = true }
 evp-domain = { workspace = true }
 evp-intake = { workspace = true }
 
-# `lettre` is pinned in [workspace.dependencies] and deliberately not linked
-# yet. Its only rustls feature combination — `tokio1-rustls-tls` — expands to
-# `webpki-roots`, which is CDLA-Permissive-2.0 and therefore outside the
-# allow-list in CONTRIBUTING.md. Adding it needs a licence decision, not a
-# feature flag, and the outbox it serves does not exist until M3. See
-# docs/17 §7.
 jiff       = { workspace = true }
+# SMTP with the OS root store (docs/17 §7) — see the feature note on the
+# workspace pin.
+lettre     = { workspace = true }
 minijinja  = { workspace = true }
 reqwest    = { workspace = true }
 serde      = { workspace = true }

@@ -158,6 +158,12 @@ e2e:
 test-tz:
     {{compose}} run --rm -e TZ=Pacific/Chatham --entrypoint cargo api nextest run --workspace
 
+# The SMTP sender against the dev stack's Mailpit: sends for real and reads it
+# back through Mailpit's API (docs/13). Ignored by `just test` because it needs
+# the mailpit service.
+test-mail:
+    {{compose}} run --rm -e EVP_TEST_SMTP_URL=smtp://mailpit:1025 -e EVP_TEST_MAILPIT_API=http://mailpit:8025 --entrypoint cargo api nextest run -p evp-worker --run-ignored only
+
 # Mutation testing over the pure crates. Slow; run it before a PR, not on save.
 mutants:
     {{compose}} run --rm --entrypoint cargo api mutants -p evp-domain -p evp-intake

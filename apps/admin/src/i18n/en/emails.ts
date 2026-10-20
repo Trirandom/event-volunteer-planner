@@ -11,7 +11,7 @@ export default {
     'Part of the plan could not be loaded: some messages below may be incomplete.',
   template: {
     heading: 'Template',
-    label: 'Message template (HTML)',
+    label: 'Message template',
     reset: 'Restore the default template',
     variables: 'Variables',
     insert: 'Insert {name} into the template',
@@ -19,7 +19,25 @@ export default {
     unknown:
       '{count, plural, one {Unknown variable, left as written} other {Unknown variables, left as written}}: {names}',
     default:
-      '<div dir="ltr">\nHi {firstName},<br>\n<br>\nThank you for volunteering at {eventOrFestival}!<br>\n<br>\n<b>Here are your volunteer shifts:</b><br>\n<div>\n{assignations}\n</div><br>\nIf anything is wrong with one of the shifts you have been given, please let us know by replying to this email.<br>\n<br>\nSee you soon<br>\n<br>\n<b>The {organizationName} team</b>\n</div>',
+      '<p>Hi {firstName},</p><p>Thank you for volunteering at {eventOrFestival}!</p><p><strong>Here are your volunteer shifts:</strong></p>{assignations}<p>If anything is wrong with one of the shifts you have been given, please let us know by replying to this email.</p><p>See you soon</p><p><strong>The {organizationName} team</strong></p>',
+  },
+  editor: {
+    toolbar: 'Formatting',
+    bold: 'Bold',
+    italic: 'Italic',
+    underline: 'Underline',
+    bulletList: 'Bulleted list',
+    orderedList: 'Numbered list',
+    link: 'Link',
+    undo: 'Undo',
+    redo: 'Redo',
+    linkUrl: 'Link address',
+    linkPlaceholder: 'https://',
+    linkApply: 'Apply',
+    linkRemove: 'Remove link',
+    linkCancel: 'Close',
+    linkInvalid:
+      'Only web (https://…) and email (mailto:…) addresses can be linked in a message.',
   },
   preview: {
     heading: 'Preview',

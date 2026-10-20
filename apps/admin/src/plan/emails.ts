@@ -230,6 +230,38 @@ function alternativesOf(inner: string): readonly string[] {
   return inner.split('|').map((part) => part.trim());
 }
 
+export type TextPart =
+  | { readonly kind: 'text'; readonly text: string }
+  | {
+      readonly kind: 'placeholder';
+      readonly inner: string;
+      readonly whole: string;
+    };
+
+/** Text cut at its placeholders, in order, by the same grammar the renderer
+ * reads — so the editor finds exactly the placeholders that get filled. */
+export function textParts(text: string): readonly TextPart[] {
+  const parts: TextPart[] = [];
+  let from = 0;
+  for (const match of text.matchAll(PLACEHOLDER)) {
+    if (match.index > from) {
+      parts.push({ kind: 'text', text: text.slice(from, match.index) });
+    }
+    parts.push({ kind: 'placeholder', inner: match[1] ?? '', whole: match[0] });
+    from = match.index + match[0].length;
+  }
+  if (from < text.length) {
+    parts.push({ kind: 'text', text: text.slice(from) });
+  }
+  return parts;
+}
+
+/** Whether every alternative in a placeholder's inner text is one this page
+ * fills: `eventName|festivalName` is, `firstname` is not. */
+export function isKnownPlaceholder(inner: string): boolean {
+  return alternativesOf(inner).every(isVariable);
+}
+
 /** Placeholders the template names that nothing fills. Reported rather than
  * silently emptied: `{{firstname}}` sent to four hundred people as the
  * literal braces is the typo this exists to catch before sending. */
@@ -321,6 +353,16 @@ export function htmlToText(html: string): string {
       out += '\n';
     }
   };
+  // A paragraph is set off by a blank line, as a mail client's margins set it
+  // off on screen. The rich-text editor writes nothing else between
+  // paragraphs (ADR-0046), so without this they would run together. One at
+  // the very start is trimmed with the rest.
+  const blankLine = (): void => {
+    breakLine();
+    if (!out.endsWith('\n\n')) {
+      out += '\n';
+    }
+  };
   const walk = (node: Node): void => {
     if (node.nodeType === Node.TEXT_NODE) {
       // Source newlines are layout in HTML, not text; the tags carry them.
@@ -334,17 +376,18 @@ export function htmlToText(html: string): string {
       out += '\n';
       return;
     }
-    const block = BLOCKS.has(node.tagName);
-    if (block) {
-      breakLine();
-    }
+    const separate =
+      node.tagName === 'P'
+        ? blankLine
+        : BLOCKS.has(node.tagName)
+          ? breakLine
+          : null;
+    separate?.();
     if (node.tagName === 'LI') {
       out += '• ';
     }
     node.childNodes.forEach(walk);
-    if (block) {
-      breakLine();
-    }
+    separate?.();
   };
   parsed.body.childNodes.forEach(walk);
   return out

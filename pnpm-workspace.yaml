@@ -41,6 +41,20 @@ hoist: false
 shamefullyHoist: false
 
 # --------------------------------------------------------------------------
+# Undeclared dependencies
+# --------------------------------------------------------------------------
+# @tiptap/extension-list's generated types reach into `prosemirror-model`
+# directly (one inline `import("prosemirror-model")`), which it reaches at
+# runtime only through @tiptap/pm. Under `hoist: false` that is a type error
+# for us, and `skipLibCheck` stays false. Declared here with @tiptap/pm's own
+# range, so it resolves to the copy already in the tree. Delete when upstream
+# declares it.
+packageExtensions:
+  '@tiptap/extension-list@3':
+    dependencies:
+      prosemirror-model: ^1.25.11
+
+# --------------------------------------------------------------------------
 # packages/api-client — the generated OpenAPI client — is NOT declared as a
 # dependency yet, because a `workspace:*` reference to a package that does not
 # exist fails `pnpm install` for everyone, including the backend developer

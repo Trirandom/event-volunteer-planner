@@ -34,6 +34,17 @@ impl Writer {
         }
     }
 
+    /// A paragraph is set off by a blank line, as a mail client's margins set
+    /// it off on screen. The rich-text editor writes nothing else between
+    /// paragraphs (ADR-0046), so without this they would run together. One
+    /// at the very start is trimmed with the rest.
+    fn blank_line(&mut self) {
+        self.break_line();
+        if !self.out.ends_with("\n\n") {
+            self.out.push('\n');
+        }
+    }
+
     /// Source whitespace is layout in HTML, not text: each run becomes one
     /// space, as JavaScript's `/\s+/g` does.
     fn text(&mut self, raw: &str) {
@@ -125,7 +136,9 @@ pub fn html_to_text(html: &str) -> String {
             }
             continue;
         }
-        if BLOCKS.contains(&name.as_str()) {
+        if name == "p" {
+            writer.blank_line();
+        } else if BLOCKS.contains(&name.as_str()) {
             writer.break_line();
             if name == "li" && !closing {
                 writer.out.push_str("• ");

@@ -321,6 +321,16 @@ export function htmlToText(html: string): string {
       out += '\n';
     }
   };
+  // A paragraph is set off by a blank line, as a mail client's margins set it
+  // off on screen. The rich-text editor writes nothing else between
+  // paragraphs (ADR-0046), so without this they would run together. One at
+  // the very start is trimmed with the rest.
+  const blankLine = (): void => {
+    breakLine();
+    if (!out.endsWith('\n\n')) {
+      out += '\n';
+    }
+  };
   const walk = (node: Node): void => {
     if (node.nodeType === Node.TEXT_NODE) {
       // Source newlines are layout in HTML, not text; the tags carry them.
@@ -334,17 +344,18 @@ export function htmlToText(html: string): string {
       out += '\n';
       return;
     }
-    const block = BLOCKS.has(node.tagName);
-    if (block) {
-      breakLine();
-    }
+    const separate =
+      node.tagName === 'P'
+        ? blankLine
+        : BLOCKS.has(node.tagName)
+          ? breakLine
+          : null;
+    separate?.();
     if (node.tagName === 'LI') {
       out += '• ';
     }
     node.childNodes.forEach(walk);
-    if (block) {
-      breakLine();
-    }
+    separate?.();
   };
   parsed.body.childNodes.forEach(walk);
   return out

@@ -1,6 +1,6 @@
 ---
 name: dev
-description: How to develop in event-volunteer-planner — a branch per change, test-first red-green cycles, micro commits, the local gates, when to write an ADR, and which docs to update alongside the code. Use when starting any feature, bug fix, refactor, migration or dependency change in this repo, before writing the first line of code, and again before committing or opening a PR.
+description: How to develop in event-volunteer-planner — a git worktree and branch per change, each with its own Compose stack, test-first red-green cycles, micro commits, the local gates, when to write an ADR, and which docs to update alongside the code. Use when starting any feature, bug fix, refactor, migration or dependency change in this repo, before writing the first line of code, and again before committing or opening a PR.
 ---
 
 # Developing in event-volunteer-planner
@@ -14,32 +14,93 @@ already written down.
 
 The loop, in order:
 
-1. **Branch** off an up-to-date `main`.
+1. **Worktree + branch** off an up-to-date `main`, with its own Compose project
+   and ports.
 2. **Read** the governing doc and ADRs. Decide whether the change needs an ADR.
 3. **Red → green → refactor** in small cycles. Commit each green step.
 4. **Docs** move in the same branch as the code.
-5. **Gate** with `just check` and `just test`, then open a PR.
+5. **Gate** with `just check` and `just test`, open a PR, then tear the
+   worktree down.
 
-## 1. One branch per change
+## 1. One worktree and one branch per change
 
-Never commit to `main`. Every feature, fix, doc change or dependency bump gets
-its own branch, cut from a fresh `main`:
+Several developments run at once here (people, and Claude sessions in
+parallel). A shared checkout means one session's `git switch` changes the files
+under another's feet. A shared Compose project means one `just up` recreates
+the other's containers with its own bind mount, both write to the same
+database and cargo target volume, and one `just nuke` destroys everyone's data.
+So **every change gets its own git worktree, and every worktree its own Compose
+project and ports.**
+
+Never commit to `main`, and never switch branches in a checkout you didn't
+create for this task: the main checkout (`/srv/event-volunteer-planner`) may
+be another session's working tree. `git worktree list` shows who is where.
+
+### Create it
+
+Worktrees live next to the repository, in `../evp-worktrees/<slug>`, never
+inside it (the repo would see them as untracked files, and Vite, eslint and
+cargo would crawl them). Cut the branch from a fresh `origin/main` as you
+create it, which needs no `git switch` in anyone's checkout:
 
 ```
-git switch main && git pull --ff-only
-git switch -c feature/<short-slug>      # new behaviour
-git switch -c fix/<short-slug>          # bug fix (regression test first, §3)
-git switch -c docs/<short-slug>         # docs or ADR only
-git switch -c chore/<short-slug>        # deps, CI, tooling
+git fetch origin
+git worktree add ../evp-worktrees/<slug> -b feature/<slug> origin/main   # new behaviour
+#                                         -b fix/<slug>       bug fix (regression test first, §3)
+#                                         -b docs/<slug>      docs or ADR only
+#                                         -b chore/<slug>     deps, CI, tooling
+cd ../evp-worktrees/<slug>
 ```
+
+From here on, every command, edit and `just` recipe for this task runs in that
+directory. A Claude session uses absolute paths under it and never edits the
+main checkout.
+
+### Isolate its stack — before the first `just` recipe
+
+`compose.yaml` pins `name: evp`, so without an override every worktree **is**
+the main checkout's Compose project: same containers, same `evp-pgdata`
+volume, same ports. Give the worktree a `.env` (gitignored, so `git worktree
+add` never copies one; Compose reads it from the project directory, and
+`COMPOSE_PROJECT_NAME` beats the `name:` key). Slot N is 1–9, one per live
+worktree:
+
+```
+ss -ltn | grep -E ':(808N|803N|543N) '      # must print nothing
+printf '%s\n' \
+  'COMPOSE_PROJECT_NAME=evp-<slug>' \
+  'EVP_HTTP_PORT=808N' \
+  'EVP_MAILPIT_UI_PORT=803N' \
+  'EVP_DB_PORT=543N' > .env
+docker compose config | head -1             # must print: name: evp-<slug>
+pnpm install                                # host node_modules are per worktree
+```
+
+Don't run any `just` or `docker compose` command in the worktree until that
+`config` check prints the worktree's own name. Until then `just nuke` or
+`just db-reset` there wipes the main checkout's database.
+
+- Slot 0 (8080 / 8025 / 5432, project `evp`) belongs to the main checkout.
+  Don't reuse it, and don't run `just` recipes for this task from there.
+- The worktree's stack is at `http://localhost:808N`. `just e2e` doesn't read
+  `.env`, so point Playwright at it with
+  `EVP_E2E_BASE_URL=http://localhost:808N just e2e`.
+- The first `just up` or `just test` compiles from cold, because the cargo
+  target and registry volumes belong to the project. That's the cost of not
+  sharing a build.
+- `docker compose ls` lists every stack. Each one should be `evp-<slug>` for a
+  live worktree, or `evp` for the main checkout.
+
+### Branch hygiene
 
 - One concern per branch. If a second concern turns up halfway through (a
   refactor, an unrelated bug), note it and finish the current branch first, or
-  stash and open another branch. Don't mix them.
-- If you're already on a branch that isn't for this task, stop and ask before
-  piling unrelated work onto it.
-- Keep branches short-lived. Rebase onto `main` (`git rebase main`) rather
-  than merging `main` in, so history stays linear and bisectable.
+  open a second worktree for it. Don't mix them.
+- If the worktree you're in isn't for this task, stop and ask before piling
+  unrelated work onto it.
+- Keep branches short-lived. Rebase onto `main` (`git fetch && git rebase
+  origin/main`) rather than merging `main` in, so history stays linear and
+  bisectable.
 - Merging happens through a GitHub PR (`gh pr create`), never by pushing to
   `main`. CI runs on every push, so pushing a branch is cheap feedback.
 
@@ -243,7 +304,7 @@ just mutants   # if evp-domain / evp-intake changed
 
 Then:
 
-1. `git rebase main` onto a fresh `main`, re-run the gates if anything moved.
+1. `git fetch && git rebase origin/main`, re-run the gates if anything moved.
 2. Read your own diff (`git diff main...`), checking for leftover debug code,
    commented-out code, comments that restate code, and stale docs (§6).
 3. Push and `gh pr create`. The description covers:
@@ -254,3 +315,14 @@ Then:
    - anything irreversible (a data-losing migration, an action with no
      inverse), called out explicitly for reviewer sign-off
 4. Wait for CI to go green. A red CI job is fixed, not retried.
+5. Once the PR is merged (or abandoned), tear the worktree down, stack first,
+   so no orphaned containers or volumes are left behind. Check the project
+   name before destroying anything:
+
+   ```
+   docker compose config | head -1            # must print: name: evp-<slug>, never evp
+   just nuke                                  # this worktree's project only
+   cd /srv/event-volunteer-planner
+   git worktree remove ../evp-worktrees/<slug>
+   git branch -d <branch>                     # -D only if it was abandoned unmerged
+   ```

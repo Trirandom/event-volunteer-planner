@@ -20,8 +20,14 @@
  * Behind a disclosure, because the common visit to the details section is
  * correcting hours that already exist, and an open five-field form above the
  * day cards pushes them off the first screen.
+ *
+ * The events list mounts it too, once per festival card (`placement:
+ * 'agenda'`), for the same reason: the festival is already on screen, so
+ * picking it again from a list is the step to remove. There the words change
+ * — "the strip above" is the details page's strip — and so do the field ids,
+ * since several cards can have their form open at once.
  */
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 import { useCreateEvent } from '../api/useEvents';
 import { t, type AdminMessageKey } from '../i18n';
@@ -35,19 +41,25 @@ import {
   type NewEventProblem,
 } from '../plan/newEventDraft';
 
-const props = defineProps<{
-  readonly orgId: string;
-  /** The production this page is about, or `null` when the page is a
-   * standalone event — in which case the new event is standalone too. */
-  readonly festivalId: string | null;
-  /** What the production is called, for the sentence under the heading. */
-  readonly productionName: string;
-  /** The production's own IANA zone, as the new day's default. */
-  readonly timezone: string;
-  /** Every slug the days in scope already use, so the clash is caught here
-   * rather than as a 409 per attempt. */
-  readonly takenSlugs: readonly string[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    readonly orgId: string;
+    /** The production this page is about, or `null` when the page is a
+     * standalone event — in which case the new event is standalone too. */
+    readonly festivalId: string | null;
+    /** What the production is called, for the sentence under the heading. */
+    readonly productionName: string;
+    /** The production's own IANA zone, as the new day's default. */
+    readonly timezone: string;
+    /** Every slug the days in scope already use, so the clash is caught here
+     * rather than as a 409 per attempt. */
+    readonly takenSlugs: readonly string[];
+    /** Which page the form sits on: a production's details section, or a
+     * festival card in the events list. */
+    readonly placement?: 'details' | 'agenda';
+  }>(),
+  { placement: 'details' },
+);
 
 const open = ref(false);
 const draft = ref<NewEventDraft>(emptyNewEventDraft(props.timezone));
@@ -153,7 +165,36 @@ function cancel(): void {
   created.value = null;
 }
 
-const fieldId = (field: string): string => `evp-new-event-${field}`;
+/** Suffixed only in the list, where one form per festival card can be open at
+ * once; the details page has a single form and keeps the plain ids. */
+const instanceId = useId();
+const idBase =
+  props.placement === 'agenda'
+    ? `evp-new-event-${instanceId}`
+    : 'evp-new-event';
+const fieldId = (field: string): string => `${idBase}-${field}`;
+
+const openLabel = computed(() => {
+  if (props.festivalId === null) {
+    return t('events.newEvent.addAnotherEvent');
+  }
+  return props.placement === 'agenda'
+    ? t('events.newEvent.addEventToFestival')
+    : t('events.newEvent.addDayButton');
+});
+
+const hint = computed(() => {
+  if (props.festivalId === null) {
+    return t('events.newEvent.hintStandalone', {
+      production: props.productionName,
+    });
+  }
+  return props.placement === 'agenda'
+    ? t('events.newEvent.hintFestivalEvent', {
+        production: props.productionName,
+      })
+    : t('events.newEvent.hintDay', { production: props.productionName });
+});
 </script>
 
 <template>
@@ -164,30 +205,18 @@ const fieldId = (field: string): string => `evp-new-event-${field}`;
       class="evp-button evp-button--primary"
       @click="open = true"
     >
-      {{
-        festivalId === null
-          ? t('events.newEvent.addAnotherEvent')
-          : t('events.newEvent.addDayButton')
-      }}
+      {{ openLabel }}
     </button>
 
     <form v-else class="evp-panel" novalidate @submit.prevent="submit">
       <h3 class="evp-add-heading">
         {{
-          festivalId === null
+          festivalId === null || placement === 'agenda'
             ? t('events.newEvent.headingEvent')
             : t('events.newEvent.headingDay')
         }}
       </h3>
-      <p class="evp-hint">
-        {{
-          festivalId === null
-            ? t('events.newEvent.hintStandalone', {
-                production: productionName,
-              })
-            : t('events.newEvent.hintDay', { production: productionName })
-        }}
-      </p>
+      <p class="evp-hint">{{ hint }}</p>
 
       <p class="evp-field">
         <label :for="fieldId('name')">
@@ -300,7 +329,7 @@ const fieldId = (field: string): string => `evp-new-event-${field}`;
           {{
             create.isPending.value
               ? t('events.newEvent.adding')
-              : festivalId === null
+              : festivalId === null || placement === 'agenda'
                 ? t('events.newEvent.addEvent')
                 : t('events.newEvent.addDay')
           }}

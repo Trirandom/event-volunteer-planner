@@ -15,6 +15,12 @@
  * A festival heading links to `PlanDetailView`, which is that festival and
  * its days on one page; an event row links to the same page narrowed to that
  * day. This list is the index, never the detail.
+ *
+ * An event joins a festival from that festival's card ("Add an event"), not
+ * from a picker in the create form at the top: the coordinator is already
+ * looking at the festival, and a `<select>` of every festival name was the
+ * step that made them find it a second time. The top form creates standalone
+ * events only.
  */
 import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
@@ -28,6 +34,7 @@ import type {
   CreateFestivalRejection,
   LoadExampleFestivalRejection,
 } from '../api/festivals';
+import NewEventForm from '../components/NewEventForm.vue';
 import ToastMessage from '../components/ToastMessage.vue';
 import ToastStack from '../components/ToastStack.vue';
 import {
@@ -67,13 +74,17 @@ const festivalList = computed(() =>
  */
 const now = nowInstant();
 
-const agenda = computed(() =>
-  buildAgenda(
-    events.value?.ok === true ? events.value.value : [],
-    festivalList.value,
-    now,
-  ),
+const eventList = computed(() =>
+  events.value?.ok === true ? events.value.value : [],
 );
+
+const agenda = computed(() =>
+  buildAgenda(eventList.value, festivalList.value, now),
+);
+
+/** Slugs are unique per org (`UNIQUE (org_id, slug)`), not per festival, so a
+ * festival card's form checks against every event the org has. */
+const takenSlugs = computed(() => eventList.value.map((event) => event.slug));
 
 interface EventLine {
   readonly id: string;
@@ -89,6 +100,7 @@ type GroupLine =
       readonly key: string;
       readonly id: string;
       readonly name: string;
+      readonly timezone: string;
       readonly status: string;
       readonly period: string;
       readonly events: readonly EventLine[];
@@ -107,6 +119,7 @@ function toLine(group: AgendaGroup): GroupLine {
     key: group.key,
     id: group.festival.id,
     name: group.festival.name,
+    timezone: group.festival.timezone,
     status: statusLabel(group.festival.status),
     period: periodDatesText(
       formatPeriod(
@@ -180,15 +193,12 @@ const slug = ref('');
 const timezone = ref('');
 const startLocal = ref('');
 const endLocal = ref('');
-/** Empty string means standalone — the `<select>`'s own "No festival" option. */
-const festivalId = ref('');
 
 function resetFields(): void {
   name.value = '';
   slug.value = '';
   startLocal.value = '';
   endLocal.value = '';
-  festivalId.value = '';
 }
 
 const {
@@ -238,7 +248,6 @@ function createEvent(): void {
         start: instantFromLocal(startLocal.value, timezone.value),
         end: instantFromLocal(endLocal.value, timezone.value),
       },
-      ...(festivalId.value === '' ? {} : { festivalId: festivalId.value }),
     },
     {
       onSuccess: (result) => {
@@ -430,10 +439,10 @@ function dismissExampleStatus(): void {
         {{ createFestivalError }}
       </p>
 
-      <!-- One form, two submit targets. The fields are the same four either
-           way; only the festival picker is specific to an event, and asking a
-           coordinator to re-type a timezone because they picked the wrong
-           button would be the only difference a second <form> bought. -->
+      <!-- One form, two submit targets. The fields are the same either way,
+           and asking a coordinator to re-type a timezone because they picked
+           the wrong button would be the only difference a second <form>
+           bought. -->
       <form
         @submit.prevent="
           openForm === 'event' ? createEvent() : createFestival()
@@ -484,24 +493,6 @@ function dismissExampleStatus(): void {
             />
           </label>
         </p>
-        <p v-if="openForm === 'event'" class="evp-field">
-          <label for="create-festival">
-            <span>{{ t('events.list.create.festival') }}</span>
-            <select id="create-festival" v-model="festivalId">
-              <option value="">
-                {{ t('events.list.create.noFestival') }}
-              </option>
-              <option
-                v-for="festival in festivalList"
-                :key="festival.id"
-                :value="festival.id"
-              >
-                {{ festival.name }}
-              </option>
-            </select>
-          </label>
-        </p>
-
         <button
           class="evp-button evp-button--primary"
           type="submit"
@@ -600,6 +591,19 @@ function dismissExampleStatus(): void {
               <p v-else class="evp-meta evp-group-empty">
                 {{ t('events.list.noEventsYet') }}
               </p>
+
+              <!-- Upcoming festivals only: adding a day to one that is over is
+                   a correction, made from its own page. -->
+              <div class="evp-group-add">
+                <NewEventForm
+                  :org-id="orgId"
+                  :festival-id="group.id"
+                  :production-name="group.name"
+                  :timezone="group.timezone"
+                  :taken-slugs="takenSlugs"
+                  placement="agenda"
+                />
+              </div>
             </template>
 
             <div v-else class="evp-row">
@@ -838,6 +842,18 @@ h2 {
 .evp-agenda--past .evp-row-name {
   color: var(--evp-row-tone);
   font-weight: 400;
+}
+
+.evp-group-add {
+  border-left: 3px solid var(--evp-border);
+  margin-left: 1rem;
+  padding: 0.625rem 1rem 0.75rem;
+}
+
+/* The form's own bottom margin is for the details page, where more follows
+   it; here the card's padding already closes it off. */
+.evp-group-add :deep(.evp-add) {
+  margin-bottom: 0;
 }
 
 .evp-group-empty {

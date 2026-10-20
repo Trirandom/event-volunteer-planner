@@ -9,6 +9,7 @@
 pub mod assignments;
 pub mod auth;
 pub mod availability;
+pub mod backoffice;
 pub mod catalog;
 pub mod crypto;
 pub mod forms;

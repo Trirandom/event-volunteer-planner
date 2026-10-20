@@ -50,6 +50,16 @@ body {
   line-height: 1.5;
 }
 
+/* Header, then `main` taking the rest of the window, so a page can be at
+   least as tall as the screen without guessing the header's height (the plan
+   rail's border runs to the bottom of the window on a short section). The
+   skip link is absolutely positioned and takes no row. */
+#app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100dvh;
+}
+
 /* A modal `<dialog>` is centred by the UA stylesheet's `inset: 0; margin:
  * auto`, but Tailwind's preflight resets every element's margin to 0, which
  * pins it to the top-left of the viewport. Restored here, unlayered, so it wins

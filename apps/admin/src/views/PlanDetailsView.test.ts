@@ -162,6 +162,14 @@ describe('PlanDetailsView', () => {
     expect(headings).toEqual(['Open Air', 'Dub & 2step']);
   });
 
+  /** The production's dates live with the rest of its settings, once,
+   * rather than above every section of the page. */
+  it('dates the festival above its days', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+
+    expect(wrapper.find('.evp-period').text()).toContain('2026');
+  });
+
   it('shows only the selected day at event scope', async () => {
     const { wrapper } = await mountView('/org-1/events/dub/details');
 

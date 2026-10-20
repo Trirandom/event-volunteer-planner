@@ -125,9 +125,9 @@ test('switching scope keeps the section the coordinator is reading', async ({
 
   await page
     .getByRole('navigation', { name: 'Sections' })
-    .getByRole('link', { name: 'Form submissions' })
+    .getByRole('link', { name: 'Shifts' })
     .click();
-  await expect(page).toHaveURL(/\/festivals\/[^/]+\/submissions$/);
+  await expect(page).toHaveURL(/\/festivals\/[^/]+\/shifts$/);
 
   await page
     .getByRole('navigation', { name: 'Festival scope' })
@@ -135,7 +135,7 @@ test('switching scope keeps the section the coordinator is reading', async ({
     .nth(1)
     .click();
 
-  await expect(page).toHaveURL(/\/events\/[^/]+\/submissions$/);
+  await expect(page).toHaveURL(/\/events\/[^/]+\/shifts$/);
 });
 
 /**

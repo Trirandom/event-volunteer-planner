@@ -37,13 +37,13 @@ import { locale, t } from '../i18n';
 import {
   assignationsHtml,
   escapeHtml,
+  formatLine,
   htmlToText,
   recipientsOf,
   renderTemplate,
   TEMPLATE_VARIABLES,
   unknownPlaceholders,
   type Recipient,
-  type ScheduleLine,
   type TemplateValues,
 } from '../plan/emails';
 import { narrowToEvent } from '../plan/missions';
@@ -51,7 +51,6 @@ import { rosterRows } from '../plan/roster';
 import { focusedEventId } from '../plan/scope';
 import { foldForSearch } from '../plan/submissionTable';
 import { useRouteParam } from '../router/params';
-import { eventTimeZone, formatDay, formatTime } from '@evp/shared/intl';
 import { Temporal } from '@evp/shared/time';
 
 const orgId = useRouteParam('orgId');
@@ -272,27 +271,6 @@ onUnmounted(() => {
 // ---------------------------------------------------------------------------
 // One recipient's message
 // ---------------------------------------------------------------------------
-
-function formatLine(line: ScheduleLine): string {
-  const options = {
-    locale: locale.value,
-    timeZone: eventTimeZone(line.timezone),
-  };
-  const day = formatDay(line.startMs, options);
-  // The last millisecond, not the end instant: a shift ending at midnight
-  // ended on the day it started, and "samedi 22:00 – dimanche 00:00" says a
-  // night nobody worked.
-  const endDay = formatDay(line.endMs - 1, options);
-  const parts = {
-    day,
-    start: formatTime(line.startMs, options),
-    end: formatTime(line.endMs, options),
-    mission: line.mission,
-  };
-  return day === endDay
-    ? t('emails.message.line', parts)
-    : t('emails.message.lineAcrossDays', { ...parts, endDay });
-}
 
 function valuesFor(recipient: Recipient): TemplateValues {
   const current = scope.value;

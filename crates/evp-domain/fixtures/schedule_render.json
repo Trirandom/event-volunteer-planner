@@ -1,0 +1,175 @@
+{
+  "_comment": [
+    "Shared by crates/evp-domain/tests/schedule_fixture.rs and apps/admin/src/plan/emails.fixture.test.ts.",
+    "The admin app previews the schedule email; the server sends it. Every case here must come out identically on both sides.",
+    "Times are UTC instants; each line is formatted in its own time zone."
+  ],
+  "lines": [
+    {
+      "locale": "fr",
+      "timezone": "Europe/Paris",
+      "start": "2026-09-05T08:00:00Z",
+      "end": "2026-09-05T12:00:00Z",
+      "mission": "Bar & Snack",
+      "expected": "samedi 5 septembre, 10:00–14:00 : Bar & Snack"
+    },
+    {
+      "locale": "en",
+      "timezone": "Europe/Paris",
+      "start": "2026-09-05T08:00:00Z",
+      "end": "2026-09-05T12:00:00Z",
+      "mission": "Bar & Snack",
+      "expected": "Saturday, September 5, 10:00 AM–02:00 PM: Bar & Snack"
+    },
+    {
+      "locale": "fr",
+      "timezone": "Europe/Paris",
+      "start": "2026-09-05T20:00:00Z",
+      "end": "2026-09-05T22:00:00Z",
+      "mission": "Bar",
+      "expected": "samedi 5 septembre, 22:00–00:00 : Bar"
+    },
+    {
+      "locale": "en",
+      "timezone": "Europe/Paris",
+      "start": "2026-09-05T20:00:00Z",
+      "end": "2026-09-05T22:00:00Z",
+      "mission": "Bar",
+      "expected": "Saturday, September 5, 10:00 PM–12:00 AM: Bar"
+    },
+    {
+      "locale": "fr",
+      "timezone": "Europe/Paris",
+      "start": "2026-09-05T20:00:00Z",
+      "end": "2026-09-06T00:00:00Z",
+      "mission": "Bar",
+      "expected": "samedi 5 septembre, 22:00 – dimanche 6 septembre, 02:00 : Bar"
+    },
+    {
+      "locale": "en",
+      "timezone": "Europe/Paris",
+      "start": "2026-09-05T20:00:00Z",
+      "end": "2026-09-06T00:00:00Z",
+      "mission": "Bar",
+      "expected": "Saturday, September 5, 10:00 PM – Sunday, September 6, 02:00 AM: Bar"
+    },
+    {
+      "locale": "fr",
+      "timezone": "Europe/Paris",
+      "start": "2026-10-25T00:30:00Z",
+      "end": "2026-10-25T02:30:00Z",
+      "mission": "Accueil",
+      "expected": "dimanche 25 octobre, 02:30–03:30 : Accueil"
+    },
+    {
+      "locale": "fr",
+      "timezone": "Europe/Paris",
+      "start": "2026-08-01T10:00:00Z",
+      "end": "2026-08-01T12:00:00Z",
+      "mission": "Gate",
+      "expected": "samedi 1 août, 12:00–14:00 : Gate"
+    },
+    {
+      "locale": "en",
+      "timezone": "America/New_York",
+      "start": "2026-01-01T15:00:00Z",
+      "end": "2026-01-01T17:00:00Z",
+      "mission": "Gate",
+      "expected": "Thursday, January 1, 10:00 AM–12:00 PM: Gate"
+    },
+    {
+      "locale": "fr",
+      "timezone": "Pacific/Chatham",
+      "start": "2026-12-31T10:00:00Z",
+      "end": "2026-12-31T11:00:00Z",
+      "mission": "Gate",
+      "expected": "jeudi 31 décembre, 23:45 – vendredi 1 janvier, 00:45 : Gate"
+    }
+  ],
+  "render": [
+    {
+      "template": "Bonjour {{firstName}} : {{assignations}}",
+      "expected": "Bonjour Camille : <ul><li>x</li></ul>",
+      "unknown": []
+    },
+    {
+      "template": "Merci au {{eventName|festivalName}} !",
+      "expected": "Merci au Soundclash 26 !",
+      "unknown": []
+    },
+    {
+      "template": "{{ eventName | festivalName }}",
+      "expected": "Soundclash 26",
+      "unknown": []
+    },
+    {
+      "template": "{{{firstName}}}",
+      "expected": "{Camille}",
+      "unknown": []
+    },
+    {
+      "template": "{{first{Name}}",
+      "expected": "{{first{Name}}",
+      "unknown": []
+    },
+    {
+      "template": "{{firstname}} {{displayName}} {{eventName|nope}} {{firstname}}",
+      "expected": "{{firstname}} DUPONT Camille {{eventName|nope}} {{firstname}}",
+      "unknown": ["firstname", "nope"]
+    },
+    {
+      "template": "{{}}",
+      "expected": "{{}}",
+      "unknown": [""]
+    },
+    {
+      "template": "L’équipe {{organizationName}}",
+      "expected": "L’équipe Asso &amp; Co",
+      "unknown": []
+    }
+  ],
+  "values": {
+    "firstName": "Camille",
+    "displayName": "DUPONT Camille",
+    "eventName": "",
+    "festivalName": "Soundclash 26",
+    "organizationName": "Asso &amp; Co",
+    "assignations": "<ul><li>x</li></ul>"
+  },
+  "escape": [
+    {
+      "text": "<b>Zoé</b> & \"Bar\" 'n'",
+      "expected": "&lt;b&gt;Zoé&lt;/b&gt; &amp; &quot;Bar&quot; &#39;n&#39;"
+    }
+  ],
+  "htmlToText": [
+    {
+      "html": "<div>Bonjour Camille,<br><br>Voici :<ul><li>Bar</li><li>Gate</li></ul>À bientôt</div>",
+      "expected": "Bonjour Camille,\n\nVoici :\n• Bar\n• Gate\nÀ bientôt"
+    },
+    {
+      "html": "<p>\n  Bonjour\n   Camille  </p>\n\n<p>Merci</p>",
+      "expected": "Bonjour Camille\n\nMerci"
+    },
+    {
+      "html": "Bar &amp; Snack &lt;b&gt; &#39;x&#x27; a&nbsp;b",
+      "expected": "Bar & Snack <b> 'x' a b"
+    },
+    {
+      "html": "a<br><br><br><br>b",
+      "expected": "a\n\nb"
+    },
+    {
+      "html": "<style>p{color:red}</style><!-- note --><p>Hi</p><script>alert(1)</script>",
+      "expected": "Hi"
+    },
+    {
+      "html": "<div dir=\"ltr\"><b>L’équipe</b> <a href=\"x\">Asso</a></div>",
+      "expected": "L’équipe Asso"
+    },
+    {
+      "html": "<div dir=\"ltr\">\nBonjour Camille,<br>\n<br>\nMerci !<br>\n<br>\n<b>Voici tes créneaux bénévoles :</b><br>\n<div>\n<ul><li>samedi 5 septembre, 10:00–14:00 : Bar</li></ul>\n</div><br>\nÀ bientôt<br>\n</div>",
+      "expected": "Bonjour Camille,\n\nMerci !\n\nVoici tes créneaux bénévoles :\n\n• samedi 5 septembre, 10:00–14:00 : Bar\n\nÀ bientôt"
+    }
+  ]
+}

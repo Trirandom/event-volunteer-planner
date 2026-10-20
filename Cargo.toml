@@ -121,7 +121,11 @@ sha1      = "0.11.0"
 # ---------------------------------------------------------------------------
 # Outbound: mail, templates, HTTP, SMS, calendars
 # ---------------------------------------------------------------------------
-lettre    = { version = "0.11.23", default-features = false, features = ["smtp-transport", "pool", "builder", "tokio1", "tokio1-rustls-tls", "ring"] }
+# `tokio1-rustls` + `rustls-native-certs`, not `tokio1-rustls-tls`: the latter
+# expands to `webpki-roots` (CDLA-Permissive-2.0, outside the allow-list).
+# `rustls-native-certs` is an implicit feature — an optional dependency named
+# without `dep:` — so crates.io's feature list does not show it (docs/17 §7).
+lettre    = { version = "0.11.23", default-features = false, features = ["smtp-transport", "pool", "builder", "tokio1", "tokio1-rustls", "rustls-native-certs", "ring"] }
 minijinja = { version = "2.24.0", features = ["loader"] }
 # Held on the 0.12 line, not 0.13, deliberately: openidconnect 4 reaches
 # reqwest through oauth2 5, which requires ^0.12. Taking 0.13 here would

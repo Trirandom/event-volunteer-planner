@@ -120,6 +120,13 @@ async fn serve() -> anyhow::Result<()> {
     for variable in &startup.unrecognised {
         tracing::warn!(variable = %variable, "unrecognised EVP_ variable; ignoring");
     }
+    for variable in &startup.plain_secrets {
+        tracing::warn!(
+            variable = %variable,
+            "secret given as a plain environment value; prefer {variable}_FILE, \
+             which `docker inspect` does not show (docs/12 §5)"
+        );
+    }
 
     assert_tzdb_is_available()?;
 

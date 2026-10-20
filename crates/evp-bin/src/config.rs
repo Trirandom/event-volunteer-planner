@@ -26,13 +26,18 @@ const FILE_SUFFIX: &str = "_FILE";
 /// it is refused rather than accepted with a warning.
 const FILE_ONLY: [&str; 3] = ["SESSION_KEY", "SECRET_KEY", "SMS_CREDENTIALS"];
 
+/// Secrets an operator may type straight into `.env`, because refusing the
+/// plain form would mean nobody uses them (ADR-0031, ADR-0045). Startup still
+/// warns when they arrive that way.
+const PLAIN_ALLOWED_SECRETS: [&str; 2] = ["BOOTSTRAP_PASSWORD", "BACKOFFICE_KEY"];
+
 /// Variables this binary understands. Anything else prefixed `EVP_` is
 /// reported at startup and ignored.
 ///
 /// The list is maintained by hand beside [`Config`] because serde will not
 /// give us the field names. A field added to one without the other produces a
 /// startup warning naming the variable, which is a cheap way to notice.
-const KNOWN: [&str; 26] = [
+const KNOWN: [&str; 27] = [
     "DATABASE_URL",
     "MIGRATION_DATABASE_URL",
     "BIND",
@@ -59,7 +64,15 @@ const KNOWN: [&str; 26] = [
     "TRUSTED_PROXY_HOPS",
     "LOGIN_RATE_LIMIT_BURST",
     "LOGIN_RATE_LIMIT_REPLENISH_SECONDS",
+    "BACKOFFICE_KEY",
 ];
+
+/// The floor on `EVP_BACKOFFICE_KEY`, in characters.
+///
+/// Higher than a password's twelve because nobody has to remember it and it
+/// unlocks every tenant at once (ADR-0045): `openssl rand -hex 32` is the
+/// expected source, and that is 64.
+pub(crate) const MIN_BACKOFFICE_KEY_LENGTH: usize = 32;
 
 /// The typed configuration. No field is `Option` unless the deployment may
 /// genuinely omit it.
@@ -177,6 +190,13 @@ pub(crate) struct Config {
         deserialize_with = "positive"
     )]
     pub(crate) login_rate_limit_replenish_seconds: u64,
+
+    /// The key that opens `/api/v1/backoffice` (ADR-0045). Absent — or blank,
+    /// which is what an unset Compose interpolation produces — switches the
+    /// backoffice off entirely, so "off" is the state a deployment gets by
+    /// not thinking about it.
+    #[serde(default, deserialize_with = "secret_absent_if_blank")]
+    pub(crate) backoffice_key: Option<SecretString>,
 }
 
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
@@ -206,6 +226,10 @@ pub(crate) struct Startup {
     /// Reported once tracing is up. Not fatal: the migrate step and the API
     /// share an environment, and a future sidecar will add more.
     pub(crate) unrecognised: Vec<String>,
+    /// Secrets that arrived as plain environment values rather than through
+    /// `_FILE`. Accepted (ADR-0031, ADR-0045) but worth a warning once
+    /// tracing is up, because `docker inspect` shows them to anyone who asks.
+    pub(crate) plain_secrets: Vec<String>,
 }
 
 /// Read the environment, resolve the `_FILE` convention, and produce a typed
@@ -219,6 +243,14 @@ pub(crate) struct Startup {
 /// does not parse.
 pub(crate) fn load() -> anyhow::Result<Startup> {
     let resolved = resolve_environment()?;
+
+    let plain_secrets = PLAIN_ALLOWED_SECRETS
+        .iter()
+        .filter(|name| {
+            std::env::var(format!("{PREFIX}{name}")).is_ok_and(|value| !value.trim().is_empty())
+        })
+        .map(|name| format!("{PREFIX}{name}"))
+        .collect();
 
     let unrecognised = resolved
         .keys()
@@ -252,6 +284,7 @@ pub(crate) fn load() -> anyhow::Result<Startup> {
     }
 
     validate_bootstrap(&config)?;
+    validate_backoffice_key(config.backoffice_key.as_ref())?;
 
     if let Some(path) = &config.auth_providers {
         let providers = load_providers(path)?;
@@ -261,6 +294,7 @@ pub(crate) fn load() -> anyhow::Result<Startup> {
     Ok(Startup {
         config,
         unrecognised,
+        plain_secrets,
     })
 }
 
@@ -444,6 +478,25 @@ fn validate_bootstrap(config: &Config) -> anyhow::Result<()> {
     }
 }
 
+/// A configured backoffice key must be long enough that guessing it is not a
+/// strategy. A startup failure rather than a warning: a short key is a
+/// deployment-wide credential an attacker could enumerate, and the operator
+/// set it on purpose, so they are there to fix it.
+fn validate_backoffice_key(key: Option<&SecretString>) -> anyhow::Result<()> {
+    let Some(key) = key else {
+        return Ok(());
+    };
+    let length = key.expose_secret().chars().count();
+    if length < MIN_BACKOFFICE_KEY_LENGTH {
+        bail!(
+            "EVP_BACKOFFICE_KEY holds {length} characters; it must hold at least \
+             {MIN_BACKOFFICE_KEY_LENGTH}. It opens every organisation on this \
+             deployment — generate one with `openssl rand -hex 32` (ADR-0045)."
+        );
+    }
+    Ok(())
+}
+
 /// Deliberately not a validating regex.
 ///
 /// RFC 5322 permits addresses no useful deployment has, and every short regex
@@ -625,7 +678,34 @@ fn comma_separated<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Str
 
 #[cfg(test)]
 mod tests {
-    use super::strip_one_trailing_newline;
+    use secrecy::SecretString;
+
+    use super::{MIN_BACKOFFICE_KEY_LENGTH, strip_one_trailing_newline, validate_backoffice_key};
+
+    #[test]
+    fn no_backoffice_key_is_a_valid_configuration() {
+        assert!(validate_backoffice_key(None).is_ok());
+    }
+
+    #[test]
+    fn a_backoffice_key_one_short_of_the_floor_is_refused() {
+        let key = SecretString::from("k".repeat(MIN_BACKOFFICE_KEY_LENGTH.saturating_sub(1)));
+        assert!(validate_backoffice_key(Some(&key)).is_err());
+    }
+
+    #[test]
+    fn a_backoffice_key_at_the_floor_is_accepted() {
+        let key = SecretString::from("k".repeat(MIN_BACKOFFICE_KEY_LENGTH));
+        assert!(validate_backoffice_key(Some(&key)).is_ok());
+    }
+
+    #[test]
+    fn the_key_length_is_counted_in_characters_not_bytes() {
+        // Sixteen two-byte characters are 32 bytes and 16 characters: a byte
+        // count would pass a key with half the intended alphabet positions.
+        let key = SecretString::from("é".repeat(16));
+        assert!(validate_backoffice_key(Some(&key)).is_err());
+    }
 
     #[test]
     fn a_key_file_written_by_echo_and_one_written_by_openssl_agree() {

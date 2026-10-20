@@ -15,8 +15,12 @@ The milestones are being built out of order, driven by the first real festival
 **Status: partial.** Built: workspace, Compose stack, migrations, RLS,
 password sessions with the bootstrap owner
 ([ADR-0031](adr/0031-password-bootstrap-credential.md)), the Vue shell and
-login, `GET /api/v1/meta` with the source links. Not built: magic links, OIDC,
-invitations, `evp-cli create-org`, the generated API client, CI.
+login, `GET /api/v1/meta` with the source links, and a key-guarded backoffice
+for creating organisations and accounts and assigning members
+([ADR-0045](adr/0045-platform-backoffice-behind-a-deployment-key.md)) — the
+stop-gap for the two items below that a second organisation would otherwise
+wait on. Not built: magic links, OIDC, invitations, `evp-cli create-org`, the
+generated API client, CI.
 
 - Cargo workspace, crate boundaries, Compose stack, migrations, CI (planned for GitHub Actions; the local `just check` / `just test` gates exist).
 - `organizations`, `users`, `identities`, `memberships`, plus sessions —

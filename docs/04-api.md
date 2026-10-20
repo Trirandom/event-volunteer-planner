@@ -235,6 +235,50 @@ PATCH  /api/v1/orgs/{org}/members/{id} { role }        (owner)
 DELETE /api/v1/orgs/{org}/members/{id}                 (owner; never the last owner)
 ```
 
+### Backoffice
+
+The deployment operator's surface (ADR-0045): organisations, accounts, and who
+belongs where, across every tenant. Not a member route — no session, no
+`{org}` scope — and absent unless `EVP_BACKOFFICE_KEY` is set.
+
+```
+GET    /api/v1/backoffice/organizations
+POST   /api/v1/backoffice/organizations          { name, slug, timezone? }
+GET    /api/v1/backoffice/organizations/{org}/members
+PUT    /api/v1/backoffice/organizations/{org}/members/{user}   { role }
+DELETE /api/v1/backoffice/organizations/{org}/members/{user}
+GET    /api/v1/backoffice/users
+POST   /api/v1/backoffice/users                  { email, display_name, password }
+```
+
+Every request carries `Authorization: Bearer <EVP_BACKOFFICE_KEY>`. With no key
+configured every route is `404`, indistinguishable from a path that does not
+exist; with one configured, a missing or wrong key is `401`
+(`…/errors/unauthenticated`). The routes have their own rate limit (`429`).
+
+```
+organization → { id, slug, name, timezone, created_at, member_count }
+member       → { user_id, email, display_name, role, created_at }
+user         → { id, email, display_name, created_at, last_login_at,
+                 memberships: [{ org_id, slug, name, role }] }
+```
+
+Lists are `{ data: [...], next: null }` — unpaginated, ordered by name (email
+for users). `POST` answers `201` with the created resource. `timezone`
+defaults to `Europe/Paris` and must be a known IANA name. `slug` follows
+`organizations_slug_format`; a taken slug or email is `409`. `password` has the
+twelve-character floor of ADR-0031; a malformed email, slug, timezone or a
+short password is `422`. `role` is `owner`, `coordinator` or `zone_lead`.
+
+`PUT …/members/{user}` adds the membership or changes its role, and answers
+`200` with the member either way — assigning is idempotent. An unknown
+organisation or user is `404`. `DELETE` is `204`, or `404` if there was no such
+membership.
+
+Writes append to `audit_log` (`actor_label = 'backoffice'`) and, unlike every
+member route, return no `operation_id`: there is no user to own an undo stack
+(ADR-0045).
+
 ### SMS settings
 
 One organisation's OVH SMS credentials (ADR-0034, docs/02 §"Async work").

@@ -189,6 +189,72 @@ where
     )
 }
 
+/// Builds a quota's config and sweeper, and layers it onto `$target` — a
+/// `MethodRouter` or a whole `Router`.
+///
+/// A macro rather than a function returning the config, because that function
+/// would have to name the config's type, and its middleware parameter lives in
+/// the `governor` crate, which `tower_governor` does not re-export. Adding a
+/// direct dependency to spell one type name is a worse trade than this.
+macro_rules! governed {
+    ($target:expr, $burst:expr, $replenish:expr, $hops:expr) => {{
+        let config = Arc::new(
+            GovernorConfigBuilder::default()
+                .period($replenish)
+                .burst_size($burst)
+                .key_extractor(ClientIp { hops: $hops })
+                .finish()?,
+        );
+
+        let sweeper = {
+            let config = Arc::clone(&config);
+            RateLimitSweeper {
+                sweep: Box::new(move || {
+                    let limiter = config.limiter();
+                    limiter.retain_recent();
+                    tracing::debug!(buckets = limiter.len(), "rate-limit buckets swept");
+                }),
+            }
+        };
+
+        Some((
+            $target.layer(GovernorLayer::new(config).error_handler(rejection)),
+            sweeper,
+        ))
+    }};
+}
+
+/// Requests one client address may make back to back to `/api/v1/backoffice`
+/// (ADR-0045), and how soon each comes back.
+///
+/// Looser than login: one page load is three lists, and an operator setting
+/// up a festival creates a dozen accounts in a row. The key is 32+ random
+/// characters, so this is not what stops a guess — it bounds what somebody
+/// trying costs this process. A constant for the reason the form's is.
+const BACKOFFICE_BURST: u32 = 30;
+const BACKOFFICE_REPLENISH: Duration = Duration::from_secs(2);
+
+/// Wrap the whole backoffice router in one quota, with its own bucket store:
+/// a flood here cannot spend the login budget, or the reverse.
+///
+/// A `Router` rather than one `MethodRouter` per route, because the quota is
+/// for the backoffice as a whole — per-route stores would multiply it by the
+/// number of routes.
+pub(crate) fn protect_backoffice<S>(
+    routes: axum::Router<S>,
+    policy: RateLimitPolicy,
+) -> Option<(axum::Router<S>, RateLimitSweeper)>
+where
+    S: Clone + Send + Sync + 'static,
+{
+    governed!(
+        routes,
+        BACKOFFICE_BURST,
+        BACKOFFICE_REPLENISH,
+        policy.trusted_proxy_hops
+    )
+}
+
 fn quota<S>(
     route: MethodRouter<S>,
     burst: u32,
@@ -198,29 +264,7 @@ fn quota<S>(
 where
     S: Clone + Send + Sync + 'static,
 {
-    let config = Arc::new(
-        GovernorConfigBuilder::default()
-            .period(replenish)
-            .burst_size(burst)
-            .key_extractor(ClientIp { hops })
-            .finish()?,
-    );
-
-    let sweeper = {
-        let config = Arc::clone(&config);
-        RateLimitSweeper {
-            sweep: Box::new(move || {
-                let limiter = config.limiter();
-                limiter.retain_recent();
-                tracing::debug!(buckets = limiter.len(), "rate-limit buckets swept");
-            }),
-        }
-    };
-
-    Some((
-        route.layer(GovernorLayer::new(config).error_handler(rejection)),
-        sweeper,
-    ))
+    governed!(route, burst, replenish, hops)
 }
 
 /// The one error envelope this API has, for a refusal produced by middleware

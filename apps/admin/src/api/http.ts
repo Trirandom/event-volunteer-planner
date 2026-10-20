@@ -63,8 +63,14 @@ export type Failure =
    * Nothing usable came back: the network is down, the proxy answered with its
    * own error page, or the body was not the documented envelope. One reason
    * for all three because the user can do exactly one thing about them.
+   *
+   * `status` is set when a response did arrive, for the one caller that has
+   * to read it: an unconfigured backoffice answers like a path that does not
+   * exist (ADR-0045), which is a bare `404` from the router rather than an
+   * envelope, and "switched off" is not something to tell the operator as
+   * "the server is unreachable".
    */
-  | { readonly reason: 'unavailable' }
+  | { readonly reason: 'unavailable'; readonly status?: number }
   /** 2xx with a body that does not match the schema — a contract break. */
   | { readonly reason: 'malformed' };
 
@@ -94,6 +100,17 @@ interface RequestOptions {
    * — a lost update has to be impossible, not unlikely.
    */
   readonly ifMatchVersion?: number;
+  /**
+   * A bearer credential to present instead of the session cookie — the
+   * backoffice key (ADR-0045), today the only one.
+   *
+   * Instead of, not as well as: such a call goes out with `credentials:
+   * 'omit'`. The backoffice's authority is the key alone, and a request that
+   * also carried a coordinator's cookie would be one where a server-side
+   * slip could let the session stand in for the key. Not sending it makes
+   * that impossible from this side.
+   */
+  readonly bearer?: string;
 }
 
 /** The `ETag` a write answered with, as a version. `null` when the response
@@ -119,6 +136,7 @@ async function send({
   body,
   signal,
   ifMatchVersion,
+  bearer,
 }: RequestOptions): Promise<
   | { readonly ok: true; readonly response: Response }
   | { readonly ok: false; readonly failure: Failure }
@@ -130,6 +148,9 @@ async function send({
   if (ifMatchVersion !== undefined) {
     headers['if-match'] = `"${String(ifMatchVersion)}"`;
   }
+  if (bearer !== undefined) {
+    headers['authorization'] = `Bearer ${bearer}`;
+  }
 
   let response: Response;
   try {
@@ -138,8 +159,9 @@ async function send({
       headers,
       // The session cookie is `HttpOnly` and same-origin; `same-origin` is
       // already the default, and it is written out because this is the line
-      // that makes the whole session model work.
-      credentials: 'same-origin',
+      // that makes the whole session model work. A bearer call omits it; see
+      // `RequestOptions.bearer`.
+      credentials: bearer === undefined ? 'same-origin' : 'omit',
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       ...(signal === undefined ? {} : { signal }),
     });
@@ -164,17 +186,18 @@ async function send({
  * nothing.
  */
 async function readProblem(response: Response): Promise<Failure> {
+  const { status } = response;
   let body: unknown;
   try {
     body = await response.json();
   } catch {
-    return { reason: 'unavailable' };
+    return { reason: 'unavailable', status };
   }
 
   const parsed = v.safeParse(problemSchema, body);
   return parsed.success
     ? { reason: 'rejected', problem: parsed.output }
-    : { reason: 'unavailable' };
+    : { reason: 'unavailable', status };
 }
 
 /** A call whose success carries a body, parsed against `schema`. */

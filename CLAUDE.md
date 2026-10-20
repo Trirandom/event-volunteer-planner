@@ -24,10 +24,16 @@ out of order, driven by the first real festival, Soundclash 26):
   zone/post location tree ("missions") with form flags (ADR-0041); shift
   patterns, `shifts/generate` and the shift board; participations, availability
   windows, assignments with the exclusion constraints (create/cancel; each
-  mutation writes an `operations` row); per-org OVH SMS settings (ADR-0034).
+  mutation writes an `operations` row); per-org OVH SMS settings (ADR-0034);
+  the platform backoffice (ADR-0045): `EVP_BACKOFFICE_KEY` opens
+  `/backoffice` and `/api/v1/backoffice/…` to create organisations and
+  accounts and assign members, through the `app.backoffice` RLS scope
+  (`evp-api/src/backoffice.rs`, `evp_db::backoffice`); its writes are the
+  first `audit_log` rows. Off (404) when the key is unset.
 - **Admin plan pages:** details → missions → shifts → form → assignments →
   submissions (+ `…/submissions/review`) → availability → emails (dry-run
-  preview only — nothing is sent), plus `/:org/sms-settings`.
+  preview only — nothing is sent), plus `/:org/sms-settings`, and `/backoffice`
+  outside any org (key held in memory only).
 - **First-party form (docs/09):** authoring with
   `forms`/`form_versions`/`form_questions`, draft/publish, festival-scoped forms,
   the `missions` question, per-participation custom answers

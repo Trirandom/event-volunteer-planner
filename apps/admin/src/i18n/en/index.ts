@@ -22,6 +22,7 @@ import notFound from './notFound';
 import sms from './sms';
 import emails from './emails';
 import ui from './ui';
+import backoffice from './backoffice';
 
 // `satisfies` rather than an annotation: a key missing here, or one French
 // does not have, is a type error naming the key (docs/16 §7).
@@ -45,4 +46,5 @@ export default {
   sms,
   emails,
   ui,
+  backoffice,
 } satisfies typeof fr;

@@ -49,11 +49,16 @@ pub async fn pool() -> PgPool {
         .expect("could not connect to the test database as evp_api")
 }
 
+pub fn router(pool: PgPool) -> Router {
+    router_with_backoffice(pool, None)
+}
+
+/// [`router`], with the backoffice switched on by `key` (ADR-0045).
 #[expect(
     clippy::expect_used,
     reason = "test fixture — an unusable quota here is a broken test, not a runtime case"
 )]
-pub fn router(pool: PgPool) -> Router {
+pub fn router_with_backoffice(pool: PgPool, key: Option<&str>) -> Router {
     let state = evp_api::ApiState {
         pool,
         meta: evp_api::Meta {
@@ -70,6 +75,9 @@ pub fn router(pool: PgPool) -> Router {
         // A search space of 50, so a test solves its challenge in microseconds.
         captcha: evp_api::captcha::CaptchaPolicy::from_secret(&[0; 32], 50)
             .expect("HMAC accepts any key"),
+        backoffice: evp_api::backoffice::BackofficeAccess(
+            key.map(|key| evp_domain::backoffice::BackofficeKey::new(&key.to_owned().into())),
+        ),
     };
     let limits = evp_api::RateLimitPolicy {
         login_burst: 100,
@@ -251,6 +259,13 @@ impl<'a> Call<'a> {
     #[must_use]
     pub fn body(mut self, body: Value) -> Self {
         self.body = Some(body);
+        self
+    }
+
+    #[must_use]
+    pub fn bearer(mut self, credential: &str) -> Self {
+        self.headers
+            .push(("authorization", format!("Bearer {credential}")));
         self
     }
 

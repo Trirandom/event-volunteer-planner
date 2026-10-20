@@ -108,6 +108,12 @@ fn api_state(
             evp_api::captcha::DEFAULT_MAX_NUMBER,
         )
         .context("deriving the form captcha key from EVP_SECRET_KEY_FILE")?,
+        backoffice: evp_api::backoffice::BackofficeAccess(
+            config
+                .backoffice_key
+                .as_ref()
+                .map(evp_domain::backoffice::BackofficeKey::new),
+        ),
     })
 }
 
@@ -119,6 +125,13 @@ async fn serve() -> anyhow::Result<()> {
 
     for variable in &startup.unrecognised {
         tracing::warn!(variable = %variable, "unrecognised EVP_ variable; ignoring");
+    }
+    for variable in &startup.plain_secrets {
+        tracing::warn!(
+            variable = %variable,
+            "secret given as a plain environment value; prefer {variable}_FILE, \
+             which `docker inspect` does not show (docs/12 §5)"
+        );
     }
 
     assert_tzdb_is_available()?;
@@ -215,6 +228,7 @@ async fn serve() -> anyhow::Result<()> {
         login_burst = config.login_rate_limit_burst,
         login_replenish_seconds = config.login_rate_limit_replenish_seconds,
         secure_cookies = config.public_url.starts_with("https://"),
+        backoffice = config.backoffice_key.is_some(),
         "evp is listening"
     );
 

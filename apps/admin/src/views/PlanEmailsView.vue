@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Copyright (C) 2026 Tristan Grunert and contributors -->
 <script setup lang="ts">
 /**
  * The schedule email: a template on the left, what it becomes on the right,
@@ -16,9 +18,13 @@
  * cannot work, so the page says so instead and does the part that can be done
  * now — the dry run.
  *
- * **The preview is a sandboxed `iframe`, never `v-html`.** The template is
- * HTML the coordinator wrote, and the values poured into it are volunteer
- * data from a public form; `sandbox=""` gives the frame an opaque origin with
+ * The template is written as rich text (`EmailTemplateEditor`, ADR-0046) and
+ * stored as the HTML it produces, so nobody types a tag to make a word bold.
+ *
+ * **The preview is a sandboxed `iframe`, never `v-html`.** The editor keeps
+ * what it writes to a few tags, but the draft it is rendered from is browser
+ * storage, which the schema never sees, and the values poured into it are
+ * volunteer data from a public form; `sandbox=""` gives the frame an opaque origin with
  * no scripts, forms or navigation, so neither can reach this page or its
  * session cookie. Values are escaped on the way in (`plan/emails.ts`) all the
  * same — the sandbox protects this page, escaping protects the inbox.
@@ -27,11 +33,12 @@
  * only, and docs/04 greets with `coalesce(first_name, display_name)`, so
  * `{{firstName}}` falls back exactly as the server will once it knows more.
  */
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 import { useMissionBoard, usePlanScope } from '../api/usePlan';
 import { useRoster } from '../api/useRoster';
 import { useSession } from '../api/useSession';
+import EmailTemplateEditor from '../components/EmailTemplateEditor.vue';
 import { missionRows, type EventWindow } from '../board/runs';
 import { locale, t } from '../i18n';
 import { variableHtml } from '../plan/emailEditor';
@@ -232,22 +239,23 @@ function resetTemplate(): void {
 
 const unknown = computed(() => unknownPlaceholders(template.value));
 
-const editor = ref<HTMLTextAreaElement | null>(null);
+/** What the editor exposes. Written out because a `.vue` file's instance
+ * type does not reach the linter's type checker, which reads it as `any`. */
+interface TemplateEditor {
+  insert: (inner: string) => void;
+}
+
+const editor = ref<TemplateEditor | null>(null);
+
+/** The fallback gets a button of its own: typed by hand it is only text
+ * until the next load, and the point of the editor is that nobody types
+ * braces. */
+const INSERTABLE = [...TEMPLATE_VARIABLES, 'eventName|festivalName'] as const;
 
 /** Inserts at the caret rather than at the end: a placeholder belongs in the
  * sentence the coordinator is writing, not after the signature. */
-async function insertVariable(name: string): Promise<void> {
-  const text = token(name);
-  const element = editor.value;
-  const current = template.value;
-  const start = element?.selectionStart ?? current.length;
-  const end = element?.selectionEnd ?? current.length;
-  template.value = current.slice(0, start) + text + current.slice(end);
-  await nextTick();
-  if (element !== null) {
-    element.focus();
-    element.setSelectionRange(start + text.length, start + text.length);
-  }
+function insertVariable(name: string): void {
+  editor.value?.insert(name);
 }
 
 /**
@@ -394,30 +402,32 @@ const visibleRows = computed(() => {
         >
           <span class="evp-muted">{{ t('emails.template.variables') }}</span>
           <button
-            v-for="name in TEMPLATE_VARIABLES"
+            v-for="name in INSERTABLE"
             :key="name"
             type="button"
             class="evp-chip"
             :aria-label="t('emails.template.insert', { name: token(name) })"
+            @mousedown.prevent
             @click="insertVariable(name)"
           >
             {{ token(name) }}
           </button>
         </div>
 
-        <label class="evp-editor-field" for="emails-editor">
-          <span class="evp-editor-label">{{ t('emails.template.label') }}</span>
-          <textarea
+        <div class="evp-editor-field">
+          <span id="emails-editor-label" class="evp-editor-label">
+            {{ t('emails.template.label') }}
+          </span>
+          <EmailTemplateEditor
             id="emails-editor"
             ref="editor"
             v-model="template"
-            class="evp-editor"
-            spellcheck="false"
-            :aria-describedby="
+            labelledby="emails-editor-label"
+            :describedby="
               unknown.length > 0 ? 'emails-hint emails-unknown' : 'emails-hint'
             "
-          ></textarea>
-        </label>
+          />
+        </div>
         <p id="emails-hint" class="evp-muted evp-hint">
           {{
             t('emails.template.hint', {
@@ -705,20 +715,6 @@ h2 {
 
 .evp-editor-label {
   font-weight: 600;
-}
-
-.evp-editor {
-  background: var(--evp-surface);
-  border: 1px solid var(--evp-border);
-  border-radius: 0.375rem;
-  color: var(--evp-text);
-  font-family: ui-monospace, monospace;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  min-height: 26rem;
-  padding: 0.75rem;
-  resize: vertical;
-  width: 100%;
 }
 
 .evp-hint {

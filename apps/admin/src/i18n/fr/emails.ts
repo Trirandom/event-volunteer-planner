@@ -34,6 +34,25 @@ export default {
     default:
       '<p>Bonjour {firstName},</p><p>Merci pour ton engagement bénévole au {eventOrFestival} !</p><p><strong>Voici tes créneaux bénévoles :</strong></p>{assignations}<p>Si tu as le moindre souci avec l’un des créneaux qui t’a été attribué, merci de nous prévenir en répondant à cet e-mail.</p><p>À bientôt</p><p><strong>L’équipe {organizationName}</strong></p>',
   },
+  /** The formatting buttons above the template, and the link form. */
+  editor: {
+    toolbar: 'Mise en forme',
+    bold: 'Gras',
+    italic: 'Italique',
+    underline: 'Souligné',
+    bulletList: 'Liste à puces',
+    orderedList: 'Liste numérotée',
+    link: 'Lien',
+    undo: 'Annuler',
+    redo: 'Rétablir',
+    linkUrl: 'Adresse du lien',
+    linkPlaceholder: 'https://',
+    linkApply: 'Appliquer',
+    linkRemove: 'Retirer le lien',
+    linkCancel: 'Fermer',
+    linkInvalid:
+      'Seules les adresses web (https://…) et e-mail (mailto:…) peuvent être liées dans un message.',
+  },
   preview: {
     heading: 'Aperçu',
     recipient: 'Bénévole',

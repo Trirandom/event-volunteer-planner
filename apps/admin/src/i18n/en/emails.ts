@@ -21,6 +21,24 @@ export default {
     default:
       '<p>Hi {firstName},</p><p>Thank you for volunteering at {eventOrFestival}!</p><p><strong>Here are your volunteer shifts:</strong></p>{assignations}<p>If anything is wrong with one of the shifts you have been given, please let us know by replying to this email.</p><p>See you soon</p><p><strong>The {organizationName} team</strong></p>',
   },
+  editor: {
+    toolbar: 'Formatting',
+    bold: 'Bold',
+    italic: 'Italic',
+    underline: 'Underline',
+    bulletList: 'Bulleted list',
+    orderedList: 'Numbered list',
+    link: 'Link',
+    undo: 'Undo',
+    redo: 'Redo',
+    linkUrl: 'Link address',
+    linkPlaceholder: 'https://',
+    linkApply: 'Apply',
+    linkRemove: 'Remove link',
+    linkCancel: 'Close',
+    linkInvalid:
+      'Only web (https://…) and email (mailto:…) addresses can be linked in a message.',
+  },
   preview: {
     heading: 'Preview',
     recipient: 'Volunteer',

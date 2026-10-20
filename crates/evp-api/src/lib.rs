@@ -9,6 +9,7 @@
 
 pub mod assignments;
 pub mod auth;
+pub mod backoffice;
 pub mod captcha;
 pub mod catalog;
 pub mod error;
@@ -52,6 +53,8 @@ pub struct ApiState {
     /// The public form's proof of work (ADR-0043): key, difficulty, and the
     /// solutions already spent.
     pub captcha: captcha::CaptchaPolicy,
+    /// `EVP_BACKOFFICE_KEY`, if the deployment opted in (ADR-0045).
+    pub backoffice: backoffice::BackofficeAccess,
 }
 
 // `FromRef` is what lets a handler ask for the one piece of state it needs —
@@ -73,6 +76,12 @@ impl FromRef<ApiState> for SessionPolicy {
 impl FromRef<ApiState> for captcha::CaptchaPolicy {
     fn from_ref(state: &ApiState) -> Self {
         state.captcha.clone()
+    }
+}
+
+impl FromRef<ApiState> for backoffice::BackofficeAccess {
+    fn from_ref(state: &ApiState) -> Self {
+        state.backoffice.clone()
     }
 }
 
@@ -123,7 +132,11 @@ pub fn router(state: ApiState, limits: RateLimitPolicy) -> Option<(Router, RateL
     // reloading a half-filled form must never be told to wait.
     let (submit, submit_sweeper) =
         ratelimit::protect_form_submissions(public_form::submit_route(), limits)?;
-    let sweeper = login_sweeper.and(submit_sweeper);
+    // Mounted whether or not a key is configured: the extractor answers 404
+    // without one, which is what an unknown path answers anyway, and a router
+    // whose shape depends on configuration is one more thing to test twice.
+    let (backoffice, backoffice_sweeper) = backoffice::router(limits)?;
+    let sweeper = login_sweeper.and(submit_sweeper).and(backoffice_sweeper);
 
     let router = Router::new()
         .route("/healthz", get(healthz))
@@ -136,6 +149,7 @@ pub fn router(state: ApiState, limits: RateLimitPolicy) -> Option<(Router, RateL
         .route("/api/v1/auth/logout", post(auth::logout))
         .route("/api/v1/auth/me", get(auth::me))
         .merge(assignments::router())
+        .merge(backoffice)
         .merge(catalog::router())
         .merge(forms::router())
         .merge(intake::router())

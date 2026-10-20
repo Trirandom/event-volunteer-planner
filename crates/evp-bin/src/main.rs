@@ -108,6 +108,12 @@ fn api_state(
             evp_api::captcha::DEFAULT_MAX_NUMBER,
         )
         .context("deriving the form captcha key from EVP_SECRET_KEY_FILE")?,
+        backoffice: evp_api::backoffice::BackofficeAccess(
+            config
+                .backoffice_key
+                .as_ref()
+                .map(evp_domain::backoffice::BackofficeKey::new),
+        ),
     })
 }
 
@@ -222,6 +228,7 @@ async fn serve() -> anyhow::Result<()> {
         login_burst = config.login_rate_limit_burst,
         login_replenish_seconds = config.login_rate_limit_replenish_seconds,
         secure_cookies = config.public_url.starts_with("https://"),
+        backoffice = config.backoffice_key.is_some(),
         "evp is listening"
     );
 

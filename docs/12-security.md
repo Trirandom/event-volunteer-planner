@@ -127,7 +127,18 @@ and considers the endpoint protected.
 ### Secrets
 
 - Secrets are **files**, never environment values — they otherwise appear in
-  `docker inspect` and in any crash dump of the environment.
+  `docker inspect` and in any crash dump of the environment. Two are accepted
+  in plain form because refusing them means nobody uses them, and startup warns
+  when they arrive that way: `EVP_BOOTSTRAP_PASSWORD`
+  ([ADR-0031](adr/0031-password-bootstrap-credential.md)) and
+  `EVP_BACKOFFICE_KEY`
+  ([ADR-0045](adr/0045-platform-backoffice-behind-a-deployment-key.md)).
+- `EVP_BACKOFFICE_KEY` is the broadest credential the application holds: it can
+  make anybody an owner of any organisation. It is off unless set, at least 32
+  characters, held only as its SHA-256, compared in constant time, sent as
+  `Authorization: Bearer` (which no browser attaches by itself, so no CSRF),
+  and widens RLS through policies on `organizations`, `memberships` and
+  `audit_log` only — never through `BYPASSRLS`.
 - Secret-bearing values use `secrecy::SecretString`, whose `Debug` and `Display`
   redact. `missing_debug_implementations` is a warning, so a struct holding a
   secret cannot quietly gain a derived `Debug` that prints it.

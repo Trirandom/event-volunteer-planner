@@ -34,6 +34,7 @@ import { useRoster } from '../api/useRoster';
 import { useSession } from '../api/useSession';
 import { missionRows, type EventWindow } from '../board/runs';
 import { locale, t } from '../i18n';
+import { variableHtml } from '../plan/emailEditor';
 import {
   assignationsHtml,
   escapeHtml,
@@ -171,10 +172,10 @@ function token(name: string): string {
  * nobody chose should not stay French after they asked for English. */
 const defaultTemplate = computed(() =>
   t('emails.template.default', {
-    firstName: token('firstName'),
-    eventOrFestival: token('eventName|festivalName'),
-    assignations: token('assignations'),
-    organizationName: token('organizationName'),
+    firstName: variableHtml('firstName'),
+    eventOrFestival: variableHtml('eventName|festivalName'),
+    assignations: variableHtml('assignations'),
+    organizationName: variableHtml('organizationName'),
   }),
 );
 

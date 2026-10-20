@@ -230,6 +230,38 @@ function alternativesOf(inner: string): readonly string[] {
   return inner.split('|').map((part) => part.trim());
 }
 
+export type TextPart =
+  | { readonly kind: 'text'; readonly text: string }
+  | {
+      readonly kind: 'placeholder';
+      readonly inner: string;
+      readonly whole: string;
+    };
+
+/** Text cut at its placeholders, in order, by the same grammar the renderer
+ * reads — so the editor finds exactly the placeholders that get filled. */
+export function textParts(text: string): readonly TextPart[] {
+  const parts: TextPart[] = [];
+  let from = 0;
+  for (const match of text.matchAll(PLACEHOLDER)) {
+    if (match.index > from) {
+      parts.push({ kind: 'text', text: text.slice(from, match.index) });
+    }
+    parts.push({ kind: 'placeholder', inner: match[1] ?? '', whole: match[0] });
+    from = match.index + match[0].length;
+  }
+  if (from < text.length) {
+    parts.push({ kind: 'text', text: text.slice(from) });
+  }
+  return parts;
+}
+
+/** Whether every alternative in a placeholder's inner text is one this page
+ * fills: `eventName|festivalName` is, `firstname` is not. */
+export function isKnownPlaceholder(inner: string): boolean {
+  return alternativesOf(inner).every(isVariable);
+}
+
 /** Placeholders the template names that nothing fills. Reported rather than
  * silently emptied: `{{firstname}}` sent to four hundred people as the
  * literal braces is the typo this exists to catch before sending. */

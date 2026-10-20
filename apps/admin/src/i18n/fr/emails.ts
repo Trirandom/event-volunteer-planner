@@ -15,7 +15,7 @@ export default {
     'Une partie du planning n’a pas pu être chargée : certains messages ci-dessous peuvent être incomplets.',
   template: {
     heading: 'Modèle',
-    label: 'Modèle du message (HTML)',
+    label: 'Modèle du message',
     reset: 'Rétablir le modèle par défaut',
     /** Heading of the row of buttons that insert a placeholder. */
     variables: 'Variables',
@@ -26,12 +26,13 @@ export default {
     unknown:
       '{count, plural, one {Variable inconnue, laissée telle quelle} other {Variables inconnues, laissées telles quelles}} : {names}',
     /**
-     * The template a new page starts from. Every argument is the literal
-     * placeholder (“{{firstName}}” …), passed in by the page, so the braces
-     * need no ICU quoting here.
+     * The template a new page starts from, as the editor writes it
+     * (ADR-0046): paragraphs, no `<br>` between them. Every argument is a
+     * placeholder chip passed in by the page, so the braces need no ICU
+     * quoting here.
      */
     default:
-      '<div dir="ltr">\nBonjour {firstName},<br>\n<br>\nMerci pour ton engagement bénévole au {eventOrFestival} !<br>\n<br>\n<b>Voici tes créneaux bénévoles :</b><br>\n<div>\n{assignations}\n</div><br>\nSi tu as le moindre souci avec l’un des créneaux qui t’a été attribué, merci de nous prévenir en répondant à cet e-mail.<br>\n<br>\nÀ bientôt<br>\n<br>\n<b>L’équipe {organizationName}</b>\n</div>',
+      '<p>Bonjour {firstName},</p><p>Merci pour ton engagement bénévole au {eventOrFestival} !</p><p><strong>Voici tes créneaux bénévoles :</strong></p>{assignations}<p>Si tu as le moindre souci avec l’un des créneaux qui t’a été attribué, merci de nous prévenir en répondant à cet e-mail.</p><p>À bientôt</p><p><strong>L’équipe {organizationName}</strong></p>',
   },
   preview: {
     heading: 'Aperçu',

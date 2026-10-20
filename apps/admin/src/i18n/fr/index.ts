@@ -21,6 +21,7 @@ import notFound from './notFound';
 import sms from './sms';
 import emails from './emails';
 import ui from './ui';
+import backoffice from './backoffice';
 
 /** One file per area of the application; see `../index.ts`. */
 export default {
@@ -43,4 +44,5 @@ export default {
   sms,
   emails,
   ui,
+  backoffice,
 };

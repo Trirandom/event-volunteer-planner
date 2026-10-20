@@ -208,13 +208,19 @@ const eventsOrgId = computed((): string | null => {
   margin: 0 auto;
   max-width: 70rem;
   padding: 2rem 1rem 3rem;
+  /* A grid item with auto inline margins shrinks to its content; this keeps
+     the centred column as wide as it was in block layout. */
+  width: 100%;
 }
 
 /* No max-width and no horizontal padding: a wide route puts its own rail
    against the window edge and takes the rest for the board. The vertical
    padding goes too, because the rail is full-height and would otherwise float
-   in a gap. */
+   in a gap. A flex column so the page inside can grow into the row `#app`
+   gives `main` (styles.css) and run its rail to the bottom of the window. */
 .evp-main--wide {
+  display: flex;
+  flex-direction: column;
   max-width: none;
   padding: 0;
 }

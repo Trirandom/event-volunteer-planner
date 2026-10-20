@@ -60,13 +60,6 @@ const subject = computed(() =>
  * own production and names itself. */
 const title = computed(() => festival.value?.name ?? subject.value?.name ?? '');
 
-const festivalPeriod = computed(() => {
-  const value = festival.value;
-  return value === null
-    ? null
-    : formatPeriod(value.period, value.timezone, locale.value);
-});
-
 const selectedPeriod = computed(() => {
   const day = selected.value;
   return day === null
@@ -83,12 +76,6 @@ const selectedMeta = computed(() => {
         slug: day.slug,
       });
 });
-
-/** The line under the heading describes whatever the heading names: the
- * festival when there is one, the event itself when it stands alone. */
-const headerPeriod = computed(
-  () => festivalPeriod.value ?? selectedPeriod.value,
-);
 
 const days = computed(() => scope.value?.days ?? []);
 
@@ -120,6 +107,13 @@ type PlanSection = NonNullable<RouteMeta['section']>;
 /** The landing section, and therefore the fallback: a route with no `section`
  * is the parent before its redirect has resolved. */
 const section = computed(() => route.meta.section ?? 'details');
+
+/** The form is the festival's, not a day's (ADR-0035), and the submissions
+ * table filters by day itself; a strip there would offer a narrowing the
+ * section either ignores or already has. */
+const showsDayStrip = computed(
+  () => section.value !== 'form' && section.value !== 'submissions',
+);
 
 /** Both scopes offer the same sections, so a link is "this section, at that
  * scope" — one function rather than four hand-written route names that could
@@ -160,8 +154,12 @@ function here(named: PlanSection): RouteLocationRaw {
            On a phone it stops being a rail and becomes a row of links above
            the content — a 12 rem column at 320 px is not a navigation, it is
            a wall. -->
+      <!-- The rail stretches to the shell's full height so its border runs
+           to the bottom of the window; the inner column is what sticks, since
+           a sticky element as tall as its container has nowhere to move. -->
       <div class="evp-rail">
-        <!-- The production's name heads the rail rather than the content
+        <div class="evp-rail-inner">
+          <!-- The production's name heads the rail rather than the content
              column, and it is the page's `h1` there rather than a second copy
              of one: the rail is the only thing on this page that does not
              change as a coordinator moves through it. Narrowing to Saturday
@@ -173,44 +171,41 @@ function here(named: PlanSection): RouteLocationRaw {
 
              Outside the `nav`, not inside it: a heading within a navigation
              landmark labels the navigation, and this one labels the page. -->
-        <h1 class="evp-rail-title">{{ title }}</h1>
-        <nav :aria-label="t('plan.nav.label')" class="evp-rail-nav">
-          <RouterLink class="evp-rail-link" :to="here('details')">
-            {{ t('plan.nav.details') }}
-          </RouterLink>
-          <RouterLink class="evp-rail-link" :to="here('missions')">
-            {{ t('plan.nav.missions') }}
-          </RouterLink>
-          <RouterLink class="evp-rail-link" :to="here('shifts')">
-            {{ t('plan.nav.shifts') }}
-          </RouterLink>
-          <RouterLink class="evp-rail-link" :to="here('form')">
-            {{ t('plan.nav.form') }}
-          </RouterLink>
-          <RouterLink
-            class="evp-rail-link"
-            :class="{ 'evp-rail-link--within': section === 'submissions' }"
-            :to="here('submissions')"
-          >
-            {{ t('plan.nav.submissions') }}
-          </RouterLink>
-          <RouterLink class="evp-rail-link" :to="here('availability')">
-            {{ t('plan.nav.availability') }}
-          </RouterLink>
-          <RouterLink class="evp-rail-link" :to="here('assignments')">
-            {{ t('plan.nav.assignments') }}
-          </RouterLink>
-          <RouterLink class="evp-rail-link" :to="here('emails')">
-            {{ t('plan.nav.emails') }}
-          </RouterLink>
-        </nav>
+          <h1 class="evp-rail-title">{{ title }}</h1>
+          <nav :aria-label="t('plan.nav.label')" class="evp-rail-nav">
+            <RouterLink class="evp-rail-link" :to="here('details')">
+              {{ t('plan.nav.details') }}
+            </RouterLink>
+            <RouterLink class="evp-rail-link" :to="here('missions')">
+              {{ t('plan.nav.missions') }}
+            </RouterLink>
+            <RouterLink class="evp-rail-link" :to="here('shifts')">
+              {{ t('plan.nav.shifts') }}
+            </RouterLink>
+            <RouterLink class="evp-rail-link" :to="here('form')">
+              {{ t('plan.nav.form') }}
+            </RouterLink>
+            <RouterLink
+              class="evp-rail-link"
+              :class="{ 'evp-rail-link--within': section === 'submissions' }"
+              :to="here('submissions')"
+            >
+              {{ t('plan.nav.submissions') }}
+            </RouterLink>
+            <RouterLink class="evp-rail-link" :to="here('availability')">
+              {{ t('plan.nav.availability') }}
+            </RouterLink>
+            <RouterLink class="evp-rail-link" :to="here('assignments')">
+              {{ t('plan.nav.assignments') }}
+            </RouterLink>
+            <RouterLink class="evp-rail-link" :to="here('emails')">
+              {{ t('plan.nav.emails') }}
+            </RouterLink>
+          </nav>
+        </div>
       </div>
 
       <div class="evp-content">
-        <p v-if="headerPeriod" class="evp-muted">
-          {{ periodText(headerPeriod) }}
-        </p>
-
         <p v-if="festivalFailed" role="alert" class="evp-error">
           {{ t('plan.festivalFailed') }}
         </p>
@@ -220,7 +215,7 @@ function here(named: PlanSection): RouteLocationRaw {
          navigating to a different one, and "Whole festival" has to be as easy
          to get back to as any day is to reach. -->
         <nav
-          v-if="festival !== null"
+          v-if="festival !== null && showsDayStrip"
           :aria-label="t('plan.scope.label')"
           class="evp-days"
         >
@@ -296,7 +291,6 @@ function here(named: PlanSection): RouteLocationRaw {
      chips, never a horizontal scrollbar (docs/14 §2). */
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 1.25rem;
 }
 
 .evp-day {
@@ -384,22 +378,27 @@ function here(named: PlanSection): RouteLocationRaw {
   /* Wraps at narrow widths, which is what turns the rail into a row of links
      above the content instead of squeezing the board into nothing. */
   flex-wrap: wrap;
-  min-height: calc(100vh - 4rem);
+  /* Fills what the shell header leaves of the window (`#app` in styles.css
+     gives `main` the remaining grid row), so the rail's border reaches the bottom even
+     on a section shorter than the screen. */
+  flex: 1 0 auto;
 }
 
 .evp-rail {
   background: var(--evp-surface);
   border-right: 1px solid var(--evp-border);
-  display: flex;
   flex: 0 0 12rem;
+  padding: 1rem 0.5rem;
+}
+
+.evp-rail-inner {
+  display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  padding: 1.5rem 0.5rem;
   /* Follows the page down a long board rather than scrolling off the top of
-     it; `top` clears the shell header. */
-  align-self: flex-start;
+     it. */
   position: sticky;
-  top: 0;
+  top: 1rem;
 }
 
 /* The page's `h1`, sized for a 12 rem column rather than for a banner: it is
@@ -449,23 +448,38 @@ function here(named: PlanSection): RouteLocationRaw {
 .evp-content {
   flex: 1 1 24rem;
   min-width: 0;
-  padding: 1.5rem 1rem 3rem;
+  padding: 1rem 1rem 3rem;
 }
 
 /* Positioned so that a section's help button (`HelpModal`) lands in the same
    corner of the content column on every page, whatever that page renders
    first. */
 .evp-section {
-  margin-top: 1.5rem;
+  margin-top: 1rem;
   min-width: 0;
   position: relative;
 }
 
+/* Nothing above it on the form and submissions sections, which have no day
+   strip: the content padding is the whole gap under the header. */
+.evp-section:first-child {
+  margin-top: 0;
+}
+
 @media (max-width: 40rem) {
+  /* Wrapped, the extra height would be shared between the rail's row and the
+     content's, leaving a tall empty band under the links. */
+  .evp-shell {
+    align-content: flex-start;
+  }
+
   .evp-rail {
     border-bottom: 1px solid var(--evp-border);
     border-right: none;
     flex: 1 0 100%;
+  }
+
+  .evp-rail-inner {
     position: static;
   }
 

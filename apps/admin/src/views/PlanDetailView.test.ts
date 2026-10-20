@@ -231,13 +231,31 @@ describe('PlanDetailView at festival scope', () => {
   });
 
   it('keeps the section when a day is picked', async () => {
-    const { wrapper } = await mountView(
-      '/org-1/festivals/festival-1/submissions',
-    );
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/shifts');
 
     const dub = dayLinks(wrapper).find((link) => link.text() === 'Dub & 2step');
-    expect(dub?.attributes('href')).toBe('/org-1/events/dub/submissions');
+    expect(dub?.attributes('href')).toBe('/org-1/events/dub/shifts');
   });
+
+  it('leaves the dates to the details section', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    expect(wrapper.find('.evp-rail').text()).not.toContain('2026');
+    expect(wrapper.find('.evp-content > .evp-muted').exists()).toBe(false);
+  });
+
+  /** The form is the festival's (ADR-0035) and its submissions table carries
+   * its own day filter, so a strip of days there narrows nothing useful. */
+  it.each(['form', 'submissions'])(
+    'offers no day strip on the %s section',
+    async (named) => {
+      const { wrapper } = await mountView(
+        `/org-1/festivals/festival-1/${named}`,
+      );
+
+      expect(dayLinks(wrapper)).toHaveLength(0);
+    },
+  );
 
   it('reports the failure rather than an empty page', async () => {
     vi.spyOn(festivals, 'fetchFestival').mockResolvedValue({

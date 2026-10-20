@@ -23,6 +23,7 @@ import { useSession } from '../api/useSession';
 import HelpModal from '../components/HelpModal.vue';
 import EventDetailsForm from '../components/EventDetailsForm.vue';
 import NewEventForm from '../components/NewEventForm.vue';
+import { formatPeriod, periodText } from '../format/period';
 import { locale, t } from '../i18n';
 import { useRouteParam } from '../router/params';
 
@@ -54,6 +55,26 @@ const events = computed(() => {
     return [];
   }
   return value.selected === null ? value.days : [value.selected];
+});
+
+/** The production's dates, here with the rest of its settings rather than
+ * above every section: the festival's when there is one, a standalone event's
+ * own otherwise. Narrowed to a day, the day summary above the section and the
+ * card below already date it. */
+const productionPeriod = computed(() => {
+  const value = scope.value;
+  if (value === null) {
+    return null;
+  }
+  const dated =
+    value.festival === null
+      ? value.selected
+      : value.selected === null
+        ? value.festival
+        : null;
+  return dated === null
+    ? null
+    : periodText(formatPeriod(dated.period, dated.timezone, locale.value));
 });
 
 /**
@@ -143,6 +164,10 @@ async function afterDelete(deleted: {
       </p>
     </HelpModal>
 
+    <p v-if="productionPeriod" class="evp-muted evp-period">
+      {{ productionPeriod }}
+    </p>
+
     <EventDetailsForm
       v-for="day in events"
       :key="day.id"
@@ -181,5 +206,9 @@ h2 {
 
 .evp-muted {
   color: var(--evp-text-muted);
+}
+
+.evp-period {
+  margin: 0 0 1rem;
 }
 </style>

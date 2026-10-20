@@ -72,6 +72,9 @@ services:
       # past its lawful basis and nothing errors (docs/15).
       EVP_RETENTION_SWEEP_ENABLED: 'true'
       EVP_RUST_LOG: ${EVP_RUST_LOG:-evp=info,tower_http=info}
+      # Off unless set (ADR-0045). It opens every organisation on the
+      # deployment: set it for a setup session, then remove it.
+      EVP_BACKOFFICE_KEY: ${EVP_BACKOFFICE_KEY:-}
     secrets:
       - database_url
       - session_key

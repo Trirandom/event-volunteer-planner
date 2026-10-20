@@ -78,6 +78,9 @@ services:
       EVP_BOOTSTRAP_USERNAME: ${EVP_BOOTSTRAP_USERNAME:-}
       EVP_BOOTSTRAP_PASSWORD: ${EVP_BOOTSTRAP_PASSWORD:-}
       EVP_BOOTSTRAP_ORG_NAME: ${EVP_BOOTSTRAP_ORG_NAME:-My organisation}
+      # Opens /backoffice (ADR-0045). Unset by default for the same reason as
+      # the bootstrap pair, and blank means the backoffice does not exist.
+      EVP_BACKOFFICE_KEY: ${EVP_BACKOFFICE_KEY:-}
       CARGO_TERM_COLOR: always
     # compose.yaml's healthcheck runs `/app/evp`, which only exists in the
     # production image built by docker/api/Dockerfile. The dev target instead

@@ -49,3 +49,4 @@ one — never an edit. See [ADR-0001](0001-record-architecture-decisions.md).
 | [0042](0042-public-submissions-reconciled-inline.md) | Public form submissions are reconciled inline, and strangers join the pool | Accepted (amends 0028, 08 §6, 09 §5) |
 | [0043](0043-form-captcha-is-a-self-hosted-proof-of-work.md) | The form's captcha is a self-hosted proof of work, always on | Accepted (amends 09 §5) |
 | [0044](0044-event-period-is-operational-doors-are-stated.md) | `events.period` is the operational window; the doors are stated, never inferred | Accepted (supersedes 0033; amends 0029, 0032) |
+| [0045](0045-platform-backoffice-behind-a-deployment-key.md) | A platform backoffice, behind a key the deployment holds | Accepted (amends 0031) |

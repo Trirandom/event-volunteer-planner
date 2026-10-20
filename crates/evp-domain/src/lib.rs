@@ -8,6 +8,7 @@
 //! constraint engine unit-testable without a database, and what keeps
 //! `cargo-mutants` over it fast enough to demand zero survivors (docs/13 §9).
 
+pub mod backoffice;
 pub mod captcha;
 pub mod example;
 pub mod form;

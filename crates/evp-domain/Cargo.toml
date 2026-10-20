@@ -25,6 +25,9 @@ hmac         = { workspace = true }
 jiff         = { workspace = true }
 secrecy      = { workspace = true }
 sha2         = { workspace = true }
+# Constant-time comparison of the backoffice key's digest (`backoffice.rs`,
+# ADR-0045) — the use docs/17 chose it for.
+subtle       = { workspace = true }
 rust_decimal = { workspace = true }
 serde        = { workspace = true }
 # Parses the worked example's embedded structure (`include_str!`, so still no

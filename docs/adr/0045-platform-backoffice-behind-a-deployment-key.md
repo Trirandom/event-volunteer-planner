@@ -80,6 +80,7 @@ GUC here is (docs/02 §3). A migration adds permissive policies keyed on it:
 | --- | --- | --- |
 | `organizations` | `SELECT`, `INSERT` | list and create. No `UPDATE`/`DELETE`: renaming is an owner's job, and deleting cascades through every event the tenant ran. |
 | `memberships` | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | assign, change role, unassign — the whole point. |
+| `audit_log` | `INSERT` | record each write against the organisation it touched; never read back. |
 
 Nothing else is widened. Volunteers, events, forms and submissions stay
 invisible to the backoffice: it administers *who may act*, not what they act

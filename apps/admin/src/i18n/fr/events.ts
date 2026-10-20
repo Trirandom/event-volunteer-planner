@@ -18,9 +18,6 @@ export default {
       timezone: 'Fuseau horaire (nom IANA, p. ex. Europe/Paris)',
       starts: 'Début',
       ends: 'Fin',
-      festival: 'Festival',
-      /** First option of the festival picker. */
-      noFestival: 'Aucun festival — événement indépendant',
       creating: 'Création…',
       createEvent: 'Créer l’événement',
       createFestival: 'Créer le festival',
@@ -55,6 +52,8 @@ export default {
   newEvent: {
     /** Button; the page is a standalone event. */
     addAnotherEvent: 'Ajouter un autre événement',
+    /** Button; a festival card on the events list. */
+    addEventToFestival: 'Ajouter un événement',
     /** Button; the page is a festival or one of its days. */
     addDayButton: 'Ajouter un jour',
     headingEvent: 'Nouvel événement',
@@ -62,6 +61,9 @@ export default {
     /** `production` is the standalone event’s name. */
     hintStandalone:
       'Un deuxième événement à côté de {production}, indépendant comme lui. Ses horaires lui sont propres ; rien n’est recopié.',
+    /** `production` is the festival’s name; shown on the events list. */
+    hintFestivalEvent:
+      'Un nouvel événement dans {production}. Ses horaires lui sont propres, et son planning est géré indépendamment des autres événements du festival.',
     /** `production` is the festival’s name. */
     hintDay:
       'Un jour de plus pour {production}. Il rejoint la barre ci-dessus, reçoit sa propre couleur, et son planning est géré indépendamment des autres jours.',

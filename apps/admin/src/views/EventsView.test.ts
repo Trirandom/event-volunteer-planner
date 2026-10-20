@@ -162,7 +162,7 @@ describe('EventsView', () => {
     expect(wrapper.text()).toContain('Load the example event');
   });
 
-  it('opens the event form, with the festival picker, on demand', async () => {
+  it('opens the event form on demand, without a festival picker', async () => {
     vi.spyOn(eventsApi, 'fetchEvents').mockResolvedValue({
       ok: true,
       value: [],
@@ -188,13 +188,64 @@ describe('EventsView', () => {
     await newEvent?.trigger('click');
 
     expect(wrapper.find('#create-form').exists()).toBe(true);
-    expect(wrapper.find('#create-festival').exists()).toBe(true);
-    expect(wrapper.find('#create-festival').text()).toContain(
-      'Midsummer Nights',
-    );
+    expect(wrapper.find('#create-form select').exists()).toBe(false);
   });
 
-  it('drops the festival picker when the festival form is the one open', async () => {
+  it('adds an event to a festival from that festival’s card', async () => {
+    vi.spyOn(eventsApi, 'fetchEvents').mockResolvedValue({
+      ok: true,
+      value: [],
+    });
+    vi.spyOn(festivalsApi, 'fetchFestivals').mockResolvedValue({
+      ok: true,
+      value: [
+        festival(
+          'f1',
+          'Midsummer Nights',
+          '2026-07-01T00:00:00Z',
+          '2026-07-04T00:00:00Z',
+        ),
+      ],
+    });
+    const createEvent = vi.spyOn(eventsApi, 'createEvent').mockResolvedValue({
+      ok: true,
+      event: event(
+        'e-new',
+        'Friday',
+        '2026-07-01T08:00:00Z',
+        '2026-07-01T18:00:00Z',
+        'f1',
+      ),
+      operationId: 'op-1',
+    });
+
+    const wrapper = await mountView();
+    const add = wrapper
+      .findAll('.evp-group-add button')
+      .find((button) => button.text() === 'Add an event');
+    await add?.trigger('click');
+
+    const form = wrapper.find('.evp-group-add form');
+    expect(form.text()).toContain('Midsummer Nights');
+    const inputs = form.findAll('input');
+    await inputs[0]?.setValue('Friday');
+    await form
+      .find('input[type="datetime-local"]')
+      .setValue('2026-07-01T10:00');
+    await form
+      .findAll('input[type="datetime-local"]')[1]
+      ?.setValue('2026-07-01T20:00');
+    await form.trigger('submit');
+    await flushPromises();
+
+    expect(createEvent).toHaveBeenCalledOnce();
+    expect(createEvent.mock.calls[0]?.[1]).toMatchObject({
+      name: 'Friday',
+      festivalId: 'f1',
+    });
+  });
+
+  it('switches the submit target when the festival form is the one open', async () => {
     vi.spyOn(eventsApi, 'fetchEvents').mockResolvedValue({
       ok: true,
       value: [],
@@ -211,7 +262,6 @@ describe('EventsView', () => {
     await newFestival?.trigger('click');
 
     expect(wrapper.find('#create-form').exists()).toBe(true);
-    expect(wrapper.find('#create-festival').exists()).toBe(false);
     expect(wrapper.find('button[type="submit"]').text()).toBe(
       'Create festival',
     );

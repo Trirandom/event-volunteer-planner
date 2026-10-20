@@ -141,7 +141,11 @@ dialog:modal {
   margin-bottom: 0.25rem;
 }
 
-.evp-field input {
+/* `select` alongside `input`: after Tailwind's preflight an unstyled select is
+ * a borderless, padding-less run of text on a transparent face, which reads as
+ * neither a field nor a label. */
+.evp-field input,
+.evp-field select {
   background: var(--evp-surface);
   border: 1px solid var(--evp-border);
   border-radius: 0.375rem;

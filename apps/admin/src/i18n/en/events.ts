@@ -15,8 +15,6 @@ export default {
       timezone: 'Timezone (IANA name, e.g. Europe/Paris)',
       starts: 'Starts',
       ends: 'Ends',
-      festival: 'Festival',
-      noFestival: 'No festival — standalone event',
       creating: 'Creating…',
       createEvent: 'Create event',
       createFestival: 'Create festival',
@@ -47,11 +45,14 @@ export default {
   },
   newEvent: {
     addAnotherEvent: 'Add another event',
+    addEventToFestival: 'Add an event',
     addDayButton: 'Add a day',
     headingEvent: 'New event',
     headingDay: 'New day',
     hintStandalone:
       'A second event alongside {production}, standalone like it is. Its hours are its own; nothing is copied over.',
+    hintFestivalEvent:
+      'A new event in {production}. It keeps its own hours and is staffed independently of the festival’s other events.',
     hintDay:
       'Another day of {production}. It joins the strip above, gets its own colour, and is staffed independently of the other days.',
     name: 'Name',

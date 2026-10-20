@@ -177,6 +177,18 @@ export const router = createRouter({
       meta: { requiresSession: true },
     },
     {
+      // The deployment operator's page (ADR-0045). No `requiresSession`: its
+      // authority is the backoffice key, and the operator of a fresh install
+      // may have no account to sign in with. Declared before the `/:orgId`
+      // routes so it is matched as itself and never read as an org slug —
+      // vue-router ranks a static segment above a param anyway, and the order
+      // says so to the next reader.
+      path: '/backoffice',
+      name: 'backoffice',
+      component: async () => import('../views/BackofficeView.vue'),
+      meta: { requiresSession: false },
+    },
+    {
       // `orgId` rather than inferring the org from the session (docs/04 §1):
       // a coordinator who is a member of two organisations must say which one
       // they mean, and a route with no org segment would have to guess.

@@ -74,9 +74,9 @@ spreadsheet got right.
   proof-of-work captcha, a honeypot and a rate limit. Submissions join the
   volunteer pool inline; ambiguous ones go to a review queue.
 - **Admin:** a plan workflow — details → missions → shifts → form →
-  assignments → submissions (+ review) → availability → emails (dry-run preview
-  only) — and per-organisation SMS provider settings (encrypted). French and
-  English UI.
+  assignments → submissions (+ review) → availability → emails (written as
+  rich text, dry-run preview only) — and per-organisation SMS provider
+  settings (encrypted). French and English UI.
 - **Accounts:** password sign-in, opaque server-side sessions, login rate
   limiting. The first owner is created from environment variables.
 

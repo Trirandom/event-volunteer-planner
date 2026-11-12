@@ -41,6 +41,7 @@ a rewrite.
 | Server state | **TanStack Query (Vue)** | The app is mostly a cache of server data. Query handles invalidation, retries, and optimistic updates for drag-and-drop far better than hand-rolled store code. |
 | Client state | **Pinia** | Only for genuinely client-side state: current org, timeline zoom, selection, filters. Server data does *not* go in Pinia. |
 | Styling | **Tailwind CSS** + a small set of local primitives | The timeline is a bespoke CSS-grid component; a heavy component library would be fought more than used. |
+| Rich text, frontend | **Tiptap** (ProseMirror), admin only | The schedule email template is written by coordinators who should not see HTML. A schema limited to what mail clients render means pasted content cannot carry anything else in, and placeholders are atoms that cannot be half-deleted ([ADR-0046](adr/0046-email-template-edited-as-rich-text-stored-as-html.md)). |
 | Dates, frontend | **Temporal** (polyfilled) | Event-timezone-aware formatting is a first-class requirement; `Date` is not adequate ([16 §4](16-i18n-and-time.md#4-libraries)). |
 | Dates, backend | **jiff** | Its `Zoned` type carries an instant *and* a zone, so DST gaps and folds are explicit in the API instead of silently resolved ([ADR-0019](adr/0019-time-discipline.md)). |
 | HTTP server | **Axum 0.8** on Tokio | Requested Rust. Axum's extractor model makes the tenant-scoping middleware clean, and it sits directly on `tower`, so tracing, timeouts and rate limits are middleware rather than bespoke code. |

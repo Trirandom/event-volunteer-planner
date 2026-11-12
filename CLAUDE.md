@@ -31,9 +31,11 @@ out of order, driven by the first real festival, Soundclash 26):
   (`evp-api/src/backoffice.rs`, `evp_db::backoffice`); its writes are the
   first `audit_log` rows. Off (404) when the key is unset.
 - **Admin plan pages:** details → missions → shifts → form → assignments →
-  submissions (+ `…/submissions/review`) → availability → emails (dry-run
-  preview only — nothing is sent), plus `/:org/sms-settings`, and `/backoffice`
-  outside any org (key held in memory only).
+  submissions (+ `…/submissions/review`) → availability → emails (template
+  written in a Tiptap rich-text editor whose schema is the email-safe
+  allowlist, ADR-0046, `plan/emailEditor.ts`; dry-run preview only — nothing
+  is sent), plus `/:org/sms-settings`, and `/backoffice` outside any org (key
+  held in memory only).
 - **First-party form (docs/09):** authoring with
   `forms`/`form_versions`/`form_questions`, draft/publish, festival-scoped forms,
   the `missions` question, per-participation custom answers

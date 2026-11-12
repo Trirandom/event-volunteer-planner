@@ -126,6 +126,16 @@
       "template": "L’équipe {{organizationName}}",
       "expected": "L’équipe Asso &amp; Co",
       "unknown": []
+    },
+    {
+      "template": "<p>Bonjour <span data-evp-variable=\"firstName\">{{firstName}}</span>,</p>",
+      "expected": "<p>Bonjour <span data-evp-variable=\"firstName\">Camille</span>,</p>",
+      "unknown": []
+    },
+    {
+      "template": "<div data-evp-variable=\"assignations\">{{assignations}}</div>",
+      "expected": "<div data-evp-variable=\"assignations\"><ul><li>x</li></ul></div>",
+      "unknown": []
     }
   ],
   "values": {
@@ -170,6 +180,14 @@
     {
       "html": "<div dir=\"ltr\">\nBonjour Camille,<br>\n<br>\nMerci !<br>\n<br>\n<b>Voici tes créneaux bénévoles :</b><br>\n<div>\n<ul><li>samedi 5 septembre, 10:00–14:00 : Bar</li></ul>\n</div><br>\nÀ bientôt<br>\n</div>",
       "expected": "Bonjour Camille,\n\nMerci !\n\nVoici tes créneaux bénévoles :\n\n• samedi 5 septembre, 10:00–14:00 : Bar\n\nÀ bientôt"
+    },
+    {
+      "html": "<p>Bonjour Camille,</p><p>Merci !</p>",
+      "expected": "Bonjour Camille,\n\nMerci !"
+    },
+    {
+      "html": "<p>Bonjour <span data-evp-variable=\"firstName\">Camille</span>,</p><p><strong>Voici tes créneaux bénévoles :</strong></p><div data-evp-variable=\"assignations\"><ul><li>samedi 5 septembre, 10:00–14:00 : Bar</li></ul></div><p>À bientôt<br>L’équipe</p>",
+      "expected": "Bonjour Camille,\n\nVoici tes créneaux bénévoles :\n\n• samedi 5 septembre, 10:00–14:00 : Bar\n\nÀ bientôt\nL’équipe"
     }
   ]
 }

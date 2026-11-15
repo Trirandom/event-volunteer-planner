@@ -188,20 +188,32 @@ const eventsOrgId = computed((): string | null => {
   gap: 1rem;
 }
 
+/* No underline. WCAG 1.4.1 asks that a link in running text be told from the
+   text around it by more than colour; a nav item has no running text around
+   it. It sits in a labelled `nav`, in the header, set apart by position,
+   weight and padding, which is what identifies it as navigation. */
 .evp-nav-link {
-  border-radius: 0.375rem;
+  border: 2px solid transparent;
+  border-radius: 0.625rem;
   color: var(--evp-accent);
-  /* A nav link is a link, so it is underlined: `accent` and `text` are both
-     dark greens and colour alone does not distinguish them (WCAG 1.4.1). */
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+  font-weight: 600;
   /* 24×24 floor from docs/14 §2, reached with padding rather than a min-height
      that would fight the flex row's baseline. */
-  padding: 0.375rem 0.5rem;
+  padding: 0.375rem 0.75rem;
+  text-decoration: none;
+  transition: background-color 120ms ease;
 }
 
 .evp-nav-link:hover {
   background: var(--evp-surface-raised);
+}
+
+/* The page you are on, set by RouterLink on an exact match. A solid fill and
+   the attribute itself, so it is announced as well as seen, and the fill is
+   more than a change of hue (WCAG 1.4.1). */
+.evp-nav-link[aria-current='page'] {
+  background: var(--evp-surface-raised);
+  color: var(--evp-text);
 }
 
 .evp-main {

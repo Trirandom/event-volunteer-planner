@@ -62,7 +62,20 @@ body {
   flex-wrap: wrap;
   gap: 0.625rem;
   margin-bottom: 1.5rem;
+  /* The header's height with the language switcher in it (31 px of button,
+     then the padding and rule below: Tailwind's preflight makes this
+     border-box), held before the switcher exists. The copy of this header in
+     index.html has only the mark, and without this the page under it would
+     move when the application replaces the copy. */
+  min-height: 3rem;
   padding-bottom: 1rem;
+}
+
+/* BrandMark's own rule, restated for the copy in index.html, which no scoped
+ * style reaches. */
+.evp-form-header > .evp-brand-mark {
+  display: block;
+  flex: none;
 }
 
 .evp-form-header-name {
@@ -129,6 +142,39 @@ body {
   background: var(--evp-surface);
   border: 1px solid var(--evp-border);
   color: var(--evp-text);
+}
+
+/* FormSkeleton.vue, and its copy in index.html, which is painted before any
+ * component style exists. Still blocks rather than a shimmer: motion would need
+ * a prefers-reduced-motion opt-out (docs/14 §6) to say "loading", which the
+ * status message already says. */
+.evp-skeleton {
+  align-content: start;
+  display: grid;
+  gap: 1.25rem;
+  /* At least a screen tall, so the footer the application adds under it
+     starts out of view and is not seen jumping down when the form, which is
+     always longer, replaces the outline. */
+  min-height: 100dvh;
+}
+
+.evp-skeleton > * {
+  background: var(--evp-surface-raised);
+  border-radius: 0.5rem;
+}
+
+.evp-skeleton-title {
+  height: 2.25rem;
+  width: 70%;
+}
+
+.evp-skeleton-line {
+  height: 1rem;
+  width: 85%;
+}
+
+.evp-skeleton-field {
+  height: 4.5rem;
 }
 
 .evp-visually-hidden {

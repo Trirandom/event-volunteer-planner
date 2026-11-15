@@ -44,6 +44,7 @@ import {
   windowsFor,
   type DayAnswer,
 } from '../availability/model';
+import FormSkeleton from '../components/FormSkeleton.vue';
 import QuestionField from '../components/QuestionField.vue';
 import {
   fieldError,
@@ -376,9 +377,10 @@ watch(phase, async (next, previous) => {
 <template>
   <UnavailableView v-if="phase === 'unavailable'" />
 
-  <div v-else-if="phase === 'loading'" class="evp-form-note" role="status">
+  <div v-else-if="phase === 'loading'">
     <h1 class="evp-visually-hidden">{{ t('form.title') }}</h1>
-    {{ t('form.loading') }}
+    <p class="evp-visually-hidden" role="status">{{ t('form.loading') }}</p>
+    <FormSkeleton />
   </div>
 
   <div v-else-if="phase === 'unreachable'" class="evp-banner" role="alert">

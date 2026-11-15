@@ -40,7 +40,9 @@ out of order, driven by the first real festival, Soundclash 26):
   `forms`/`form_versions`/`form_questions`, draft/publish, festival-scoped forms,
   the `missions` question, per-participation custom answers
   (ADR-0035/0036/0037), per-day availability (ADR-0039) and the commitment
-  question (ADR-0040). `apps/form` renders it; `GET/POST
+  question (ADR-0040). `apps/form` renders it, painting its outline from
+  `index.html` and sending the form request from a tiny early entry before
+  the application boots (docs/09 §6, `build/firstPaint.ts`); `GET/POST
   /api/v1/public/forms/{slug}` serve it (`evp-api/src/public_form.rs`). The slug
   resolves across orgs through the `forms_public_slug_read` policy, and only
   while the form is live and open. Submissions are stored raw, then reconciled

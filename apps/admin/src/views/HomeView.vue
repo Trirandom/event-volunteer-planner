@@ -17,6 +17,7 @@ import { BrandMark, SourceNotice } from '@evp/shared';
 import { RouterLink } from 'vue-router';
 
 import { useSession } from '../api/useSession';
+import LandingIllustration from '../components/LandingIllustration.vue';
 import { t } from '../i18n';
 
 const { data: session } = useSession();
@@ -25,33 +26,47 @@ const { data: session } = useSession();
 <template>
   <div class="evp-landing">
     <section class="evp-hero">
-      <BrandMark :size="72" />
+      <div class="evp-hero-copy">
+        <span class="evp-hero-mark">
+          <BrandMark :size="56" />
+        </span>
 
-      <h1>{{ t('common.productName') }}</h1>
-      <p class="evp-lead">{{ t('home.hero.lead') }}</p>
-      <p class="evp-hero-body">{{ t('home.hero.body') }}</p>
+        <h1>{{ t('common.productName') }}</h1>
+        <p class="evp-lead">{{ t('home.hero.lead') }}</p>
+        <p class="evp-hero-body">{{ t('home.hero.body') }}</p>
 
-      <p class="evp-actions">
-        <!-- The call to action follows the session rather than assuming a
-             visitor is signed out: a coordinator who lands here mid-shift
-             should not be asked to sign in again. Until the first answer
-             arrives, neither button is rendered, because guessing and swapping
-             it a moment later moves the target under the pointer. -->
-        <RouterLink
-          v-if="session?.status === 'authenticated'"
-          class="evp-button evp-button--primary"
-          to="/admin"
-        >
-          {{ t('home.hero.openAdmin') }}
-        </RouterLink>
-        <RouterLink
-          v-else-if="session !== undefined"
-          class="evp-button evp-button--primary"
-          to="/login"
-        >
-          {{ t('home.hero.signIn') }}
-        </RouterLink>
-      </p>
+        <p class="evp-actions">
+          <!-- The call to action follows the session rather than assuming a
+               visitor is signed out: a coordinator who lands here mid-shift
+               should not be asked to sign in again. Until the first answer
+               arrives, neither button is rendered, because guessing and
+               swapping it a moment later moves the target under the pointer. -->
+          <RouterLink
+            v-if="session?.status === 'authenticated'"
+            class="evp-button evp-cta"
+            to="/admin"
+          >
+            {{ t('home.hero.openAdmin') }}
+            <svg class="evp-cta-arrow" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M4 10h11M11 5l5 5-5 5" />
+            </svg>
+          </RouterLink>
+          <RouterLink
+            v-else-if="session !== undefined"
+            class="evp-button evp-cta"
+            to="/login"
+          >
+            {{ t('home.hero.signIn') }}
+            <svg class="evp-cta-arrow" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M4 10h11M11 5l5 5-5 5" />
+            </svg>
+          </RouterLink>
+        </p>
+      </div>
+
+      <div class="evp-hero-art">
+        <LandingIllustration />
+      </div>
     </section>
 
     <section aria-labelledby="what-heading">
@@ -99,10 +114,16 @@ const { data: session } = useSession();
         </li>
       </ul>
 
-      <p class="evp-status-note">{{ t('home.statusNote') }}</p>
+      <p class="evp-status-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 11v5M12 7.5v.01" />
+        </svg>
+        <span>{{ t('home.statusNote') }}</span>
+      </p>
     </section>
 
-    <section aria-labelledby="about-heading" class="evp-panel evp-about">
+    <section aria-labelledby="about-heading" class="evp-about">
       <h2 id="about-heading">{{ t('home.about.heading') }}</h2>
       <SourceNotice />
     </section>
@@ -110,98 +131,199 @@ const { data: session } = useSession();
 </template>
 
 <style scoped>
-/* Everything is a single column that simply narrows. docs/14 §2 puts the
-   conformance floor at 320 px and the design width at 400 px; a layout with no
-   fixed widths clears both without a media query to maintain. */
+/* Flat: every surface is one matte colour, nothing is a gradient, and depth
+   is a solid offset slab with no blur. Each colour is a semantic token or a
+   `color-mix` of two, so one declaration covers both themes and nothing here
+   needs a value under prefers-color-scheme. Text only ever sits on a pair the
+   contrast test proved (packages/shared/src/tokens.ts); the mixes are fills
+   and slabs, never a text background. */
 .evp-landing {
+  /* The slab colour: the accent pushed toward black. In the light theme that
+     is a deeper green under a deep green; in the dark theme, where the accent
+     is pale, it lands mid-green, still darker than what it sits under. */
+  --evp-slab: color-mix(in srgb, var(--evp-accent) 55%, #000);
+
   display: flex;
   flex-direction: column;
-  gap: 3rem;
+  gap: 3.5rem;
 }
 
-/* The one branded surface in the application. The wash is drawn from the
-   semantic tokens rather than a ramp step, so it follows the theme instead of
-   needing a second definition under prefers-color-scheme. */
+/* The one branded surface in the application: a solid block of the accent
+   with the copy in `onAccent`, the pair proved for the primary button, so the
+   hero inherits that proof instead of needing its own. */
 .evp-hero {
-  background: linear-gradient(
-    160deg,
-    var(--evp-surface-raised),
-    var(--evp-surface) 70%
-  );
-  border: 1px solid var(--evp-border);
-  border-radius: 0.75rem;
-  padding: 2rem 1.5rem 2.25rem;
-  position: relative;
+  align-items: center;
+  background: var(--evp-accent);
+  /* Invisible normally. Under forced-colors the background is dropped and
+     this border is what is left of the block's edge. */
+  border: 2px solid transparent;
+  border-radius: 1rem;
+  color: var(--evp-on-accent);
+  display: grid;
+  gap: 2rem 2.5rem;
+  /* auto-fit, not a breakpoint (docs/14 §2): copy and drawing sit side by
+     side when both fit and stack otherwise, which is also what 400% zoom
+     does. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  isolation: isolate;
   overflow: hidden;
+  padding: 2.5rem 1.5rem;
+  position: relative;
 }
 
-/* A brand band along the top edge, running the mark's green into the gold. It
-   carries no meaning and is hidden from assistive technology by being a
-   background rather than an element. */
-.evp-hero::before {
-  background: linear-gradient(
-    90deg,
-    var(--evp-accent),
-    var(--evp-accent-hover) 45%,
-    var(--evp-warning)
-  );
+/* Two flat discs behind the copy, the usual flat-design motif. Backgrounds
+   rather than elements, so assistive technology never meets them. */
+.evp-hero::before,
+.evp-hero::after {
+  background: color-mix(in srgb, var(--evp-on-accent) 9%, var(--evp-accent));
+  border-radius: 50%;
   content: '';
-  height: 4px;
-  inset: 0 0 auto;
   position: absolute;
+  z-index: -1;
+}
+
+.evp-hero::before {
+  height: 22rem;
+  right: -6rem;
+  top: -8rem;
+  width: 22rem;
+}
+
+.evp-hero::after {
+  bottom: -5rem;
+  height: 11rem;
+  left: 30%;
+  width: 11rem;
+}
+
+/* The mark has a dark half drawn to stay dark (BrandMark.vue), so it needs a
+   light plate whatever the accent is. */
+.evp-hero-mark {
+  background: var(--evp-surface);
+  border-radius: 1rem;
+  box-shadow: 0 4px 0 var(--evp-slab);
+  display: inline-flex;
+  padding: 0.625rem;
 }
 
 .evp-hero h1 {
-  font-size: clamp(1.75rem, 5vw, 2.5rem);
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  margin: 1.25rem 0 0.5rem;
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: 1.5rem 0 0.75rem;
 }
 
 .evp-lead {
-  color: var(--evp-text);
-  font-size: 1.125rem;
-  font-weight: 500;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.35;
   margin: 0 0 0.75rem;
-  max-width: 40ch;
+  max-width: 34ch;
 }
 
+/* Not muted: `textMuted` is proved on the surfaces, not on the accent, and an
+   opacity would be an unproved colour by another name. */
 .evp-hero-body {
-  color: var(--evp-text-muted);
   margin: 0;
-  max-width: 60ch;
+  max-width: 56ch;
 }
 
 .evp-actions {
-  margin: 1.75rem 0 0;
+  margin: 2rem 0 0;
+  /* Room for the slab, which the hero's overflow would otherwise clip. */
+  padding-bottom: 6px;
+}
+
+/* The call to action, inverted against the hero: a surface-coloured block
+   with accent text (proved on `surface`, and on `surfaceRaised`, the hover
+   ground) on a solid slab. `.evp-button--primary` here would be the accent on
+   the accent, which is no button at all. */
+.evp-cta {
+  align-items: center;
+  background: var(--evp-surface);
+  border: 2px solid transparent;
+  border-radius: 0.625rem;
+  box-shadow: 6px 6px 0 var(--evp-slab);
+  color: var(--evp-accent);
+  display: inline-flex;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  gap: 0.625rem;
+  min-height: 3.25rem;
+  padding: 0.75rem 1.75rem;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+
+.evp-cta:hover {
+  background: var(--evp-surface-raised);
+  border-color: transparent;
+}
+
+/* Pressed, the button sinks into its slab along the slab's own diagonal, so
+   the slab stays put beneath it. It is the one thing on the page that moves,
+   and only once the pointer is already down on it: 3px against a 52px target
+   cannot carry it out from under the pointer. Reduced motion keeps the end
+   state and drops the travel (tokens.css). */
+.evp-cta:active {
+  box-shadow: 3px 3px 0 var(--evp-slab);
+  transform: translate(3px, 3px);
+}
+
+.evp-cta-arrow {
+  fill: none;
+  height: 1.125rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+  width: 1.125rem;
+}
+
+/* The drawing rests on its own slab, offset down and right, so it reads as a
+   card laid on the block rather than a hole cut in it. */
+.evp-hero-art {
+  border-radius: 20px;
+  box-shadow: 14px 14px 0 var(--evp-slab);
+  margin: 0 14px 14px 0;
 }
 
 h2 {
-  font-size: 1.125rem;
-  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.25rem;
 }
 
 /* auto-fit rather than a breakpoint: the cards become one column when one
    column is what fits, which is also what happens at 400% zoom. */
 .evp-features {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
+/* No hover state: a card is not a control, and one that answers the pointer
+   promises a click it does not have. */
 .evp-feature {
   background: var(--evp-surface-raised);
-  border: 1px solid var(--evp-border);
-  border-radius: 0.5rem;
-  padding: 1.25rem;
+  border: 2px solid transparent;
+  border-radius: 0.75rem;
+  box-shadow: 5px 5px 0
+    color-mix(in srgb, var(--card-hue) 35%, var(--evp-surface));
+  padding: 1.5rem;
 }
 
 .evp-feature h3 {
-  font-size: 1rem;
-  margin: 0.875rem 0 0.375rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  margin: 1rem 0 0.375rem;
 }
 
 .evp-feature p {
@@ -210,28 +332,25 @@ h2 {
 }
 
 /* The three hues are decorative — the heading carries the meaning, and nothing
-   is distinguished by colour alone (docs/14 §2). They are picked from the
-   semantic tokens so both themes are covered by one declaration. */
+   is distinguished by colour alone (docs/14 §2). A solid plate of the hue with
+   the glyph knocked out in the page colour. */
 .evp-feature-icon {
   align-items: center;
-  /* color-mix is Baseline Widely Available, which is the support policy
-     (docs/14 §6). The plate is a tint of the card's own hue, so it tracks the
-     theme without a second set of values under prefers-color-scheme. */
-  background: color-mix(in srgb, var(--card-hue) 14%, var(--evp-surface));
-  border-radius: 0.5rem;
-  color: var(--card-hue);
+  background: var(--card-hue);
+  border-radius: 0.75rem;
+  color: var(--evp-surface);
   display: flex;
-  height: 2.5rem;
+  height: 3rem;
   justify-content: center;
-  width: 2.5rem;
+  width: 3rem;
 }
 
 .evp-feature-icon svg {
-  height: 1.375rem;
+  height: 1.5rem;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.75;
-  width: 1.375rem;
+  stroke-width: 2;
+  width: 1.5rem;
 }
 
 .evp-feature--availability {
@@ -246,13 +365,42 @@ h2 {
   --card-hue: var(--evp-warning);
 }
 
+/* A notice, not an alert: nothing is wrong, the build is just early. The tint
+   stays near enough to the surface that body text keeps its contrast, and the
+   bar plus the icon say "note" without leaning on the hue. */
 .evp-status-note {
-  color: var(--evp-text-muted);
-  margin: 1.25rem 0 0;
-  max-width: 60ch;
+  align-items: flex-start;
+  background: color-mix(in srgb, var(--evp-warning) 10%, var(--evp-surface));
+  border-left: 4px solid var(--evp-warning);
+  border-radius: 0.5rem;
+  display: flex;
+  gap: 0.75rem;
+  margin: 2rem 0 0;
+  max-width: 70ch;
+  padding: 0.875rem 1rem;
+}
+
+.evp-status-note svg {
+  color: var(--evp-warning);
+  fill: none;
+  flex: none;
+  height: 1.375rem;
+  margin-top: 0.0625rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+  width: 1.375rem;
+}
+
+.evp-about {
+  background: var(--evp-surface-raised);
+  border: 2px solid transparent;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
 }
 
 .evp-about h2 {
+  font-size: 1.125rem;
   margin-bottom: 0.5rem;
 }
 </style>

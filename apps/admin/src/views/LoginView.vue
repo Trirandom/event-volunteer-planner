@@ -176,7 +176,7 @@ function submit(): void {
       </p>
 
       <button
-        class="evp-button evp-button--primary evp-button--slab"
+        class="evp-button evp-button--primary evp-button--cta evp-slab evp-pressable"
         type="submit"
         :disabled="isPending"
       >

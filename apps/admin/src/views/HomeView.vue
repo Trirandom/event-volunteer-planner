@@ -43,21 +43,29 @@ const { data: session } = useSession();
                swapping it a moment later moves the target under the pointer. -->
           <RouterLink
             v-if="session?.status === 'authenticated'"
-            class="evp-button evp-button--slab evp-cta"
+            class="evp-button evp-button--cta evp-slab evp-pressable evp-hero-cta"
             to="/admin"
           >
             {{ t('home.hero.openAdmin') }}
-            <svg class="evp-cta-arrow" viewBox="0 0 20 20" aria-hidden="true">
+            <svg
+              class="evp-hero-cta-arrow"
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+            >
               <path d="M4 10h11M11 5l5 5-5 5" />
             </svg>
           </RouterLink>
           <RouterLink
             v-else-if="session !== undefined"
-            class="evp-button evp-button--slab evp-cta"
+            class="evp-button evp-button--cta evp-slab evp-pressable evp-hero-cta"
             to="/login"
           >
             {{ t('home.hero.signIn') }}
-            <svg class="evp-cta-arrow" viewBox="0 0 20 20" aria-hidden="true">
+            <svg
+              class="evp-hero-cta-arrow"
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+            >
               <path d="M4 10h11M11 5l5 5-5 5" />
             </svg>
           </RouterLink>
@@ -227,18 +235,18 @@ const { data: session } = useSession();
 .evp-actions {
   margin: 2rem 0 0;
   /* Room for the slab, which the hero's overflow would otherwise clip. */
-  padding-bottom: 6px;
+  padding-bottom: var(--evp-slab-md);
 }
 
 /* The call to action, inverted against the hero: a surface-coloured block
    with accent text (proved on `surface`, and on `surfaceRaised`, the hover
    ground). `.evp-button--primary` here would be the accent on the accent,
-   which is no button at all. The slab and the press come from
-   `.evp-button--slab` (styles.css). */
-.evp-cta {
+   which is no button at all. The shape, slab and press are the shared
+   `evp-button--cta evp-slab evp-pressable`. */
+.evp-hero-cta {
   align-items: center;
   background: var(--evp-surface);
-  border: 2px solid transparent;
+  border: var(--evp-edge) solid transparent;
   color: var(--evp-accent);
   display: inline-flex;
   font-size: 1.0625rem;
@@ -247,12 +255,12 @@ const { data: session } = useSession();
   padding: 0.75rem 1.75rem;
 }
 
-.evp-cta:hover {
+.evp-hero-cta:hover {
   background: var(--evp-surface-raised);
   border-color: transparent;
 }
 
-.evp-cta-arrow {
+.evp-hero-cta-arrow {
   fill: none;
   height: 1.125rem;
   stroke: currentColor;

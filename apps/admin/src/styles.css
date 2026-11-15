@@ -121,27 +121,14 @@ dialog:modal {
   border-color: var(--evp-accent-hover);
 }
 
-/* A call to action: the one button on a screen that should be pressed. One
- * per screen at most, or none of them reads as the one. */
-.evp-button--slab {
-  border-radius: 0.625rem;
-  box-shadow: 6px 6px 0 var(--evp-slab);
+/* A call to action: the one button on a screen that should be pressed, and
+ * so the one that wears a slab. Worn with `evp-slab evp-pressable`
+ * (flat.css, ADR-0047), which bring the depth and the press; this adds only
+ * the shape and weight. One per screen at most, or none reads as the one. */
+.evp-button--cta {
+  border-radius: var(--evp-radius-md);
   font-weight: 700;
-  transition:
-    background-color 120ms ease,
-    border-color 120ms ease,
-    box-shadow 120ms ease,
-    transform 120ms ease;
-}
-
-/* Pressed, it sinks into its slab along the slab's own diagonal, so the slab
- * stays put beneath it. The only control that moves, and only once the
- * pointer is already down on it: 3px against a 44px-plus target cannot carry
- * it out from under the pointer. Reduced motion keeps the end state and drops
- * the travel (tokens.css). */
-.evp-button--slab:active:not([disabled]) {
-  box-shadow: 3px 3px 0 var(--evp-slab);
-  transform: translate(3px, 3px);
+  min-height: 3rem;
 }
 
 /* Disabled is carried by more than colour (docs/14 §2): the cursor changes and

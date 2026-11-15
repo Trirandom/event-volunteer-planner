@@ -79,5 +79,5 @@ packageExtensions:
 # that union. Every vue-i18n from 11.3 on has the import, so holding an older
 # minor is not an option. Delete this with the move to Vue 3.6.
 patchedDependencies:
-  vue-i18n@11.4.12: patches/vue-i18n@11.4.12.patch
+  vue-i18n@11.4.18: patches/vue-i18n@11.4.18.patch
   vue-router@4.6.4: patches/vue-router@4.6.4.patch

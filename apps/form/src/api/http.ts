@@ -49,27 +49,33 @@ interface RequestOptions {
   readonly signal?: AbortSignal;
 }
 
-async function send({
+function dispatch({
   method,
   path,
   body,
   signal,
-}: RequestOptions): Promise<
+}: RequestOptions): Promise<Response> {
+  return fetch(path, {
+    method,
+    headers: {
+      accept: 'application/json',
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
+    credentials: 'omit',
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    ...(signal === undefined ? {} : { signal }),
+  });
+}
+
+async function settle(
+  pending: Promise<Response>,
+): Promise<
   | { readonly ok: true; readonly response: Response }
   | { readonly ok: false; readonly failure: Failure }
 > {
   let response: Response;
   try {
-    response = await fetch(path, {
-      method,
-      headers: {
-        accept: 'application/json',
-        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-      },
-      credentials: 'omit',
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      ...(signal === undefined ? {} : { signal }),
-    });
+    response = await pending;
   } catch {
     return { ok: false, failure: { reason: 'unavailable' } };
   }
@@ -98,7 +104,18 @@ export async function request<TSchema extends v.GenericSchema>(
   options: RequestOptions,
   schema: TSchema,
 ): Promise<ApiResult<v.InferOutput<TSchema>>> {
-  const sent = await send(options);
+  return receive(dispatch(options), schema);
+}
+
+/**
+ * A request someone else already sent (`api/early.ts`), read exactly as
+ * `request` reads its own, so a volunteer cannot tell which one served them.
+ */
+export async function receive<TSchema extends v.GenericSchema>(
+  pending: Promise<Response>,
+  schema: TSchema,
+): Promise<ApiResult<v.InferOutput<TSchema>>> {
+  const sent = await settle(pending);
   if (!sent.ok) {
     return sent;
   }
@@ -120,6 +137,6 @@ export async function requestAccepted(
 ): Promise<
   { readonly ok: true } | { readonly ok: false; readonly failure: Failure }
 > {
-  const sent = await send(options);
+  const sent = await settle(dispatch(options));
   return sent.ok ? { ok: true } : sent;
 }

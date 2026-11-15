@@ -81,8 +81,8 @@ function onChange(event: Event): void {
   background: var(--evp-surface-raised);
   /* Transparent rather than none: under forced-colors this is the only edge
      the control has left. */
-  border: 2px solid transparent;
-  border-radius: 0.625rem;
+  border: var(--evp-edge) solid transparent;
+  border-radius: var(--evp-radius-md);
   color: var(--evp-text);
   cursor: pointer;
   font: inherit;
@@ -91,7 +91,7 @@ function onChange(event: Event): void {
   /* 24×24 floor from docs/14 §2, with room either side for the two icons. */
   min-height: 2.25rem;
   padding: 0.25rem 2rem 0.25rem 2.125rem;
-  transition: border-color 120ms ease;
+  transition: border-color var(--evp-duration) ease;
 }
 
 .evp-locale-select:hover {

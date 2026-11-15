@@ -51,3 +51,4 @@ one — never an edit. See [ADR-0001](0001-record-architecture-decisions.md).
 | [0044](0044-event-period-is-operational-doors-are-stated.md) | `events.period` is the operational window; the doors are stated, never inferred | Accepted (supersedes 0033; amends 0029, 0032) |
 | [0045](0045-platform-backoffice-behind-a-deployment-key.md) | A platform backoffice, behind a key the deployment holds | Accepted (amends 0031) |
 | [0046](0046-email-template-edited-as-rich-text-stored-as-html.md) | The schedule email is edited as rich text, and still stored as HTML | Accepted (amends 02 §2) |
+| [0047](0047-flat-visual-language-in-shared-primitives.md) | The interface is flat, and its rules live in one shared stylesheet | Accepted |

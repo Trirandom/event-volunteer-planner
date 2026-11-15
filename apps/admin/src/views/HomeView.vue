@@ -43,7 +43,7 @@ const { data: session } = useSession();
                swapping it a moment later moves the target under the pointer. -->
           <RouterLink
             v-if="session?.status === 'authenticated'"
-            class="evp-button evp-cta"
+            class="evp-button evp-button--slab evp-cta"
             to="/admin"
           >
             {{ t('home.hero.openAdmin') }}
@@ -53,7 +53,7 @@ const { data: session } = useSession();
           </RouterLink>
           <RouterLink
             v-else-if="session !== undefined"
-            class="evp-button evp-cta"
+            class="evp-button evp-button--slab evp-cta"
             to="/login"
           >
             {{ t('home.hero.signIn') }}
@@ -138,11 +138,6 @@ const { data: session } = useSession();
    contrast test proved (packages/shared/src/tokens.ts); the mixes are fills
    and slabs, never a text background. */
 .evp-landing {
-  /* The slab colour: the accent pushed toward black. In the light theme that
-     is a deeper green under a deep green; in the dark theme, where the accent
-     is pale, it lands mid-green, still darker than what it sits under. */
-  --evp-slab: color-mix(in srgb, var(--evp-accent) 55%, #000);
-
   display: flex;
   flex-direction: column;
   gap: 3.5rem;
@@ -237,40 +232,24 @@ const { data: session } = useSession();
 
 /* The call to action, inverted against the hero: a surface-coloured block
    with accent text (proved on `surface`, and on `surfaceRaised`, the hover
-   ground) on a solid slab. `.evp-button--primary` here would be the accent on
-   the accent, which is no button at all. */
+   ground). `.evp-button--primary` here would be the accent on the accent,
+   which is no button at all. The slab and the press come from
+   `.evp-button--slab` (styles.css). */
 .evp-cta {
   align-items: center;
   background: var(--evp-surface);
   border: 2px solid transparent;
-  border-radius: 0.625rem;
-  box-shadow: 6px 6px 0 var(--evp-slab);
   color: var(--evp-accent);
   display: inline-flex;
   font-size: 1.0625rem;
-  font-weight: 700;
   gap: 0.625rem;
   min-height: 3.25rem;
   padding: 0.75rem 1.75rem;
-  transition:
-    background-color 120ms ease,
-    box-shadow 120ms ease,
-    transform 120ms ease;
 }
 
 .evp-cta:hover {
   background: var(--evp-surface-raised);
   border-color: transparent;
-}
-
-/* Pressed, the button sinks into its slab along the slab's own diagonal, so
-   the slab stays put beneath it. It is the one thing on the page that moves,
-   and only once the pointer is already down on it: 3px against a 52px target
-   cannot carry it out from under the pointer. Reduced motion keeps the end
-   state and drops the travel (tokens.css). */
-.evp-cta:active {
-  box-shadow: 3px 3px 0 var(--evp-slab);
-  transform: translate(3px, 3px);
 }
 
 .evp-cta-arrow {

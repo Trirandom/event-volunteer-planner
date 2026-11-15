@@ -120,6 +120,37 @@ dialog:modal {
   border-color: var(--evp-accent-hover);
 }
 
+/* The flat shadow: a solid slab offset down and right, no blur. Its colour is
+ * the accent pushed toward black, which stays darker than what it sits under
+ * in both themes (in the dark theme the accent is pale and this lands
+ * mid-green), so it needs no value under prefers-color-scheme. */
+:root {
+  --evp-slab: color-mix(in srgb, var(--evp-accent) 55%, #000);
+}
+
+/* A call to action: the one button on a screen that should be pressed. One
+ * per screen at most, or none of them reads as the one. */
+.evp-button--slab {
+  border-radius: 0.625rem;
+  box-shadow: 6px 6px 0 var(--evp-slab);
+  font-weight: 700;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+
+/* Pressed, it sinks into its slab along the slab's own diagonal, so the slab
+ * stays put beneath it. The only control that moves, and only once the
+ * pointer is already down on it: 3px against a 44px-plus target cannot carry
+ * it out from under the pointer. Reduced motion keeps the end state and drops
+ * the travel (tokens.css). */
+.evp-button--slab:active:not([disabled]) {
+  box-shadow: 3px 3px 0 var(--evp-slab);
+  transform: translate(3px, 3px);
+}
+
 /* Disabled is carried by more than colour (docs/14 §2): the cursor changes and
  * the control stops responding, and every disabled control in this application
  * is a control whose label already says what it is doing ("Signing in…"). */

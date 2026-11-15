@@ -27,7 +27,7 @@ const { data: session } = useSession();
   <div class="evp-landing">
     <section class="evp-hero">
       <div class="evp-hero-copy">
-        <span class="evp-hero-mark">
+        <span class="evp-tile evp-slab evp-slab--sm evp-hero-mark">
           <BrandMark :size="56" />
         </span>
 
@@ -72,7 +72,7 @@ const { data: session } = useSession();
         </p>
       </div>
 
-      <div class="evp-hero-art">
+      <div class="evp-slab evp-slab--xl evp-hero-art">
         <LandingIllustration />
       </div>
     </section>
@@ -85,8 +85,10 @@ const { data: session } = useSession();
            The icons are decorative — each says the same thing as the heading
            beside it — so they are hidden rather than labelled (docs/14 §2). -->
       <ul class="evp-features">
-        <li class="evp-feature evp-feature--availability">
-          <span class="evp-feature-icon" aria-hidden="true">
+        <li
+          class="evp-card evp-slab evp-slab--tint evp-feature evp-feature--availability"
+        >
+          <span class="evp-icon-tile evp-feature-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <rect x="3" y="5" width="18" height="16" rx="2" />
               <path d="M3 10h18M8 3v4M16 3v4" />
@@ -97,8 +99,10 @@ const { data: session } = useSession();
           <p>{{ t('home.features.availability.body') }}</p>
         </li>
 
-        <li class="evp-feature evp-feature--refusal">
-          <span class="evp-feature-icon" aria-hidden="true">
+        <li
+          class="evp-card evp-slab evp-slab--tint evp-feature evp-feature--refusal"
+        >
+          <span class="evp-icon-tile evp-feature-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path
                 d="M12 3l8 3.5v5c0 4.6-3.2 8.6-8 9.5-4.8-.9-8-4.9-8-9.5v-5z"
@@ -110,8 +114,10 @@ const { data: session } = useSession();
           <p>{{ t('home.features.refusal.body') }}</p>
         </li>
 
-        <li class="evp-feature evp-feature--notify">
-          <span class="evp-feature-icon" aria-hidden="true">
+        <li
+          class="evp-card evp-slab evp-slab--tint evp-feature evp-feature--notify"
+        >
+          <span class="evp-icon-tile evp-feature-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <rect x="3" y="5" width="18" height="14" rx="2" />
               <path d="M3.5 7l8.5 6 8.5-6" />
@@ -122,7 +128,7 @@ const { data: session } = useSession();
         </li>
       </ul>
 
-      <p class="evp-status-note">
+      <p class="evp-notice evp-status-note">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="9" />
           <path d="M12 11v5M12 7.5v.01" />
@@ -131,7 +137,7 @@ const { data: session } = useSession();
       </p>
     </section>
 
-    <section aria-labelledby="about-heading" class="evp-about">
+    <section aria-labelledby="about-heading" class="evp-card evp-about">
       <h2 id="about-heading">{{ t('home.about.heading') }}</h2>
       <SourceNotice />
     </section>
@@ -139,12 +145,10 @@ const { data: session } = useSession();
 </template>
 
 <style scoped>
-/* Flat: every surface is one matte colour, nothing is a gradient, and depth
-   is a solid offset slab with no blur. Each colour is a semantic token or a
-   `color-mix` of two, so one declaration covers both themes and nothing here
-   needs a value under prefers-color-scheme. Text only ever sits on a pair the
-   contrast test proved (packages/shared/src/tokens.ts); the mixes are fills
-   and slabs, never a text background. */
+/* The flat language (ADR-0047). Surfaces, slabs, tiles, the notice and the
+   press come from the shared primitives in flat.css, worn as classes in the
+   template; what is left here is this page's layout and type, and the hero,
+   which exists once. */
 .evp-landing {
   display: flex;
   flex-direction: column;
@@ -157,10 +161,9 @@ const { data: session } = useSession();
 .evp-hero {
   align-items: center;
   background: var(--evp-accent);
-  /* Invisible normally. Under forced-colors the background is dropped and
-     this border is what is left of the block's edge. */
-  border: 2px solid transparent;
-  border-radius: 1rem;
+  /* The flat edge: invisible until forced-colors drops the fill. */
+  border: var(--evp-edge) solid transparent;
+  border-radius: var(--evp-radius-xl);
   color: var(--evp-on-accent);
   display: grid;
   gap: 2rem 2.5rem;
@@ -197,16 +200,6 @@ const { data: session } = useSession();
   height: 11rem;
   left: 30%;
   width: 11rem;
-}
-
-/* The mark has a dark half drawn to stay dark (BrandMark.vue), so it needs a
-   light plate whatever the accent is. */
-.evp-hero-mark {
-  background: var(--evp-surface);
-  border-radius: 1rem;
-  box-shadow: 0 4px 0 var(--evp-slab);
-  display: inline-flex;
-  padding: 0.625rem;
 }
 
 .evp-hero h1 {
@@ -270,12 +263,12 @@ const { data: session } = useSession();
   width: 1.125rem;
 }
 
-/* The drawing rests on its own slab, offset down and right, so it reads as a
-   card laid on the block rather than a hole cut in it. */
+/* The drawing rests on its own slab, so it reads as a card laid on the block
+   rather than a hole cut in it. The margin keeps that slab clear of the
+   hero's clipping edge. */
 .evp-hero-art {
-  border-radius: 20px;
-  box-shadow: 14px 14px 0 var(--evp-slab);
-  margin: 0 14px 14px 0;
+  border-radius: var(--evp-radius-2xl);
+  margin: 0 var(--evp-slab-xl) var(--evp-slab-xl) 0;
 }
 
 h2 {
@@ -296,17 +289,6 @@ h2 {
   padding: 0;
 }
 
-/* No hover state: a card is not a control, and one that answers the pointer
-   promises a click it does not have. */
-.evp-feature {
-  background: var(--evp-surface-raised);
-  border: 2px solid transparent;
-  border-radius: 0.75rem;
-  box-shadow: 5px 5px 0
-    color-mix(in srgb, var(--card-hue) 35%, var(--evp-surface));
-  padding: 1.5rem;
-}
-
 .evp-feature h3 {
   font-size: 1.0625rem;
   font-weight: 700;
@@ -318,26 +300,20 @@ h2 {
   margin: 0;
 }
 
-/* The three hues are decorative — the heading carries the meaning, and nothing
-   is distinguished by colour alone (docs/14 §2). A solid plate of the hue with
-   the glyph knocked out in the page colour. */
-.evp-feature-icon {
-  align-items: center;
-  background: var(--card-hue);
-  border-radius: 0.75rem;
-  color: var(--evp-surface);
-  display: flex;
-  height: 3rem;
-  justify-content: center;
-  width: 3rem;
-}
-
 .evp-feature-icon svg {
   height: 1.5rem;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
   width: 1.5rem;
+}
+
+/* One hue per card, for its slab and its icon tile alike. The hues are
+   decorative: the heading carries the meaning, and nothing is distinguished
+   by colour alone (docs/14 §2). */
+.evp-feature {
+  --evp-slab-hue: var(--card-hue);
+  --evp-tile-hue: var(--card-hue);
 }
 
 .evp-feature--availability {
@@ -352,38 +328,11 @@ h2 {
   --card-hue: var(--evp-warning);
 }
 
-/* A notice, not an alert: nothing is wrong, the build is just early. The tint
-   stays near enough to the surface that body text keeps its contrast, and the
-   bar plus the icon say "note" without leaning on the hue. */
+/* Nothing is wrong, the build is just early: a warning-hued notice, which is
+   the notice's default. */
 .evp-status-note {
-  align-items: flex-start;
-  background: color-mix(in srgb, var(--evp-warning) 10%, var(--evp-surface));
-  border-left: 4px solid var(--evp-warning);
-  border-radius: 0.5rem;
-  display: flex;
-  gap: 0.75rem;
   margin: 2rem 0 0;
   max-width: 70ch;
-  padding: 0.875rem 1rem;
-}
-
-.evp-status-note svg {
-  color: var(--evp-warning);
-  fill: none;
-  flex: none;
-  height: 1.375rem;
-  margin-top: 0.0625rem;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-width: 2;
-  width: 1.375rem;
-}
-
-.evp-about {
-  background: var(--evp-surface-raised);
-  border: 2px solid transparent;
-  border-radius: 0.75rem;
-  padding: 1.25rem 1.5rem;
 }
 
 .evp-about h2 {

@@ -183,6 +183,27 @@ dialog:modal {
   border-color: var(--evp-danger);
 }
 
+/* The flat field (ADR-0047): the flat edge's weight and the control radius.
+ * Still the `border` token, the one proved at 3:1 for a field boundary on both
+ * card and page (docs/14 §2). Focus is still the shared ring (tokens.css); the
+ * accent edge only adds which field the caret is in. The invalid rule is
+ * restated so it outranks the focus colour while the field is focused. */
+.evp-field--flat input,
+.evp-field--flat select {
+  border-radius: var(--evp-radius-md);
+  border-width: var(--evp-edge);
+  transition: border-color var(--evp-duration) ease;
+}
+
+.evp-field--flat input:focus,
+.evp-field--flat select:focus {
+  border-color: var(--evp-accent);
+}
+
+.evp-field--flat input[aria-invalid='true'] {
+  border-color: var(--evp-danger);
+}
+
 /* ── Surfaces ────────────────────────────────────────────────────────────────
  *
  * One panel, used by the About box, the placeholder notice and the

@@ -4,6 +4,7 @@
 @import 'tailwindcss';
 @import '@evp/shared/brand.css';
 @import '@evp/shared/tokens.css';
+@import '@evp/shared/flat.css';
 
 @source "../../../packages/shared/src";
 

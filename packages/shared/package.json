@@ -10,7 +10,8 @@
     "./intl": "./src/intl/index.ts",
     "./time": "./src/time/index.ts",
     "./brand.css": "./src/styles/brand.css",
-    "./tokens.css": "./src/styles/tokens.css"
+    "./tokens.css": "./src/styles/tokens.css",
+    "./flat.css": "./src/styles/flat.css"
   },
   "scripts": {
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"

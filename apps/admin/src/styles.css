@@ -4,6 +4,7 @@
 @import 'tailwindcss';
 @import '@evp/shared/brand.css';
 @import '@evp/shared/tokens.css';
+@import '@evp/shared/flat.css';
 
 /* Tailwind v4 discovers sources by scanning. The shared package sits outside
  * this app's directory, so it is declared explicitly or its classes are
@@ -118,14 +119,6 @@ dialog:modal {
 .evp-button--primary:hover {
   background: var(--evp-accent-hover);
   border-color: var(--evp-accent-hover);
-}
-
-/* The flat shadow: a solid slab offset down and right, no blur. Its colour is
- * the accent pushed toward black, which stays darker than what it sits under
- * in both themes (in the dark theme the accent is pale and this lands
- * mid-green), so it needs no value under prefers-color-scheme. */
-:root {
-  --evp-slab: color-mix(in srgb, var(--evp-accent) 55%, #000);
 }
 
 /* A call to action: the one button on a screen that should be pressed. One

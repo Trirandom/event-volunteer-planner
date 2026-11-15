@@ -1,0 +1,208 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Tristan Grunert and contributors
+ *
+ * The flat visual language: its scales and the primitives built on them
+ * (ADR-0047). Import after tokens.css, whose colours everything here derives
+ * from. Like tokens.css it needs no Tailwind.
+ *
+ * The rules, in short: one matte colour per surface, no gradients, and depth
+ * as a solid slab offset down and right with no blur. The one control on a
+ * screen that should be pressed sinks into its slab while the pointer is down,
+ * and nothing else moves. Text only ever sits on a pair the contrast test
+ * proved (tokens.ts); every `color-mix` here is a fill, a slab or a tint under
+ * near-surface text, never a new foreground/background pair.
+ *
+ * Every scale has a value on bare :root, and none needs one under
+ * prefers-color-scheme: the colours are mixed from tokens that already
+ * follow the theme. flat.test.ts holds both of those, and fails on any
+ * `var(--evp-…)` in either application that nothing declares.
+ */
+
+:root {
+  /* Corner radius, by what is being rounded. */
+  --evp-radius-sm: 0.5rem; /* notices, small tags */
+  --evp-radius-md: 0.625rem; /* controls: buttons, fields, pills, selects */
+  --evp-radius-lg: 0.75rem; /* cards, icon tiles */
+  --evp-radius-xl: 1rem; /* blocks: a hero, a sign-in card, the mark's tile */
+  --evp-radius-2xl: 1.25rem; /* a framed picture laid on a block */
+
+  /* The flat edge. Transparent on a block, so it is invisible until
+     forced-colors drops the fill and the slab, when it is the only edge the
+     block has left (docs/14 §2). As a field's border it carries the `border`
+     token, which is the one proved at 3:1. */
+  --evp-edge: 2px;
+
+  /* Slab offsets, by how far the thing stands off the page. */
+  --evp-slab-sm: 4px; /* a tile */
+  --evp-slab-md: 6px; /* a button, a card */
+  --evp-slab-lg: 10px; /* a card that is the whole screen */
+  --evp-slab-xl: 14px; /* a picture laid on a block */
+
+  /* How far a pressed control sinks. Kept well under the 24px target floor
+     (docs/14 §2) so a press cannot carry a control out from under the
+     pointer that pressed it. */
+  --evp-press: 3px;
+
+  /* Colour changes and the press. The shared reduced-motion rule
+     (tokens.css) cuts it to nothing. */
+  --evp-duration: 120ms;
+
+  /* The slab colour: the accent pushed toward black. A deeper green under a
+     deep green in the light theme; in the dark theme, where the accent is
+     pale, it lands mid-green, still darker than what it sits under. */
+  --evp-slab: color-mix(in srgb, var(--evp-accent) 55%, #000);
+}
+
+/* ── Depth ───────────────────────────────────────────────────────────────────
+ *
+ * The slab is a box-shadow, so it takes no layout space. Leave the offset free
+ * on the right and below wherever an ancestor clips with overflow.
+ *
+ * Each knob is reset on the element that wears `.evp-slab`, so a slabbed
+ * button inside a slabbed card does not inherit the card's depth. */
+
+.evp-slab {
+  --evp-slab-offset: var(--evp-slab-md);
+  --evp-slab-hue: var(--evp-accent);
+  --evp-slab-colour: var(--evp-slab);
+  --evp-slab-sink: 0px;
+
+  box-shadow: calc(var(--evp-slab-offset) - var(--evp-slab-sink))
+    calc(var(--evp-slab-offset) - var(--evp-slab-sink)) 0 var(--evp-slab-colour);
+}
+
+.evp-slab--sm {
+  --evp-slab-offset: var(--evp-slab-sm);
+}
+
+.evp-slab--lg {
+  --evp-slab-offset: var(--evp-slab-lg);
+}
+
+.evp-slab--xl {
+  --evp-slab-offset: var(--evp-slab-xl);
+}
+
+/* A slab tinted from a hue rather than darkened from the accent: for blocks
+ * that sit on the page, where a near-black slab would outweigh its content.
+ * Set `--evp-slab-hue` on the same element to change the hue. */
+.evp-slab--tint {
+  --evp-slab-colour: color-mix(
+    in srgb,
+    var(--evp-slab-hue) 30%,
+    var(--evp-surface)
+  );
+}
+
+/* Pressed, the control sinks along its slab's own diagonal, so the slab stays
+ * put beneath it. Only while the pointer is down on it; reduced motion keeps
+ * the end state and drops the travel. */
+.evp-pressable {
+  transition:
+    background-color var(--evp-duration) ease,
+    border-color var(--evp-duration) ease,
+    box-shadow var(--evp-duration) ease,
+    transform var(--evp-duration) ease;
+}
+
+.evp-pressable:active:not([disabled]) {
+  --evp-slab-sink: var(--evp-press);
+
+  transform: translate(var(--evp-press), var(--evp-press));
+}
+
+/* ── Surfaces ──────────────────────────────────────────────────────────────── */
+
+/* A card: a raised fill with a transparent edge. Not interactive, so it has
+ * no hover state; one that answered the pointer would promise a click it does
+ * not have. */
+.evp-card {
+  background: var(--evp-surface-raised);
+  border: var(--evp-edge) solid transparent;
+  border-radius: var(--evp-radius-lg);
+  padding: 1.5rem;
+}
+
+/* A tile: the page colour, square-ish, to put the mark on. The mark has a
+ * half drawn to stay dark (BrandMark.vue), so it needs this plate on anything
+ * that is not the page. */
+.evp-tile {
+  background: var(--evp-surface);
+  border: var(--evp-edge) solid transparent;
+  border-radius: var(--evp-radius-xl);
+  display: inline-flex;
+  padding: 0.5rem;
+}
+
+/* A solid plate of a hue with its glyph knocked out in the page colour. The
+ * hue is decorative: whatever sits beside the tile carries the meaning
+ * (docs/14 §2). Set `--evp-tile-hue`. */
+.evp-icon-tile {
+  align-items: center;
+  background: var(--evp-tile-hue, var(--evp-accent));
+  border-radius: var(--evp-radius-lg);
+  color: var(--evp-surface);
+  display: flex;
+  flex: none;
+  height: 3rem;
+  justify-content: center;
+  width: 3rem;
+}
+
+/* A notice, not an alert: a tint of its hue near enough to the surface that
+ * body text keeps its contrast, a bar on the leading edge, and an icon, so
+ * the kind of note is not carried by hue alone. Set `--evp-notice-hue`. */
+.evp-notice {
+  align-items: flex-start;
+  background: color-mix(
+    in srgb,
+    var(--evp-notice-hue, var(--evp-warning)) 10%,
+    var(--evp-surface)
+  );
+  border-inline-start: 4px solid var(--evp-notice-hue, var(--evp-warning));
+  border-radius: var(--evp-radius-sm);
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+}
+
+.evp-notice > svg {
+  color: var(--evp-notice-hue, var(--evp-warning));
+  fill: none;
+  flex: none;
+  height: 1.375rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+  width: 1.375rem;
+}
+
+/* ── Controls ──────────────────────────────────────────────────────────────── */
+
+/* A pill: a navigation item or a compact control in a bar. No underline: a
+ * nav item has no running text around it to be told from (WCAG 1.4.1), and
+ * its place in a labelled bar, its weight and its padding identify it. The
+ * current page is a solid fill and `aria-current`, so it is announced as well
+ * as seen and is more than a change of hue. */
+.evp-pill {
+  border: var(--evp-edge) solid transparent;
+  border-radius: var(--evp-radius-md);
+  color: var(--evp-accent);
+  font-weight: 600;
+  /* 24×24 floor from docs/14 §2, reached with padding rather than a
+     min-height that would fight a flex row's baseline. */
+  padding: 0.375rem 0.75rem;
+  text-decoration: none;
+  transition:
+    background-color var(--evp-duration) ease,
+    border-color var(--evp-duration) ease;
+}
+
+.evp-pill:hover {
+  background: var(--evp-surface-raised);
+}
+
+.evp-pill[aria-current='page'] {
+  background: var(--evp-surface-raised);
+  color: var(--evp-text);
+}

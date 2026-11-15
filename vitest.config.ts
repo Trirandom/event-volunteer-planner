@@ -56,7 +56,8 @@ export default defineConfig({
           name: 'form',
           root: './apps/form',
           environment: 'jsdom',
-          include: ['src/**/*.test.ts'],
+          // `build/` holds the Vite plugin that rewrites the form's HTML.
+          include: ['src/**/*.test.ts', 'build/**/*.test.ts'],
           setupFiles: ['./src/i18n/testSetup.ts'],
         },
       },

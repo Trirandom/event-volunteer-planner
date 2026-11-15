@@ -9,6 +9,8 @@ import { defineConfig } from 'vite';
 
 import { vueI18nBuildFlags } from '../../packages/shared/src/i18n/buildFlags';
 
+import { firstPaint } from './build/firstPaint';
+
 /**
  * The public volunteer form. Served at `/f/` by Caddy (docs/09 §4).
  *
@@ -46,7 +48,7 @@ const usePolling = process.env['VITE_USE_POLLING'] === 'true';
 
 export default defineConfig({
   base: '/f/',
-  plugins: [vue(), tailwindcss()],
+  plugins: [vue(), tailwindcss(), firstPaint()],
   define: vueI18nBuildFlags,
   publicDir,
   server: {
@@ -68,5 +70,13 @@ export default defineConfig({
     // (docs/01 §5: < 1.5 s cold on 3G-fast). A rollup warning at 250 kB is
     // early enough to be a conversation rather than a regression.
     chunkSizeWarningLimit: 250,
+    // A second entry so it is its own small file that `build/firstPaint.ts`
+    // can run ahead of the application, rather than code inside it.
+    rollupOptions: {
+      input: {
+        index: fileURLToPath(new URL('index.html', import.meta.url)),
+        early: fileURLToPath(new URL('src/early.ts', import.meta.url)),
+      },
+    },
   },
 });

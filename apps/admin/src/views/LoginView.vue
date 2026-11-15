@@ -109,7 +109,9 @@ function submit(): void {
   <div class="evp-login-card evp-panel">
     <!-- The mark stands alone here, so unlike the header it is labelled: there
          is no adjacent product name for it to be redundant with. -->
-    <BrandMark :size="44" :label="t('common.productName')" />
+    <span class="evp-login-mark">
+      <BrandMark :size="44" :label="t('common.productName')" />
+    </span>
 
     <h1>{{ t('login.title') }}</h1>
     <p class="evp-login-intro">{{ t('login.intro') }}</p>
@@ -174,7 +176,7 @@ function submit(): void {
       </p>
 
       <button
-        class="evp-button evp-button--primary"
+        class="evp-button evp-button--primary evp-button--slab"
         type="submit"
         :disabled="isPending"
       >
@@ -194,15 +196,33 @@ function submit(): void {
    the mark on it is what says "you are in the right place" before the fields
    are read. */
 .evp-login-card {
+  /* Flat, like the landing page it is reached from: no drawn border, a solid
+     slab instead. The border stays, transparent, as the card's edge under
+     forced-colors, where the background and the slab are both dropped. */
+  border: 2px solid transparent;
+  border-radius: 1rem;
+  box-shadow: 10px 10px 0
+    color-mix(in srgb, var(--evp-accent) 22%, var(--evp-surface));
   margin: 0 auto;
   max-width: 26rem;
-  padding: 1.75rem 1.5rem 1.5rem;
+  padding: 2rem 1.75rem 1.75rem;
+}
+
+/* The same tile the landing hero puts the mark on, so the two screens read as
+   one place. */
+.evp-login-mark {
+  background: var(--evp-surface);
+  border-radius: 0.875rem;
+  box-shadow: 0 4px 0 var(--evp-slab);
+  display: inline-flex;
+  padding: 0.5rem;
 }
 
 .evp-login-card h1 {
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-  margin: 1rem 0 0.25rem;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 1.25rem 0 0.25rem;
 }
 
 .evp-login-intro {
@@ -218,9 +238,26 @@ function submit(): void {
    ground to stay distinguishable from what is behind it. */
 .evp-login .evp-field input {
   background: var(--evp-surface);
+  /* 2px, the flat weight. Still the `border` token, which is what clears the
+     3:1 a field boundary needs (docs/14 §2) on both card and page. */
+  border-width: 2px;
+  border-radius: 0.625rem;
+  transition: border-color 120ms ease;
+}
+
+/* The ring is the focus indicator and stays (tokens.css); the accent edge
+   only adds which field the caret is in when the ring is offset from it. */
+.evp-login .evp-field input:focus {
+  border-color: var(--evp-accent);
+}
+
+.evp-login .evp-field input[aria-invalid='true'] {
+  border-color: var(--evp-danger);
 }
 
 .evp-login .evp-button {
+  margin-top: 0.5rem;
+  min-height: 3rem;
   width: 100%;
 }
 
@@ -230,7 +267,7 @@ function submit(): void {
      is not a message a colour-blind reader can pick out of the page. */
   border: 1px solid var(--evp-danger);
   border-left-width: 4px;
-  border-radius: 0.375rem;
+  border-radius: 0.625rem;
   color: var(--evp-danger);
   margin: 0 0 1.25rem;
   padding: 0.75rem;

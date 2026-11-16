@@ -140,6 +140,17 @@ services:
   caddy:
     ports:
       - '127.0.0.1:${EVP_HTTP_PORT:-8080}:8080'
+    environment:
+      # This stack's `api` by default. `just up-front` sets it to another
+      # stack's Caddy on the host, so a frontend-only worktree runs no Rust.
+      # That second proxy hop means the login rate limit sees the first
+      # Caddy's address, so every borrowing stack shares one bucket — fine on
+      # a laptop, and the reason this is never set outside development.
+      EVP_API_UPSTREAM: ${EVP_API_UPSTREAM:-api:3000}
+    extra_hosts:
+      # Docker Desktop resolves this name already; Linux Engine needs it spelt
+      # out, and an unused entry costs nothing.
+      - host.docker.internal:host-gateway
     volumes:
       - ./docker/caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
     depends_on:
@@ -178,4 +189,13 @@ volumes:
   evp-node-modules-admin:
   evp-node-modules-form:
   evp-node-modules-shared:
+  # Every other volume belongs to one Compose project, so each worktree has its
+  # own (docs/06 §3). The pnpm store is the exception, by fixed name: it is
+  # content-addressed and pnpm writes it with atomic renames, so concurrent
+  # installs from several worktrees are safe, and sharing it means a new
+  # worktree links packages instead of downloading them. The cargo registry
+  # is NOT shared this way: cargo's lock for it lives in CARGO_HOME, outside
+  # the volume, so two containers would write it unguarded. `just seed-cache`
+  # copies it instead.
   evp-pnpm-store:
+    name: evp-pnpm-store

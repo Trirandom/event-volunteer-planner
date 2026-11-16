@@ -79,6 +79,8 @@ database runs inside Compose**; only the frontend recipes run on the host.
 ```
 just up           # whole stack, http://localhost:8080 (Mailpit UI :8025)
 just upd          # detached
+just up-front [port]      # frontend-only worktree: web + caddy, API borrowed from the stack on port (8080)
+just seed-cache [project] # before a worktree's first `just up`: copy project's (evp) cargo target + registry
 just down / nuke  # stop; nuke also destroys volumes (only way to re-run docker/db/init/)
 just logs [svc]
 just up-oidc      # adds Dex, to exercise OIDC offline

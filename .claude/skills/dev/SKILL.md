@@ -85,9 +85,21 @@ Don't run any `just` or `docker compose` command in the worktree until that
 - The worktree's stack is at `http://localhost:808N`. `just e2e` doesn't read
   `.env`, so point Playwright at it with
   `EVP_E2E_BASE_URL=http://localhost:808N just e2e`.
-- The first `just up` or `just test` compiles from cold, because the cargo
-  target and registry volumes belong to the project. That's the cost of not
-  sharing a build.
+- The cargo target and registry volumes belong to the project, so a new
+  worktree's first `just up` or `just test` compiles from cold, `migrate`
+  included (it's a `cargo run`). Pick the cheapest start that still tests
+  the change (docs/06 §3 has the details):
+  - **Only `apps/` or `packages/` change:** `just up-front`. It starts only
+    `web` and `caddy` and borrows the API of the stack on 8080 (or
+    `just up-front 808M` for another worktree's), so no Rust is built. That
+    API is the other stack's code and data. As soon as the branch touches
+    `crates/` or `migrations/`, switch to `just up`.
+  - **The API is needed:** run `just seed-cache` once, before the first
+    `just up` or `just test`. It copies the main checkout's target and
+    registry (`just seed-cache evp-<other>` copies a worktree's), so only the
+    workspace crates rebuild. Don't share those volumes between projects
+    instead (docs/06 §3 says why).
+  - The pnpm store is already shared between all projects.
 - `docker compose ls` lists every stack. Each one should be `evp-<slug>` for a
   live worktree, or `evp` for the main checkout.
 

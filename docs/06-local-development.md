@@ -222,6 +222,8 @@ A `justfile` wraps the common paths so nobody has to remember them
 
 ```
 just up / upd        # compose up with the dev override (upd: detached)
+just up-front [PORT] # web + caddy only, API borrowed from the stack on PORT (8080)
+just seed-cache [P]  # copy project P's (evp) cargo target + registry into this stack
 just down / nuke     # stop; nuke also destroys the volumes
 just logs [svc]      # follow logs
 just up-oidc         # also start Dex
@@ -241,6 +243,49 @@ just mutants         # cargo-mutants over the pure crates — slower, run before
 just e2e             # Playwright; needs the stack up
 just openapi         # regenerate openapi.json and the TS client — planned, see 11 §3
 ```
+
+### Worktrees without the cold build
+
+Each change gets its own git worktree and its own Compose project
+(`COMPOSE_PROJECT_NAME` in the worktree's `.env`, per the `dev` skill), so its
+database, ports and volumes never collide with another one's. The cost is that
+a project's volumes start empty: the first `just up` downloads every crate and
+compiles the workspace from nothing, with dependencies at `opt-level = 2`, and
+the dev `migrate` step is a `cargo run`, so it waits on that same compile
+however few SQL files there are. Three things take most of that away:
+
+- **`just up-front [PORT]` for a frontend-only change.** It starts only this
+  stack's `web` and `caddy` and sets `EVP_API_UPSTREAM` so the dev Caddyfile
+  proxies `/api/*` and `/calendar/*` to another stack's Caddy on the host
+  (`host.docker.internal:PORT`, the main checkout's 8080 by default) instead of
+  to its own `api`. The browser still sees one origin, the worktree's, so
+  cookies and CSRF behave as in [§1](#1-compose-topology). It refuses to
+  borrow its own port and refuses if nothing answers `/api/v1/meta` there. The
+  borrowed API is the other stack's code and data, so this is only right while
+  the branch leaves `crates/` and `migrations/` alone. Browsers do not separate
+  `localhost` cookies by port, so a session opened on the lending stack is
+  usually already valid here.
+- **`just seed-cache [PROJECT]` before the first `just up`** of a worktree that
+  does need the API. It copies another project's `evp-cargo-target` and
+  `evp-cargo-registry` volumes (the main checkout's `evp` by default) into this
+  one's. Every stack mounts the code at `/app` and the registry at the same
+  path, so cargo's fingerprints match: dependencies stay compiled and only the
+  workspace crates rebuild, because the worktree's files are newer. The target
+  is several gigabytes, so the copy takes a while, but it's a fraction of a
+  cold compile. The volumes are copied, not shared: one live target across
+  worktrees would queue every build on cargo's lock and let branches overwrite
+  each other's incremental state, and the registry's lock lives in
+  `CARGO_HOME` outside the volume, so two containers sharing it would write it
+  unguarded.
+- **One pnpm store for every project.** `evp-pnpm-store` has a fixed `name:` in
+  `compose.override.yaml`, so a new worktree's `web` links packages it has
+  seen before instead of downloading them. That one is safe to share live,
+  because the store is content-addressed and written with atomic renames. The
+  per-package `node_modules` volumes stay per project, since two branches can
+  have different lockfiles.
+
+Docker's layer cache is already global, so the dev images themselves are not
+rebuilt per worktree: `--build` resolves from cache.
 
 **`bootstrap` and `seed` are stubs today**: `evp-cli create-org` and
 `evp-cli seed` exit with "lands with M0/M2", so `just db-reset` stops after

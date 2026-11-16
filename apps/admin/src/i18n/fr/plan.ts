@@ -14,9 +14,15 @@ export default {
     shifts: 'Créneaux',
     form: 'Formulaire',
     assignments: 'Affectations',
-    submissions: 'Réponses au formulaire',
     availability: 'Disponibilités',
     emails: 'E-mails',
+  },
+  formTabs: {
+    /** aria-label of the tabs under the header on the form's three views. */
+    label: 'Vues du formulaire',
+    builder: 'Éditeur',
+    publication: 'Publication',
+    submissions: 'Réponses',
   },
   scope: {
     /** aria-label of the strip that switches between the festival and one of its days. */

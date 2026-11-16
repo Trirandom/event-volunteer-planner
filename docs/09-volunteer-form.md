@@ -68,7 +68,18 @@ data is kept ([ADR-0037](adr/0037-custom-answers-are-kept-per-participation.md))
 | Pool-retention consent | `volunteers.pool_consent_*` | **Never** |
 
 New forms start with first name, last name, email, phone, availability,
-missions, the volunteer commitment and the processing consent; the editor offers the rest from a palette.
+missions, the volunteer commitment and the processing consent; the editor offers the rest from a toolbox beside the questions —
+clicked to append, or dragged into place, as the cards themselves are dragged
+by their grip (the move buttons and `Alt+↑`/`Alt+↓` are the non-drag path,
+[ADR-0017](adr/0017-accessibility-target-wcag22-aa.md)). The admin shows the
+form as one section in three tabs: the builder, publication (status, the
+publish action, the form's settings, and the public link and its
+open-to-sign-ups switch, which appear only once a version is live), and the
+submissions.
+Beside the built-ins the toolbox offers two pre-written questions, an
+experience level (single choice) and a driving licence (yes/no). They create
+ordinary custom questions: experience and licences are skills ([03](03-data-model.md)), which
+are not built, so there is no profile field for them to fill yet.
 Custom questions — the fly team, experience level, the info meeting, the
 WhatsApp group — are any of `short_text`, `long_text`, `single_choice`,
 `multi_choice`, `boolean` or `date`, may be marked **sensitive**, and are
@@ -119,6 +130,9 @@ because a scene name or a four-token name has to survive intact.
 
 Every published form is an immutable **version**. Editing a live form creates a
 new version; existing submissions stay attached to the version they answered.
+Until it is published a version is a draft: the builder saves it as it is
+edited, and its undo is the editor's own history
+([ADR-0048](adr/0048-form-draft-autosaves-with-editor-undo.md)).
 
 This is the part that makes owning the form worth it beyond the picker. The
 external-source problem — a coordinator inserts a question and the next import

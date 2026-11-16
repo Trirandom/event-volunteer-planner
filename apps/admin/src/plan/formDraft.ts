@@ -29,7 +29,6 @@
  *
  * Pure. The page that holds a draft is `views/PlanFormView.vue`.
  */
-import { Temporal } from '@evp/shared/time';
 
 import type {
   ConsentPurpose,
@@ -371,6 +370,46 @@ export function moveQuestion(
   };
 }
 
+/**
+ * Moves a question into a *gap* of the list as it stands — gap `g` is the one
+ * above the question at index `g`, and gap `length` is the one after the last.
+ *
+ * Gaps rather than target indices because a drop is aimed at the space
+ * between two cards, measured before anything has moved (`plan/dropGap.ts`).
+ * Translating that into "the index it ends up at" is the off-by-one every
+ * hand-written drag list gets wrong once: a question leaving from above its
+ * gap lands one place earlier than the gap's number. `null` when the drop
+ * would leave the list as it was — either gap beside the question itself —
+ * so the page announces nothing and marks nothing dirty.
+ */
+export function placeQuestion(
+  draft: FormDraft,
+  key: string,
+  gap: number,
+): { readonly draft: FormDraft; readonly index: number } | null {
+  const from = draft.questions.findIndex((question) => question.key === key);
+  const moving = draft.questions[from];
+  if (
+    from === -1 ||
+    moving === undefined ||
+    gap < 0 ||
+    gap > draft.questions.length ||
+    gap === from ||
+    gap === from + 1
+  ) {
+    return null;
+  }
+  const to = gap > from ? gap - 1 : gap;
+  const rest = draft.questions.filter((question) => question.key !== key);
+  return {
+    draft: {
+      ...draft,
+      questions: [...rest.slice(0, to), moving, ...rest.slice(to)],
+    },
+    index: to,
+  };
+}
+
 /** Removes a question the rules allow removing, and refuses the rest by
  * returning the draft unchanged. */
 export function removeQuestion(draft: FormDraft, key: string): FormDraft {
@@ -387,6 +426,25 @@ export function appendQuestion(
   question: DraftQuestion,
 ): FormDraft {
   return { ...draft, questions: [...draft.questions, question] };
+}
+
+/** A new question, dropped from the toolbox into a gap (as `placeQuestion`
+ * counts them). Clamped rather than refused: a drop always came from a real
+ * pointer over the list, and the nearest end is where it was aimed. */
+export function insertQuestion(
+  draft: FormDraft,
+  question: DraftQuestion,
+  gap: number,
+): FormDraft {
+  const at = Math.min(Math.max(gap, 0), draft.questions.length);
+  return {
+    ...draft,
+    questions: [
+      ...draft.questions.slice(0, at),
+      question,
+      ...draft.questions.slice(at),
+    ],
+  };
 }
 
 // ── Options ─────────────────────────────────────────────────────────────────
@@ -804,6 +862,85 @@ export function customQuestion(
   };
 }
 
+// ── Pre-written questions ───────────────────────────────────────────────────
+
+/**
+ * Questions most forms ask that have no field of their own to fill.
+ *
+ * Offered beside the built-ins, but they make **custom** questions: their
+ * answers are kept with the participation and filterable on the submissions
+ * page, like any custom answer. Experience and a driving licence are skills
+ * (docs/03, docs/09 §1), and skills are not built; a built-in with a
+ * `target_path` would need a volunteer column nobody has decided on. When
+ * skills land, the options can carry a `skill_id` without the question
+ * changing. Until then a preset is wording with a head start, which is why
+ * it is recognised by its wording and offered again once reworded.
+ */
+export const PRESETS = ['experience', 'driving_licence'] as const;
+
+export type PresetId = (typeof PRESETS)[number];
+
+interface PresetTemplate {
+  readonly kind: CustomKind;
+  readonly fr: string;
+  readonly en: string;
+  readonly options?: readonly { readonly fr: string; readonly en: string }[];
+}
+
+/** Worded after the Soundclash form's own experience and licence questions,
+ * tidied for any organisation. */
+const PRESET_TEMPLATES: Readonly<Record<PresetId, PresetTemplate>> = {
+  experience: {
+    kind: 'single_choice',
+    fr: 'Quel est ton niveau d’expérience en bénévolat ?',
+    en: 'How experienced are you as a volunteer?',
+    options: [
+      { fr: 'C’est ma première fois', en: 'This is my first time' },
+      {
+        fr: 'J’ai déjà été bénévole quelques fois',
+        en: 'I have volunteered a few times',
+      },
+      { fr: 'J’ai de la bouteille', en: 'I am an old hand' },
+      {
+        fr: 'Je peux encadrer une équipe de bénévoles',
+        en: 'I can lead a team of volunteers',
+      },
+    ],
+  },
+  driving_licence: {
+    kind: 'boolean',
+    fr: 'As-tu le permis de conduire (B) ?',
+    en: 'Do you have a driving licence (B)?',
+  },
+};
+
+export function presetQuestion(
+  id: PresetId,
+  key: string,
+  nextKey: () => string,
+): DraftQuestion {
+  const template = PRESET_TEMPLATES[id];
+  const options = (template.options ?? []).reduce<DraftOption[]>(
+    (built, option) =>
+      addOption(built, nextKey(), option.fr).map((o, i) =>
+        i === built.length ? { ...o, labelEn: option.en } : o,
+      ),
+    [],
+  );
+  return {
+    ...customQuestion(template.kind, key),
+    labelFr: template.fr,
+    labelEn: template.en,
+    options: template.options === undefined ? null : options,
+  };
+}
+
+/** The presets whose wording is not on the form yet. */
+export function availablePresets(draft: FormDraft): PresetId[] {
+  const labels = new Set(draft.questions.map((q) => q.labelFr.trim()));
+  return PRESETS.filter((id) => !labels.has(PRESET_TEMPLATES[id].fr));
+}
+
 /** Whether a question's options are the coordinator's to edit. The sizes
  * are fixed and the missions come from the scope; both have their own
  * rendering. */
@@ -1153,59 +1290,3 @@ export function positionBase(version: FormVersion): number {
     version.questions[0]?.position ?? 0,
   );
 }
-
-// ── The preview ─────────────────────────────────────────────────────────────
-
-/**
- * When a night stops being "the day before". A club night ending at 05:00 is
- * one day of the event, not two — docs/09 §3: a day that crosses midnight
- * belongs to the day it starts on — so an end at or before this hour does not
- * open a row of its own.
- */
-const OVERNIGHT_CUTOFF = Temporal.PlainTime.from('06:00');
-
-/** Enough for any real edition, and a bound on a malformed period. */
-const MAX_DAYS = 62;
-
-/**
- * The day rows an event's availability group would show, as instants at
- * noon in the event's own zone — which is what `formatDate` needs to name the
- * right date whatever the viewer's zone is.
- */
-export function eventDays(
-  period: { readonly start: string; readonly end: string },
-  timezone: string,
-): number[] {
-  const start = Temporal.Instant.from(period.start).toZonedDateTimeISO(
-    timezone,
-  );
-  const end = Temporal.Instant.from(period.end).toZonedDateTimeISO(timezone);
-  let last = end.toPlainDate();
-  const first = start.toPlainDate();
-  if (
-    Temporal.PlainDate.compare(last, first) > 0 &&
-    Temporal.PlainTime.compare(end.toPlainTime(), OVERNIGHT_CUTOFF) <= 0
-  ) {
-    last = last.subtract({ days: 1 });
-  }
-
-  const days: number[] = [];
-  for (
-    let day = first;
-    Temporal.PlainDate.compare(day, last) <= 0 && days.length < MAX_DAYS;
-    day = day.add({ days: 1 })
-  ) {
-    days.push(
-      day.toZonedDateTime({
-        timeZone: timezone,
-        plainTime: Temporal.PlainTime.from('12:00'),
-      }).epochMilliseconds,
-    );
-  }
-  return days;
-}
-
-/** A single-choice question is a radio group up to this many options and a
- * select past it (docs/09 §1: "by option count") — a column of fifteen
- * radios on a phone is a scroll, a select is one tap. */
-export const RADIO_LIMIT = 6;

@@ -32,8 +32,10 @@ out of order, driven by the first real festival, Soundclash 26):
   accounts and assign members, through the `app.backoffice` RLS scope
   (`evp-api/src/backoffice.rs`, `evp_db::backoffice`); its writes are the
   first `audit_log` rows. Off (404) when the key is unset.
-- **Admin plan pages:** details → missions → shifts → form → assignments →
-  submissions (+ `…/submissions/review`) → availability → emails (template
+- **Admin plan pages:** details → missions → shifts → form (one rail entry,
+  three tabs: builder `…/form` with a drag-and-drop toolbox, publication
+  `…/form/publication`, submissions `…/submissions` + `…/submissions/review`)
+  → availability → assignments → emails (template
   written in a Tiptap rich-text editor whose schema is the email-safe
   allowlist, ADR-0046, `plan/emailEditor.ts`; dry-run preview only — nothing
   is sent), plus `/:org/sms-settings`, and `/backoffice` outside any org (key

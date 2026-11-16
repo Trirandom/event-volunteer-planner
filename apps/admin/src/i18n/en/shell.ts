@@ -8,7 +8,11 @@ export default {
   nav: {
     label: 'Primary',
     events: 'Events',
+    sms: 'SMS configuration',
     admin: 'Admin panel',
     signIn: 'Sign in',
+  },
+  org: {
+    label: 'Organisation',
   },
 } satisfies typeof fr;

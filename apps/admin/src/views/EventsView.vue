@@ -147,6 +147,26 @@ function eventLine(event: Event): EventLine {
 const upcomingLines = computed(() => agenda.value.upcoming.map(toLine));
 const pastLines = computed(() => agenda.value.past.map(toLine));
 
+/** Upcoming then past, each only when it has something in it. One template
+ * draws both, because they are the same cards: a second hand-written copy is
+ * the one that misses the next change to a card. What differs is `past`. */
+const agendaSections = computed(() =>
+  [
+    {
+      id: 'upcoming',
+      heading: t('events.list.upcoming'),
+      lines: upcomingLines.value,
+      past: false,
+    },
+    {
+      id: 'past',
+      heading: t('events.list.past'),
+      lines: pastLines.value,
+      past: true,
+    },
+  ].filter((section) => section.lines.length > 0),
+);
+
 const listPending = computed(
   () => eventsPending.value || festivalsPending.value,
 );
@@ -376,7 +396,7 @@ function dismissExampleStatus(): void {
   <h1>{{ t('events.list.title') }}</h1>
 
   <!-- The form is the first thing on the page, before the list it adds to. -->
-  <section aria-labelledby="create-heading" class="evp-panel evp-create">
+  <section aria-labelledby="create-heading" class="evp-card evp-create">
     <h2 id="create-heading">{{ t('events.list.create.heading') }}</h2>
 
     <p class="evp-create-actions">
@@ -444,23 +464,24 @@ function dismissExampleStatus(): void {
            the wrong button would be the only difference a second <form>
            bought. -->
       <form
+        class="evp-create-form"
         @submit.prevent="
           openForm === 'event' ? createEvent() : createFestival()
         "
       >
-        <p class="evp-field">
+        <p class="evp-field evp-field--flat evp-create-wide">
           <label for="create-name">
             <span>{{ t('events.list.create.name') }}</span>
             <input id="create-name" v-model="name" type="text" required />
           </label>
         </p>
-        <p class="evp-field">
+        <p class="evp-field evp-field--flat">
           <label for="create-slug">
             <span>{{ t('events.list.create.slug') }}</span>
             <input id="create-slug" v-model="slug" type="text" required />
           </label>
         </p>
-        <p class="evp-field">
+        <p class="evp-field evp-field--flat">
           <label for="create-timezone">
             <span>{{ t('events.list.create.timezone') }}</span>
             <input
@@ -471,7 +492,7 @@ function dismissExampleStatus(): void {
             />
           </label>
         </p>
-        <p class="evp-field">
+        <p class="evp-field evp-field--flat">
           <label for="create-start">
             <span>{{ t('events.list.create.starts') }}</span>
             <input
@@ -482,7 +503,7 @@ function dismissExampleStatus(): void {
             />
           </label>
         </p>
-        <p class="evp-field">
+        <p class="evp-field evp-field--flat">
           <label for="create-end">
             <span>{{ t('events.list.create.ends') }}</span>
             <input
@@ -493,26 +514,28 @@ function dismissExampleStatus(): void {
             />
           </label>
         </p>
-        <button
-          class="evp-button evp-button--primary"
-          type="submit"
-          :disabled="createEventPending || createFestivalPending"
-        >
-          <template v-if="openForm === 'event'">
-            {{
-              createEventPending
-                ? t('events.list.create.creating')
-                : t('events.list.create.createEvent')
-            }}
-          </template>
-          <template v-else>
-            {{
-              createFestivalPending
-                ? t('events.list.create.creating')
-                : t('events.list.create.createFestival')
-            }}
-          </template>
-        </button>
+        <p class="evp-create-wide evp-create-submit">
+          <button
+            class="evp-button evp-button--primary"
+            type="submit"
+            :disabled="createEventPending || createFestivalPending"
+          >
+            <template v-if="openForm === 'event'">
+              {{
+                createEventPending
+                  ? t('events.list.create.creating')
+                  : t('events.list.create.createEvent')
+              }}
+            </template>
+            <template v-else>
+              {{
+                createFestivalPending
+                  ? t('events.list.create.creating')
+                  : t('events.list.create.createFestival')
+              }}
+            </template>
+          </button>
+        </p>
       </form>
     </div>
   </section>
@@ -531,27 +554,39 @@ function dismissExampleStatus(): void {
     <section
       v-if="isEmpty"
       aria-labelledby="empty-heading"
-      class="evp-panel evp-empty"
+      class="evp-card evp-empty"
     >
       <h2 id="empty-heading">{{ t('events.list.empty.heading') }}</h2>
       <p>{{ t('events.list.empty.body') }}</p>
     </section>
 
     <template v-else>
+      <!-- Upcoming and past are the same cards; the archive only turns its
+           names to the muted token. Two loops rather than one with a flag,
+           because only an upcoming festival offers "Add an event" — adding a
+           day to one that is over is a correction, made from its own page. -->
       <section
-        v-if="upcomingLines.length > 0"
-        aria-labelledby="upcoming-heading"
+        v-for="list in agendaSections"
+        :key="list.id"
+        :aria-labelledby="`${list.id}-heading`"
       >
-        <h2 id="upcoming-heading">{{ t('events.list.upcoming') }}</h2>
-        <ul class="evp-agenda">
-          <li v-for="group in upcomingLines" :key="group.key">
-            <!-- Two shapes, one list: a festival is a heading with its events
-                 indented under it, a standalone event is a single row. They
-                 are peers in the same chronological sequence. -->
+        <h2 :id="`${list.id}-heading`">{{ list.heading }}</h2>
+        <ul class="evp-agenda" :class="{ 'evp-agenda--past': list.past }">
+          <li
+            v-for="group in list.lines"
+            :key="group.key"
+            class="evp-card evp-slab evp-slab--tint evp-entry"
+          >
+            <!-- Two shapes, one list: a festival is a card with its events
+                 listed inside it, a standalone event is a card of one row.
+                 They are peers in the same chronological sequence. -->
             <template v-if="group.kind === 'festival'">
-              <div class="evp-group-head">
+              <div class="evp-entry-head evp-hit">
+                <span class="evp-kind">{{
+                  t('events.list.kind.festival')
+                }}</span>
                 <RouterLink
-                  class="evp-group-title"
+                  class="evp-group-title evp-hit-link"
                   :to="{
                     name: 'org-festival-detail',
                     params: { orgId, festivalId: group.id },
@@ -559,8 +594,9 @@ function dismissExampleStatus(): void {
                 >
                   {{ group.name }}
                 </RouterLink>
-                <span class="evp-meta">
-                  {{ group.period }} · {{ group.status }}
+                <span class="evp-tags">
+                  <span class="evp-tag">{{ group.period }}</span>
+                  <span class="evp-tag">{{ group.status }}</span>
                 </span>
               </div>
 
@@ -568,10 +604,11 @@ function dismissExampleStatus(): void {
                 <li
                   v-for="line in group.events"
                   :key="line.id"
+                  class="evp-hit evp-line"
                   :class="{ 'evp-row--past': line.isPast }"
                 >
                   <RouterLink
-                    class="evp-row-name"
+                    class="evp-row-name evp-hit-link"
                     :to="{
                       name: 'org-event-detail',
                       params: { orgId, eventId: line.id },
@@ -583,18 +620,27 @@ function dismissExampleStatus(): void {
                   <span class="evp-meta">{{ line.status }}</span>
                   <!-- Spelt out, not conveyed by the dimmed row alone: colour
                        is never the only carrier (docs/14 §2). -->
-                  <span v-if="line.isPast" class="evp-meta">{{
+                  <span v-if="line.isPast && !list.past" class="evp-meta">{{
                     t('events.list.finished')
                   }}</span>
+                  <svg
+                    class="evp-chevron"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
                 </li>
               </ul>
               <p v-else class="evp-meta evp-group-empty">
-                {{ t('events.list.noEventsYet') }}
+                {{
+                  list.past
+                    ? t('events.list.noEvents')
+                    : t('events.list.noEventsYet')
+                }}
               </p>
 
-              <!-- Upcoming festivals only: adding a day to one that is over is
-                   a correction, made from its own page. -->
-              <div class="evp-group-add">
+              <div v-if="!list.past" class="evp-group-add">
                 <NewEventForm
                   :org-id="orgId"
                   :festival-id="group.id"
@@ -606,9 +652,10 @@ function dismissExampleStatus(): void {
               </div>
             </template>
 
-            <div v-else class="evp-row">
+            <div v-else class="evp-hit evp-line evp-standalone">
+              <span class="evp-kind">{{ t('events.list.kind.event') }}</span>
               <RouterLink
-                class="evp-row-name"
+                class="evp-row-name evp-hit-link"
                 :to="{
                   name: 'org-event-detail',
                   params: { orgId, eventId: group.event.id },
@@ -618,63 +665,9 @@ function dismissExampleStatus(): void {
               </RouterLink>
               <span class="evp-meta">{{ group.event.period }}</span>
               <span class="evp-meta">{{ group.event.status }}</span>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <section v-if="pastLines.length > 0" aria-labelledby="past-heading">
-        <h2 id="past-heading">{{ t('events.list.past') }}</h2>
-        <ul class="evp-agenda evp-agenda--past">
-          <li v-for="group in pastLines" :key="group.key">
-            <template v-if="group.kind === 'festival'">
-              <div class="evp-group-head">
-                <RouterLink
-                  class="evp-group-title"
-                  :to="{
-                    name: 'org-festival-detail',
-                    params: { orgId, festivalId: group.id },
-                  }"
-                >
-                  {{ group.name }}
-                </RouterLink>
-                <span class="evp-meta">
-                  {{ group.period }} · {{ group.status }}
-                </span>
-              </div>
-
-              <ul v-if="group.events.length > 0" class="evp-group-events">
-                <li v-for="line in group.events" :key="line.id">
-                  <RouterLink
-                    class="evp-row-name"
-                    :to="{
-                      name: 'org-event-detail',
-                      params: { orgId, eventId: line.id },
-                    }"
-                  >
-                    {{ line.name }}
-                  </RouterLink>
-                  <span class="evp-meta">{{ line.period }}</span>
-                  <span class="evp-meta">{{ line.status }}</span>
-                </li>
-              </ul>
-              <p v-else class="evp-meta evp-group-empty">
-                {{ t('events.list.noEvents') }}
-              </p>
-            </template>
-
-            <div v-else class="evp-row">
-              <RouterLink
-                class="evp-row-name"
-                :to="{
-                  name: 'org-event-detail',
-                  params: { orgId, eventId: group.event.id },
-                }"
-              >
-                {{ group.event.name }}
-              </RouterLink>
-              <span class="evp-meta">{{ group.event.period }}</span>
-              <span class="evp-meta">{{ group.event.status }}</span>
+              <svg class="evp-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
             </div>
           </li>
         </ul>
@@ -699,15 +692,21 @@ function dismissExampleStatus(): void {
 </template>
 
 <style scoped>
+/* The landing page's type register (HomeView.vue), so signing in does not
+   drop the application into a second, quieter typeface scale. */
 h1 {
-  font-size: 1.75rem;
-  letter-spacing: -0.02em;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
   margin: 0 0 1.5rem;
 }
 
 h2 {
-  font-size: 1.125rem;
-  margin: 2rem 0 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 2.5rem 0 1rem;
 }
 
 .evp-create {
@@ -715,7 +714,7 @@ h2 {
 }
 
 .evp-create h2 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 1rem;
 }
 
 .evp-create-actions {
@@ -725,10 +724,30 @@ h2 {
   margin: 0;
 }
 
+.evp-create .evp-button {
+  border-radius: var(--evp-radius-md);
+}
+
 #create-form {
-  border-top: 1px solid var(--evp-border);
+  border-top: var(--evp-edge) solid var(--evp-border);
   margin-top: 1.25rem;
   padding-top: 1.25rem;
+}
+
+/* Two columns when two fit, one otherwise — auto-fit, not a breakpoint, so
+   400% zoom gets the single column without a media query (docs/14 §2). */
+.evp-create-form {
+  column-gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+.evp-create-wide {
+  grid-column: 1 / -1;
+}
+
+.evp-create-submit {
+  margin: 0.25rem 0 0;
 }
 
 .evp-meta {
@@ -744,110 +763,208 @@ h2 {
   margin: 0 0 0.5rem;
 }
 
+.evp-empty p {
+  color: var(--evp-text-muted);
+  margin: 0;
+  max-width: 60ch;
+}
+
 .evp-error {
   background: var(--evp-surface);
   border: 1px solid var(--evp-danger);
   border-left-width: 4px;
-  border-radius: 0.375rem;
+  border-radius: var(--evp-radius-sm);
   color: var(--evp-danger);
   margin: 1rem 0 0;
   padding: 0.75rem;
 }
 
-/* A list, not a grid of cards: one line per thing, read top to bottom in the
-   order they happen. Rows are separated by a rule rather than by whitespace so
-   that a long list stays scannable at 400% zoom. */
+/* One card per festival or standalone event, read top to bottom in the order
+   they happen. The gap leaves the slab clear of the next card; nothing here
+   clips, so the slab is never cut off (flat.css). */
 .evp-agenda {
-  border: 1px solid var(--evp-border);
-  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   list-style: none;
   margin: 0;
-  overflow: hidden;
   padding: 0;
 }
 
-.evp-agenda > li + li {
-  border-top: 1px solid var(--evp-border);
+/* The rows reach the card's edges, so their hover fill does too; the card's
+   own padding moves onto the head and the rows. */
+.evp-entry {
+  padding: 0;
 }
 
-.evp-row,
-.evp-group-head {
+/* Whatever closes the card carries its lower corners, so a hover fill on the
+   last row follows the card's radius instead of squaring it off. */
+.evp-entry > :last-child,
+.evp-entry > :last-child > .evp-line:last-child {
+  border-end-end-radius: var(--evp-radius-lg);
+  border-end-start-radius: var(--evp-radius-lg);
+}
+
+/* ── Whole-row links ─────────────────────────────────────────────────────────
+ *
+ * The name is the link, and its box is stretched over the row by `::after`,
+ * so the whole row answers a click without the link's accessible name
+ * becoming "Saturday 14 June 2026, 10:00 – 23:00 Draft". The row is
+ * positioned to contain the stretch. No underline: the row's hover fill, its
+ * chevron and the pointer say it is a link, and there is no running text
+ * around it to be told from (WCAG 1.4.1). */
+.evp-hit {
+  position: relative;
+  transition: background-color var(--evp-duration) ease;
+}
+
+.evp-hit:hover {
+  background: var(--evp-surface);
+}
+
+.evp-hit-link {
+  text-decoration: none;
+}
+
+.evp-hit-link::after {
+  content: '';
+  inset: 0;
+  position: absolute;
+}
+
+.evp-entry-head {
+  border-radius: var(--evp-radius-lg) var(--evp-radius-lg) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1.25rem 1.5rem 1rem;
+}
+
+.evp-kind {
+  color: var(--evp-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.evp-group-title {
+  color: var(--evp-text);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.evp-entry-head:hover .evp-group-title {
+  color: var(--evp-accent);
+}
+
+.evp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+/* A label, not a control: it sits on the card ground and never answers the
+   pointer itself. Muted text on `surface` is a proved pair. */
+.evp-tag {
+  background: var(--evp-surface);
+  border: var(--evp-edge) solid transparent;
+  border-radius: var(--evp-radius-sm);
+  color: var(--evp-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+}
+
+.evp-group-events {
+  border-top: var(--evp-edge) solid var(--evp-surface);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.evp-line {
   align-items: baseline;
   display: flex;
   /* Wraps rather than truncates: a name the coordinator cannot read is not a
      row, and docs/14 §2 forbids horizontal scrolling at 320 px. */
   flex-wrap: wrap;
   gap: 0.25rem 0.75rem;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 3rem 0.75rem 1.5rem;
 }
 
-.evp-row:hover {
-  background: var(--evp-surface-raised);
-}
-
-.evp-group-head {
-  background: var(--evp-surface-raised);
+.evp-group-events > .evp-line + .evp-line {
+  border-top: var(--evp-edge) solid var(--evp-surface);
 }
 
 .evp-row-name {
   color: var(--evp-text);
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
-.evp-group-title {
-  color: var(--evp-accent);
-  font-size: 1.0625rem;
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
-.evp-group-events {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.evp-hit:hover .evp-row-name {
+  color: var(--evp-accent);
 }
 
-.evp-group-events > li {
-  align-items: baseline;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  /* Indented by a rule rather than by margin, so the nesting survives a
-     forced-colors mode that drops the background tints. */
-  border-left: 3px solid var(--evp-border);
-  margin-left: 1rem;
-  padding: 0.625rem 1rem;
+/* The standalone event is a whole card of one row: the kicker sits on the
+   name's line rather than above it, so the card stays one row tall. */
+.evp-standalone {
+  border-radius: var(--evp-radius-lg);
+  padding-bottom: 1rem;
+  padding-top: 1rem;
 }
 
-.evp-group-events > li:hover {
-  background: var(--evp-surface-raised);
+.evp-standalone .evp-row-name {
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.evp-chevron {
+  align-self: center;
+  color: var(--evp-text-muted);
+  fill: none;
+  height: 1.25rem;
+  position: absolute;
+  right: 1rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+  top: 50%;
+  transform: translateY(-50%);
+  transition:
+    color var(--evp-duration) ease,
+    right var(--evp-duration) ease;
+  width: 1.25rem;
+}
+
+.evp-hit:hover .evp-chevron {
+  color: var(--evp-accent);
+  right: 0.75rem;
 }
 
 /* Dimmed *and* labelled "finished" in the row itself — the tint is a hint on
    top of text that already says it. */
 .evp-row--past .evp-row-name {
   color: var(--evp-text-muted);
-  font-weight: 400;
+  font-weight: 500;
 }
 
-.evp-agenda--past {
-  /* The archive is quieter than the plan, but still fully readable: the muted
-     token is the one proved against this surface, not an opacity. */
-  --evp-row-tone: var(--evp-text-muted);
-}
-
-.evp-agenda--past .evp-row-name {
-  color: var(--evp-row-tone);
-  font-weight: 400;
+/* The archive is quieter than the plan, but still fully readable: the muted
+   token is the one proved against this surface, not an opacity. */
+.evp-agenda--past .evp-row-name,
+.evp-agenda--past .evp-group-title {
+  color: var(--evp-text-muted);
 }
 
 .evp-group-add {
-  border-left: 3px solid var(--evp-border);
-  margin-left: 1rem;
-  padding: 0.625rem 1rem 0.75rem;
+  border-top: var(--evp-edge) solid var(--evp-surface);
+  padding: 0.75rem 1.5rem 1rem;
 }
 
 /* The form's own bottom margin is for the details page, where more follows
@@ -857,7 +974,8 @@ h2 {
 }
 
 .evp-group-empty {
+  border-top: var(--evp-edge) solid var(--evp-surface);
   margin: 0;
-  padding: 0.625rem 1rem 0.75rem 2rem;
+  padding: 0.75rem 1.5rem;
 }
 </style>

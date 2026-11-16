@@ -23,10 +23,6 @@ export default {
     coordinator: 'Coordination',
     zoneLead: 'Responsable de zone',
   },
-  placeholder: {
-    heading: 'Pas encore disponible',
-    body: 'Le tableau de planification, les bénévoles, les créneaux et les notifications arriveront avec leurs jalons. Pour l’instant, cette page prouve une seule chose : la session fonctionne de bout en bout.',
-  },
   signOut: 'Se déconnecter',
   unavailable:
     'Le serveur est injoignable ; vos organisations n’ont pas pu être chargées.',

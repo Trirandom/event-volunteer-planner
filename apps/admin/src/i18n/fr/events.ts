@@ -48,6 +48,11 @@ export default {
     finished: '· terminé',
     noEventsYet: 'Aucun événement pour l’instant.',
     noEvents: 'Aucun événement.',
+    /** A small label above each card's name, saying which of the two it is. */
+    kind: {
+      festival: 'Festival',
+      event: 'Événement',
+    },
   },
   newEvent: {
     /** Button; the page is a standalone event. */

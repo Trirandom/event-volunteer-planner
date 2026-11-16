@@ -20,10 +20,6 @@ export default {
     coordinator: 'Coordinator',
     zoneLead: 'Zone lead',
   },
-  placeholder: {
-    heading: 'Not built yet',
-    body: 'The planner board, volunteers, shifts and notifications land with their milestones. This page currently proves one thing: the session works end to end.',
-  },
   signOut: 'Sign out',
   unavailable:
     'The server could not be reached, so your organisations could not be loaded.',

@@ -206,6 +206,15 @@ corrects, and any evidence (mutants: N, 0 missed; the red output for a fix).
 Signed-off-by: …            ← always: git commit -s (DCO, CONTRIBUTING.md)
 ```
 
+The full convention is CONTRIBUTING.md, "Commit messages". A PreToolUse hook
+(`.claude/hooks/commit-message.ts`) refuses a `git commit` whose message
+breaks its checkable parts: an imperative subject of at most 72 characters
+with no period, a blank line, a body that doesn't open by narrating the diff,
+and a sign-off. Write the message with `-m "$(cat <<'EOF' … EOF)"`, a
+PowerShell here-string, or `-F <file>` so the hook can read it. When it
+refuses, rewrite the message. Never route around the hook. Passing the hook
+doesn't mean the body says why; check that yourself.
+
 Commits made by Claude also end with the Co-Authored-By trailer from the
 session's attribution instructions. Only commit when the user has asked for
 commits on this task.

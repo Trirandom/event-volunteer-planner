@@ -281,6 +281,12 @@ code shape:
   the code is deleted on sight; a comment recording *why the obvious approach is
   wrong here* is the most valuable line in the file.
 - No dead code, no commented-out code, no "keep for later". Git remembers.
+- Commit messages explain **why**, never what, for the same reason as
+  comments: the diff is the what. The format and an example are in
+  [CONTRIBUTING.md](../CONTRIBUTING.md#commit-messages). Agent sessions are
+  refused a commit that breaks the checkable parts (subject form, a body, a
+  sign-off) by `.claude/hooks/commit-message.ts`. That hook guards agents
+  only and is not a project gate, so it has no row in §7.
 - Dependency direction is inward: `api`/`worker` → `domain`/`db`, and `domain`
   depends on neither ([02 §3](02-architecture.md#3-backend-structure)). A new
   dependency that points outward is rejected.

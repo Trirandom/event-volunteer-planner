@@ -16,7 +16,7 @@ We use the **Developer Certificate of Origin** ([DCO](https://developercertifica
 rather than a CLA. There is nothing to sign — just certify each commit:
 
 ```
-git commit -s -m "planner: keyboard equivalent for shift drag"
+git commit -s
 ```
 
 which appends:
@@ -36,6 +36,47 @@ git config user.email "your.email@example.org"
 If you contribute from a work machine, check that your employer does not claim
 ownership of what you write on their time or equipment. Using a personal email
 address for commits keeps provenance clean.
+
+## Commit messages
+
+**A commit message explains why, not what.** The diff already shows what
+changed, exactly and permanently. What it cannot show, and what the next
+person running `git blame` or `git bisect` needs, is why the change was
+needed, why the obvious approach was wrong here, and what was tried and
+rejected. A body that narrates the diff ("This commit adds…", "Updated X
+to…") repeats the one part that is never lost and leaves out the part that is.
+
+From the history (`a55efe9`):
+
+```
+Forward EVP_BACKOFFICE_KEY through both compose files
+
+Without an environment entry, setting the key in .env would silently do
+nothing, which for an opt-in feature reads as "the backoffice is broken".
+Defaulting to blank keeps it off on every clone and deployment that did
+not ask for it, and the .env.example comment tells the operator to unset
+it afterwards because it is the broadest credential the app has.
+
+Signed-off-by: Your Name <your.email@example.org>
+```
+
+- **Subject:** imperative ("Add", "Fix", "Forward", the way `git revert`
+  words its own), about 65 characters and never more than 72, no trailing
+  period. It says what the commit does when applied. An area prefix
+  (`admin:`) is optional.
+- **Blank line**, then the **body**. Every commit has one, even a small one.
+  For a mechanical change, one sentence on why it was worth doing is enough.
+- The body names the doc section or ADR it implements or corrects, and keeps
+  the evidence that would otherwise be lost: the red output for a bug fix
+  ([13 §4](docs/13-testing-and-tdd.md#4-bug-fixes-regression-test-first-always)),
+  a mutation score, what a measurement showed.
+- Wrap prose at about 72 columns. URLs and quoted output stay on one line.
+- Trailers go last: `Signed-off-by` (always, `-s`), then any `Co-Authored-By`.
+
+For people this is judgement, applied in review
+([docs/11 §6](docs/11-engineering-standards.md#6-style-and-structure)).
+Agent sessions are held to its checkable parts by a hook (see
+[AGENTS.md](AGENTS.md)).
 
 ## Source file headers
 

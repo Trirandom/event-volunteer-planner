@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Tristan Grunert and contributors
 
-import { Temporal } from '@evp/shared/time';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { FormVersion, MissionOption, Question } from '../api/forms';
@@ -9,13 +8,14 @@ import { setLocale, t } from '../i18n';
 import {
   addOption,
   appendQuestion,
+  availablePresets,
   availableBuiltins,
   builtinOf,
   builtinQuestion,
   customQuestion,
   draftOf,
-  eventDays,
   hasEditableOptions,
+  insertQuestion,
   isDirty,
   isRemovable,
   locateServerProblems,
@@ -23,7 +23,9 @@ import {
   moveQuestion,
   offerMission,
   patchQuestion,
+  placeQuestion,
   positionBase,
+  presetQuestion,
   publishProblems,
   removeOption,
   removeQuestion,
@@ -966,42 +968,144 @@ describe('server problems', () => {
   });
 });
 
-describe('eventDays', () => {
-  it('lists each calendar day of a multi-day event, in its own zone', () => {
-    // 2026-09-04 08:00 → 2026-09-06 23:00, Paris (UTC+2).
-    const days = eventDays(
-      { start: '2026-09-04T06:00:00Z', end: '2026-09-06T21:00:00Z' },
-      'Europe/Paris',
-    );
-    expect(days).toHaveLength(3);
+describe('placing a dragged question', () => {
+  const keys = (draft: FormDraft): string[] =>
+    draft.questions.map((q) => q.key);
+  const base = draftOf(version());
+
+  it('drops a question into the gap before another, later in the list', () => {
+    // Gap 5 is the one between `phone` and `availability`; `first` leaves
+    // from above it, so it lands at index 4.
+    const placed = placeQuestion(base, 'first', 5);
+    expect(placed?.index).toBe(4);
+    expect(placed === null ? [] : keys(placed.draft).slice(0, 6)).toEqual([
+      'welcome',
+      'last',
+      'email',
+      'phone',
+      'first',
+      'availability',
+    ]);
   });
 
-  it('keeps a night that ends after midnight on the day it starts', () => {
-    // Saturday 22:00 → Sunday 05:00, Paris.
-    const days = eventDays(
-      { start: '2026-09-05T20:00:00Z', end: '2026-09-06T03:00:00Z' },
-      'Europe/Paris',
-    );
-    expect(days).toHaveLength(1);
+  it('drops a question into a gap earlier in the list', () => {
+    const placed = placeQuestion(base, 'phone', 1);
+    expect(placed?.index).toBe(1);
+    expect(placed === null ? [] : keys(placed.draft).slice(0, 5)).toEqual([
+      'welcome',
+      'phone',
+      'first',
+      'last',
+      'email',
+    ]);
   });
 
-  it('opens a day for an end past the overnight cutoff', () => {
-    // Saturday 22:00 → Sunday 10:00, Paris.
-    const days = eventDays(
-      { start: '2026-09-05T20:00:00Z', end: '2026-09-06T08:00:00Z' },
-      'Europe/Paris',
-    );
-    expect(days).toHaveLength(2);
+  it('drops into the last gap, after every question', () => {
+    const total = base.questions.length;
+    const placed = placeQuestion(base, 'welcome', total);
+    expect(placed?.index).toBe(total - 1);
+    expect(placed === null ? null : keys(placed.draft).at(-1)).toBe('welcome');
   });
 
-  it('dates by the event zone, not by UTC', () => {
-    // 23:30 UTC on the 4th is already the 5th in Paris.
-    const [first] = eventDays(
-      { start: '2026-09-04T23:30:00Z', end: '2026-09-05T20:00:00Z' },
-      'Europe/Paris',
+  it('is no move at all when dropped on either side of itself', () => {
+    expect(placeQuestion(base, 'last', 2)).toBeNull();
+    expect(placeQuestion(base, 'last', 3)).toBeNull();
+  });
+
+  it('refuses a gap outside the list and a key that is not in it', () => {
+    expect(placeQuestion(base, 'last', -1)).toBeNull();
+    expect(placeQuestion(base, 'last', base.questions.length + 1)).toBeNull();
+    expect(placeQuestion(base, 'nobody', 0)).toBeNull();
+  });
+});
+
+describe('inserting a question from the toolbox', () => {
+  const base = draftOf(version());
+  const section = customQuestion('section', 'new-1');
+
+  it('puts it in the gap it was dropped on', () => {
+    const next = insertQuestion(base, section, 2);
+    expect(next.questions.map((q) => q.key).slice(0, 4)).toEqual([
+      'welcome',
+      'first',
+      'new-1',
+      'last',
+    ]);
+    expect(next.questions).toHaveLength(base.questions.length + 1);
+  });
+
+  it('clamps a gap outside the list to the nearest end', () => {
+    expect(insertQuestion(base, section, -3).questions[0]?.key).toBe('new-1');
+    expect(insertQuestion(base, section, 99).questions.at(-1)?.key).toBe(
+      'new-1',
     );
-    expect(first).toBe(
-      Temporal.Instant.from('2026-09-05T10:00:00Z').epochMilliseconds,
+  });
+});
+
+describe('pre-written questions', () => {
+  let counter = 0;
+  const nextKey = (): string => {
+    counter += 1;
+    return `k-${String(counter)}`;
+  };
+
+  it('writes the experience question as a single choice of four levels', () => {
+    const question = presetQuestion('experience', 'q', nextKey);
+
+    expect(question.kind).toBe('single_choice');
+    expect(question.labelFr).toBe(
+      'Quel est ton niveau d’expérience en bénévolat ?',
     );
+    expect(question.options?.map((o) => o.labelFr)).toEqual([
+      'C’est ma première fois',
+      'J’ai déjà été bénévole quelques fois',
+      'J’ai de la bouteille',
+      'Je peux encadrer une équipe de bénévoles',
+    ]);
+    // Values follow the labels until saved, like any option a coordinator types.
+    expect(question.options?.[0]?.value).toBe('c-est-ma-premiere-fois');
+    expect(question.options?.every((o) => !o.valueFixed)).toBe(true);
+  });
+
+  it('writes the driving-licence question as a yes/no', () => {
+    const question = presetQuestion('driving_licence', 'q', nextKey);
+
+    expect(question.kind).toBe('boolean');
+    expect(question.labelFr).toBe('As-tu le permis de conduire (B) ?');
+    expect(question.labelEn).toBe('Do you have a driving licence (B)?');
+    expect(question.options).toBeNull();
+  });
+
+  /** Neither feeds the volunteer's profile: experience and licences are
+   * skills (docs/03), which are not built, and a target path would be a
+   * column that does not exist. They are custom questions with a head start. */
+  it('makes custom questions, not built-ins with a destination', () => {
+    for (const id of ['experience', 'driving_licence'] as const) {
+      const question = presetQuestion(id, 'q', nextKey);
+      expect(question.targetPath).toBeNull();
+      expect(question.consentPurpose).toBeNull();
+      expect(builtinOf(question)).toBeNull();
+    }
+  });
+
+  it('offers each one until a question with its wording is on the form', () => {
+    const base = draftOf(version());
+    expect(availablePresets(base)).toEqual(['experience', 'driving_licence']);
+
+    const withLicence = appendQuestion(
+      base,
+      presetQuestion('driving_licence', 'q', nextKey),
+    );
+    expect(availablePresets(withLicence)).toEqual(['experience']);
+
+    // Reworded, it is the coordinator's own question, and the preset is
+    // offered again.
+    const reworded = patchQuestion(withLicence, 'q', {
+      labelFr: 'Permis poids lourd ?',
+    });
+    expect(availablePresets(reworded)).toEqual([
+      'experience',
+      'driving_licence',
+    ]);
   });
 });

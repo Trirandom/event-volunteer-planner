@@ -33,6 +33,11 @@ export default {
       poolConsent: 'Keeping details for future events',
       commitment: 'Volunteer commitment',
     },
+    /** Pre-written custom questions, offered beside the built-ins. */
+    preset: {
+      experience: 'Experience level',
+      drivingLicence: 'Driving licence',
+    },
     destination: {
       firstName:
         'Fills in the first name on the volunteer record, used to greet them.',
@@ -121,14 +126,15 @@ export default {
   },
 
   page: {
-    title: 'Form',
+    title: 'Form builder',
     help: {
       intro:
         'The form is what volunteers fill in: their contact details, their availability for each event and the missions they are interested in. A festival has a single form, covering all of its events.',
       draft:
-        'You work on a draft, which you can save as many times as you like. Publishing freezes it: each answer stays tied to the version it answered. To change a published form, create a new version, edit it, then publish it in turn.',
+        'You work on a draft, saved automatically as you edit. Publishing freezes it: each answer stays tied to the version it answered. To change a published form, create a new version, edit it, then publish it in turn.',
+      undo: 'Ctrl+Z (Cmd+Z on a Mac) undoes the last change and Ctrl+Shift+Z redoes it, outside text fields, where they act on the text typed. The history is lost when the page reloads; the draft is not.',
       reorder:
-        'To reorder, use the Move up and Move down buttons, or these shortcuts from a question (outside a text field):',
+        'To reorder, drag a question by its grip, use the Move up and Move down buttons, or these shortcuts from a question (outside a text field):',
       shortcutUp: 'Alt+↑',
       shortcutDown: 'Alt+↓',
     },
@@ -153,11 +159,17 @@ export default {
     toolbar: {
       label: 'Draft',
       status: 'Draft v{version} ·',
-      unsaved: 'Unsaved changes',
       allSaved: 'Everything is saved',
-      discard: 'Discard changes',
-      publish: 'Publish',
-      publishHint: 'Save first: it is the saved version that gets published.',
+      toPublication: 'Publish…',
+      pending: 'Changes waiting to be saved…',
+      blocked:
+        '{count, plural, one {Not saved: one thing to fix} other {Not saved: # things to fix}}',
+      failed: 'Saving failed: the next change will try again.',
+      conflict: 'Changed elsewhere: saving is paused.',
+      undo: 'Undo the last change',
+      undoHint: 'Undo (Ctrl+Z)',
+      redo: 'Redo the change',
+      redoHint: 'Redo (Ctrl+Shift+Z)',
     },
     frozen: {
       title: 'Version {version}, published {date}.',
@@ -175,11 +187,6 @@ export default {
       form: 'Form',
       separator: ':',
     },
-    tabs: {
-      label: 'View',
-      questions: 'Questions',
-      preview: 'Preview',
-    },
     notice: {
       label: 'Privacy notice version',
       hint: 'Recorded with each submission, so it is known which notice the volunteer accepted. Optional.',
@@ -187,6 +194,7 @@ export default {
     palette: {
       heading: 'Add a question',
       builtin: 'Built-in questions',
+      hint: 'Click to add at the end, or drag to where it belongs.',
       allAdded: 'All built-in questions are already on the form.',
       custom: 'Custom questions',
       section: 'Section (title and text)',
@@ -206,10 +214,9 @@ export default {
       confirm: 'Discard changes',
       busy: '…',
       stay: 'Stay on this page',
-      body: 'The draft has unsaved changes. They will be lost if you leave this page now.',
+      body: 'The draft could not be saved: something blocks saving, or the server is not answering. These changes will be lost if you leave this page now.',
     },
     toast: {
-      saved: 'Draft saved.',
       saveConflict:
         'This draft was changed elsewhere, or published, since you opened it: nothing was saved. Your changes are still on screen.',
       reload: 'Reload the saved version (discards your changes)',
@@ -233,7 +240,10 @@ export default {
         '{named, select, yes {“{label}”} other {The question}} has been removed from the draft.',
       added:
         '{named, select, yes {“{label}”} other {The question}} has been added at the end of the form.',
-      discarded: 'Changes discarded.',
+      inserted:
+        '{named, select, yes {“{label}”} other {The question}} has been added at position {position} of {total}.',
+      undone: 'Change undone.',
+      redone: 'Change redone.',
     },
   },
 
@@ -248,6 +258,7 @@ export default {
     moveDown: 'Move “{title}” down',
     moveDownHint: 'Move down (Alt+↓)',
     remove: 'Remove “{title}”',
+    dragHint: 'Drag to move',
     field:
       '{field, select, title {Title} text {Text} help {Help} other {Label}} ({lang})',
     optional: 'optional',
@@ -281,6 +292,27 @@ export default {
       'Missions come pre-ticked for the volunteer, except those tagged "Not ticked by default" or "18+". Both are set on the Missions page, on each zone’s card.',
   },
 
+  publication: {
+    title: 'Publication',
+    noForm:
+      'There is no form for this scope yet. Create it in the builder, review its questions, then come back here to publish it.',
+    toBuilder: 'Open the builder',
+    status: {
+      heading: 'Online',
+      live: 'Version {version}, published on {date} · {count, plural, one {# question} other {# questions}}. This is the one volunteers fill in.',
+      never:
+        'Nothing is published yet: the public link shows no form. Publish the draft below to open it to volunteers.',
+    },
+    draft: {
+      heading: 'Draft',
+      summary:
+        'Draft v{version} · {count, plural, one {# question} other {# questions}}. {replaces, select, yes {Publishing it replaces the live version for new answers.} other {Publishing it opens the form to volunteers.}}',
+      publish: 'Publish version {version}',
+      edit: 'Edit in the builder',
+      none: 'No draft in progress. To change the form, create a new version from the builder, edit it, then publish it here.',
+    },
+  },
+
   settings: {
     title: 'Form settings',
     name: 'Name',
@@ -289,8 +321,7 @@ export default {
     open: 'Public link open to new sign-ups',
     openHint:
       'When closed, the public link refuses new sign-ups; the personal links sent to known volunteers keep working.',
-    noLiveVersion:
-      'No version is published yet: the link will show nothing until there is one.',
+    futureLink: 'Once published, the form will be at this address:',
     saved: 'Settings saved.',
     conflict:
       'These settings were changed elsewhere in the meantime. Check them, then save again.',
@@ -305,9 +336,5 @@ export default {
       'Lowercase letters, digits and hyphens. This is the address volunteers will type: it is hard to change once it has been shared.',
     slugTaken: 'This link is already used by another form. Choose another one.',
     create: 'Create the form',
-  },
-
-  preview: {
-    locale: 'Preview language',
   },
 } satisfies typeof fr;

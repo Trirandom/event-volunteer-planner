@@ -5,6 +5,13 @@
  * The form row itself: its name, whether the public link accepts new
  * volunteers, and which language it opens in.
  *
+ * **The link and its switch exist once something is live.** Before the first
+ * publish the public route serves nothing whatever the switch says, and a
+ * ticked "open to new sign-ups" over a form nobody can reach read as the way
+ * to put it online. So until then the panel names the address the form will
+ * have and says publishing is what opens it. `public_open` itself is still
+ * the server's default; it is only not offered as a control yet.
+ *
  * Saved on its own, against the form's own version, not with the questions.
  * These are two resources with two concurrency tokens (`api/forms.ts`), and
  * closing the public route at the end of recruitment must not wait on — or
@@ -125,28 +132,32 @@ const id = (suffix: string): string => `evp-form-settings-${suffix}`;
       </p>
     </div>
 
-    <p class="evp-settings-url">
-      {{ t('forms.settings.publicLink') }}
+    <template v-if="form.live_version_id !== null">
+      <p class="evp-settings-url">
+        {{ t('forms.settings.publicLink') }}
+        <a :href="publicUrl" target="_blank" rel="noopener">{{ publicUrl }}</a>
+      </p>
+
+      <div class="evp-settings-open">
+        <label :for="id('open')" class="evp-check">
+          <input
+            :id="id('open')"
+            v-model="publicOpen"
+            type="checkbox"
+            :aria-describedby="id('open-why')"
+          />
+          <span>{{ t('forms.settings.open') }}</span>
+        </label>
+        <p :id="id('open-why')" class="evp-hint">
+          {{ t('forms.settings.openHint') }}
+        </p>
+      </div>
+    </template>
+
+    <p v-else class="evp-settings-url evp-hint">
+      {{ t('forms.settings.futureLink') }}
       <code>{{ publicUrl }}</code>
     </p>
-
-    <div class="evp-settings-open">
-      <label :for="id('open')" class="evp-check">
-        <input
-          :id="id('open')"
-          v-model="publicOpen"
-          type="checkbox"
-          :aria-describedby="id('open-why')"
-        />
-        <span>{{ t('forms.settings.open') }}</span>
-      </label>
-      <p :id="id('open-why')" class="evp-hint">
-        {{ t('forms.settings.openHint') }}
-        <template v-if="form.live_version_id === null">
-          {{ t('forms.settings.noLiveVersion') }}
-        </template>
-      </p>
-    </div>
 
     <p
       v-if="message !== null"
@@ -201,6 +212,10 @@ const id = (suffix: string): string => `evp-form-settings-${suffix}`;
 .evp-settings-url {
   margin: 0 0 0.75rem;
   overflow-wrap: anywhere;
+}
+
+.evp-settings-url a {
+  color: var(--evp-accent);
 }
 
 .evp-check {

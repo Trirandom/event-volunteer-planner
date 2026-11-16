@@ -2,15 +2,9 @@
 <!-- Copyright (C) 2026 Tristan Grunert and contributors -->
 <script setup lang="ts">
 /**
- * Formulaire: the questions volunteers answer, drafted here and published
- * when they are right (docs/09).
- *
- * **Scope.** A festival has one form covering every one of its events
- * (ADR-0035) — that is what replaced the five availability questions of the
- * old Google Form. So at festival scope this page is that form; on a day of
- * the festival it says so and links there, rather than offering to make a
- * second form nobody asked for; and a standalone event, which has no festival
- * to share one with, manages its own.
+ * The form builder: the questions volunteers answer, drafted here (docs/09).
+ * Publishing them is the next tab's job (`PlanFormPublicationView.vue`), and
+ * which form this scope has is `useScopeForm`'s, shared by both.
  *
  * **Draft, then publish.** Every edit goes into the draft version, which is
  * saved whole (`PUT …/versions/{v}`, an atomic replacement) and can be saved
@@ -19,10 +13,19 @@
  * shown read-only and changing it means starting a new draft from it. That is
  * the mechanism, not a restriction, and the page words it that way.
  *
- * **One draft, held here.** The cards emit patches; this view owns the
- * `FormDraft`, decides what is dirty by comparing it with the stored version
- * (`plan/formDraft.ts`), and guards leaving with unsaved edits — the route
- * guard for in-app navigation, `beforeunload` for the tab.
+ * **The toolbox sits beside the questions**, not under them: with a dozen
+ * cards open the old palette was a scroll away from the place a question was
+ * meant to go. An entry is clicked to append, or dragged into the gap it
+ * belongs in (`plan/useListDrag.ts`); a card is dragged by its grip, or moved
+ * with its buttons and shortcuts.
+ *
+ * **One draft, held here, saved by itself** (ADR-0048). The cards emit
+ * patches; this view owns the `FormDraft` as a history (`plan/draftHistory.ts`,
+ * which is what Ctrl/Cmd+Z steps through), decides what is dirty by comparing
+ * it with the stored version (`plan/formDraft.ts`), and sends it once edits
+ * pause (`plan/useAutosave.ts`). Leaving saves what is pending first, and asks
+ * only when it cannot be saved — the route guard for in-app navigation,
+ * `beforeunload` for the tab.
  */
 import { eventTimeZone, formatDate } from '@evp/shared/intl';
 import { Temporal } from '@evp/shared/time';
@@ -32,32 +35,30 @@ import {
   onBeforeUnmount,
   onMounted,
   ref,
+  shallowRef,
   useId,
+  useTemplateRef,
   watch,
 } from 'vue';
 import {
   RouterLink,
   onBeforeRouteLeave,
   onBeforeRouteUpdate,
+  type RouteLocationRaw,
 } from 'vue-router';
 
-import type { Event } from '../api/events';
-import type { Form, FormScope, FormWriteRejection } from '../api/forms';
+import type { Form, FormWriteRejection } from '../api/forms';
 import {
   useCreateFormVersion,
-  useForm,
   useFormVersion,
   useMissionOptions,
-  usePublishFormVersion,
   useSaveFormVersion,
-  useScopedForms,
 } from '../api/useForms';
-import { usePlanScope } from '../api/usePlan';
+import { useScopeForm } from '../api/useScopeForm';
 import { useSession } from '../api/useSession';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
-import FormPreview from '../components/FormPreview.vue';
+import FormPicker from '../components/FormPicker.vue';
 import FormQuestionCard from '../components/FormQuestionCard.vue';
-import FormSettingsPanel from '../components/FormSettingsPanel.vue';
 import HelpModal from '../components/HelpModal.vue';
 import NewFormPanel from '../components/NewFormPanel.vue';
 import ToastMessage from '../components/ToastMessage.vue';
@@ -65,15 +66,19 @@ import ToastStack from '../components/ToastStack.vue';
 import {
   appendQuestion,
   availableBuiltins,
+  availablePresets,
   builtinQuestion,
   CUSTOM_KINDS,
   customQuestion,
   draftOf,
+  insertQuestion,
   isDirty,
   locateServerProblems,
   moveQuestion,
   patchQuestion,
+  placeQuestion,
   positionBase,
+  presetQuestion,
   privacyNoticeOf,
   publishProblems,
   removeQuestion,
@@ -83,79 +88,42 @@ import {
   type CustomKind,
   type DraftProblem,
   type FormDraft,
+  type PresetId,
   type QuestionPatch,
 } from '../plan/formDraft';
 import { t, locale } from '../i18n';
-import { builtinLabel, kindLabel } from '../plan/formLabels';
+import {
+  adopt,
+  canRedo,
+  canUndo,
+  record,
+  redo,
+  startHistory,
+  undo,
+  type DraftHistory,
+} from '../plan/draftHistory';
+import { builtinLabel, kindLabel, presetLabel } from '../plan/formLabels';
+import { useAutosave } from '../plan/useAutosave';
+import { useListDrag } from '../plan/useListDrag';
 import { useRouteParam } from '../router/params';
 
 const orgId = useRouteParam('orgId');
 const festivalId = useRouteParam('festivalId');
 const eventId = useRouteParam('eventId');
 
-const { scope, isPending: scopePending } = usePlanScope(
-  orgId,
-  festivalId,
-  eventId,
-);
+const {
+  page,
+  formScope,
+  forms,
+  formsFailed,
+  formId,
+  form,
+  draftSummary,
+  liveSummary,
+  isPending,
+  chooseForm,
+} = useScopeForm(orgId, festivalId, eventId);
 
-interface Subject {
-  readonly name: string;
-  readonly slug: string;
-  readonly timezone: string;
-}
-
-/** What this page manages at the scope the URL names. */
-type PageScope =
-  | {
-      readonly kind: 'own';
-      readonly formScope: FormScope;
-      readonly subject: Subject;
-      readonly events: readonly Event[];
-    }
-  | {
-      readonly kind: 'covered';
-      readonly festivalId: string;
-      readonly festivalName: string | null;
-      readonly dayName: string;
-    };
-
-const page = computed((): PageScope | null => {
-  const value = scope.value;
-  if (value === null) {
-    return null;
-  }
-  if (value.kind === 'festival') {
-    return {
-      kind: 'own',
-      formScope: { festivalId: value.festival.id },
-      subject: value.festival,
-      events: value.days,
-    };
-  }
-  // Read off the event, not off `value.festival`: a day whose festival failed
-  // to load is still a festival day, and offering it a form of its own would
-  // be offering the wrong thing on a network error.
-  const day = value.selected;
-  if (day.festival_id !== null) {
-    return {
-      kind: 'covered',
-      festivalId: day.festival_id,
-      festivalName: value.festival?.name ?? null,
-      dayName: day.name,
-    };
-  }
-  return {
-    kind: 'own',
-    formScope: { eventId: day.id },
-    subject: day,
-    events: [day],
-  };
-});
-
-const formScope = computed(() =>
-  page.value?.kind === 'own' ? page.value.formScope : null,
-);
 const events = computed(() =>
   page.value?.kind === 'own' ? page.value.events : [],
 );
@@ -163,44 +131,7 @@ const eventNames = computed(
   () => new Map(events.value.map((event) => [event.id, event.name])),
 );
 
-// ── The form and its versions ───────────────────────────────────────────────
-
-const { data: formsResult, isPending: formsPending } = useScopedForms(
-  orgId,
-  formScope,
-);
-const forms = computed(() =>
-  formsResult.value?.ok === true ? formsResult.value.value : [],
-);
-const formsFailed = computed(() => formsResult.value?.ok === false);
-
-const chosenFormId = ref<string | null>(null);
-const formId = computed(() => {
-  const list = forms.value;
-  return (
-    list.find((form) => form.id === chosenFormId.value)?.id ?? list[0]?.id ?? ''
-  );
-});
-
-const { data: formResult } = useForm(orgId, formId);
-/** The form's own query once it answers, the list's copy until then — the
- * list already carries the whole row, so there is no reason to show a
- * spinner for a second request. */
-const form = computed(
-  (): Form | null =>
-    (formResult.value?.ok === true ? formResult.value.value : null) ??
-    forms.value.find((candidate) => candidate.id === formId.value) ??
-    null,
-);
-
-const draftSummary = computed(
-  () => form.value?.versions.find((v) => v.published_at === null) ?? null,
-);
-const liveSummary = computed(
-  () =>
-    form.value?.versions.find((v) => v.id === form.value?.live_version_id) ??
-    null,
-);
+// ── The version on screen ───────────────────────────────────────────────────
 
 const chosenVersion = ref<number | null>(null);
 /** The version on screen: the one picked from the list, else the draft being
@@ -235,8 +166,7 @@ const version = computed(() =>
 const versionFailed = computed(() => versionResult.value?.ok === false);
 const isDraft = computed(() => version.value?.published_at === null);
 
-watch(formScope, () => {
-  chosenFormId.value = null;
+watch([formScope, formId], () => {
   chosenVersion.value = null;
 });
 
@@ -253,7 +183,20 @@ const scopeMissions = computed(() =>
 
 // ── The draft ───────────────────────────────────────────────────────────────
 
-const draft = ref<FormDraft | null>(null);
+/** The draft and its undo history. `draft` is the present state; every edit
+ * goes through `commit`, so nothing can change the draft without it being a
+ * step Ctrl/Cmd+Z can take back. */
+const history = shallowRef<DraftHistory<FormDraft> | null>(null);
+const draft = computed(() => history.value?.present ?? null);
+
+/** `group` names what was edited, so typing in one field is one undo step
+ * (`plan/draftHistory.ts`); a move, an add or a removal passes none. */
+function commit(next: FormDraft, group: string | null = null): void {
+  history.value =
+    history.value === null
+      ? startHistory(next)
+      : record(history.value, next, group);
+}
 /** What the server last refused, pinned to questions. Kept until the next
  * attempt rather than cleared on every keystroke: fixing one of three should
  * not make the other two vanish. */
@@ -271,13 +214,15 @@ watch(
     if (next === null) {
       return;
     }
-    const current = draft.value;
-    if (
-      current === null ||
-      previous?.id !== next.id ||
-      !isDirty(previous, current)
-    ) {
-      draft.value = draftOf(next);
+    const current = history.value;
+    if (current === null || previous?.id !== next.id) {
+      // Another version: its history is not this one's.
+      history.value = startHistory(draftOf(next));
+      serverProblems.value = [];
+      return;
+    }
+    if (!isDirty(previous, current.present)) {
+      history.value = adopt(current, draftOf(next));
       serverProblems.value = [];
     }
   },
@@ -330,7 +275,10 @@ function labelOf(key: string): { named: 'yes' | 'no'; label: string } {
 
 function update(key: string, patch: QuestionPatch): void {
   if (draft.value !== null) {
-    draft.value = patchQuestion(draft.value, key, patch);
+    commit(
+      patchQuestion(draft.value, key, patch),
+      `${key}:${Object.keys(patch).sort().join(',')}`,
+    );
   }
 }
 
@@ -347,7 +295,7 @@ function move(key: string, delta: -1 | 1): void {
   // element that had it is put back, or the card's own toggle when that
   // element has just been disabled (Monter on the new first question).
   const active = document.activeElement;
-  draft.value = moved.draft;
+  commit(moved.draft);
   announcement.value = t('forms.page.announce.moved', {
     ...labelOf(key),
     position: moved.index + 1,
@@ -377,7 +325,7 @@ function remove(key: string): void {
   if (next.questions.length === current.questions.length) {
     return;
   }
-  draft.value = next;
+  commit(next);
   announcement.value = t('forms.page.announce.removed', label);
   const neighbour =
     next.questions[Math.min(index, next.questions.length - 1)]?.key ?? null;
@@ -386,14 +334,6 @@ function remove(key: string): void {
       ? document.getElementById(paletteHeadingId)
       : document.getElementById(`evp-q-${neighbour}-toggle`)
     )?.focus();
-  });
-}
-
-function added(key: string): void {
-  setExpanded(key, true);
-  announcement.value = t('forms.page.announce.added', labelOf(key));
-  void nextTick(() => {
-    document.getElementById(`evp-q-${key}-label-fr`)?.focus();
   });
 }
 
@@ -411,50 +351,242 @@ const organizationName = computed(() => {
   );
 });
 
-function addBuiltin(id: BuiltinId): void {
-  if (draft.value === null) {
-    return;
+/** An entry of the toolbox: a built-in the form does not have yet, or one of
+ * the kinds a coordinator writes their own question in. */
+type ToolboxItem =
+  | { readonly kind: 'builtin'; readonly id: BuiltinId }
+  | { readonly kind: 'preset'; readonly id: PresetId }
+  | { readonly kind: 'custom'; readonly custom: CustomKind | 'section' };
+
+function itemLabel(item: ToolboxItem): string {
+  if (item.kind === 'builtin') {
+    return builtinLabel(item.id);
   }
-  const key = nextKey();
-  draft.value = appendQuestion(
-    draft.value,
-    builtinQuestion(
-      id,
-      key,
-      scopeMissions.value ?? [],
-      nextKey,
-      organizationName.value,
-    ),
-  );
-  added(key);
+  if (item.kind === 'preset') {
+    return presetLabel(item.id);
+  }
+  return item.custom === 'section'
+    ? t('forms.page.palette.section')
+    : kindLabel(item.custom);
 }
 
-function addCustom(kind: CustomKind | 'section'): void {
-  if (draft.value === null) {
+/**
+ * Adds a toolbox entry, at the end or into a gap. Built-ins are built here
+ * rather than when the toolbox renders: the missions question is seeded from
+ * the scope's missions as they are at the moment it is added.
+ */
+function add(item: ToolboxItem, gap: number | null): void {
+  const current = draft.value;
+  if (current === null) {
     return;
   }
   const key = nextKey();
-  draft.value = appendQuestion(draft.value, customQuestion(kind, key));
-  added(key);
+  const question =
+    item.kind === 'builtin'
+      ? builtinQuestion(
+          item.id,
+          key,
+          scopeMissions.value ?? [],
+          nextKey,
+          organizationName.value,
+        )
+      : item.kind === 'preset'
+        ? presetQuestion(item.id, key, nextKey)
+        : customQuestion(item.custom, key);
+  const next =
+    gap === null
+      ? appendQuestion(current, question)
+      : insertQuestion(current, question, gap);
+  commit(next);
+  setExpanded(key, true);
+  announcement.value =
+    gap === null
+      ? t('forms.page.announce.added', labelOf(key))
+      : t('forms.page.announce.inserted', {
+          ...labelOf(key),
+          position: next.questions.findIndex((q) => q.key === key) + 1,
+          total: next.questions.length,
+        });
+  void nextTick(() => {
+    document.getElementById(`evp-q-${key}-label-fr`)?.focus();
+  });
+}
+
+function clickItem(item: ToolboxItem): void {
+  if (!drag.isDragClick()) {
+    add(item, null);
+  }
+}
+
+// ── Dragging ────────────────────────────────────────────────────────────────
+
+type DragPayload =
+  | { readonly kind: 'question'; readonly key: string }
+  | { readonly kind: 'new'; readonly item: ToolboxItem };
+
+const list = useTemplateRef<HTMLOListElement>('list');
+
+function dropped(payload: DragPayload, gap: number): void {
+  if (payload.kind === 'new') {
+    add(payload.item, gap);
+    return;
+  }
+  const current = draft.value;
+  const placed =
+    current === null ? null : placeQuestion(current, payload.key, gap);
+  if (placed === null) {
+    return;
+  }
+  commit(placed.draft);
+  announcement.value = t('forms.page.announce.moved', {
+    ...labelOf(payload.key),
+    position: placed.index + 1,
+    total: placed.draft.questions.length,
+  });
+  void nextTick(() => {
+    document.getElementById(`evp-q-${payload.key}-toggle`)?.focus();
+  });
+}
+
+const drag = useListDrag<DragPayload>({
+  list,
+  needsColumn: (payload) => payload.kind === 'new',
+  drop: dropped,
+});
+
+/** Where the drop line is drawn: the gap under the pointer, unless letting go
+ * there would leave the card where it is — a line beside the card itself
+ * promises a move that will not happen. */
+const dropMarker = computed((): number | null => {
+  const active = drag.active.value;
+  if (active?.gap == null) {
+    return null;
+  }
+  if (active.payload.kind === 'new') {
+    return active.gap;
+  }
+  const { key } = active.payload;
+  const from = draft.value?.questions.findIndex((q) => q.key === key) ?? -1;
+  return active.gap === from || active.gap === from + 1 ? null : active.gap;
+});
+
+const liftedKey = computed(() => {
+  const payload = drag.active.value?.payload;
+  return payload?.kind === 'question' ? payload.key : null;
+});
+
+const ghostLabel = computed(() => {
+  const payload = drag.active.value?.payload;
+  if (payload === undefined) {
+    return '';
+  }
+  if (payload.kind === 'new') {
+    return itemLabel(payload.item);
+  }
+  const { named, label } = labelOf(payload.key);
+  return named === 'yes' ? label : t('forms.card.untitled');
+});
+
+function grab(event: PointerEvent, key: string): void {
+  drag.press(event, { kind: 'question', key }, { immediate: true });
+}
+
+function pressItem(event: PointerEvent, item: ToolboxItem): void {
+  drag.press(event, { kind: 'new', item }, { immediate: false });
 }
 
 function setNotice(event: globalThis.Event): void {
   if (draft.value !== null && event.target instanceof HTMLInputElement) {
-    draft.value = { ...draft.value, privacyNoticeVersion: event.target.value };
+    commit(
+      { ...draft.value, privacyNoticeVersion: event.target.value },
+      'privacy-notice',
+    );
   }
 }
 
-function discard(): void {
-  if (version.value !== null) {
-    draft.value = draftOf(version.value);
-    serverProblems.value = [];
-    announcement.value = t('forms.page.announce.discarded');
-  }
-}
+// ── Undo ────────────────────────────────────────────────────────────────────
 
-const palette = computed(() =>
-  draft.value === null ? [] : availableBuiltins(draft.value, true),
+const undoable = computed(
+  () => isDraft.value && history.value !== null && canUndo(history.value),
 );
+const redoable = computed(
+  () => isDraft.value && history.value !== null && canRedo(history.value),
+);
+
+function undoEdit(): void {
+  if (history.value !== null && undoable.value) {
+    history.value = undo(history.value);
+    announcement.value = t('forms.page.announce.undone');
+  }
+}
+
+function redoEdit(): void {
+  if (history.value !== null && redoable.value) {
+    history.value = redo(history.value);
+    announcement.value = t('forms.page.announce.redone');
+  }
+}
+
+/** A field whose own text undo must win: Ctrl+Z while typing a label takes
+ * back the last letters, as it does everywhere else (docs/14 §4). */
+function isTextEntry(target: EventTarget | null): boolean {
+  if (target instanceof HTMLTextAreaElement) {
+    return true;
+  }
+  if (target instanceof HTMLInputElement) {
+    return !['checkbox', 'radio', 'button', 'submit', 'reset'].includes(
+      target.type,
+    );
+  }
+  return target instanceof HTMLElement && target.isContentEditable;
+}
+
+function onUndoKey(event: KeyboardEvent): void {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) {
+    return;
+  }
+  const key = event.key.toLowerCase();
+  const isUndo = key === 'z' && !event.shiftKey;
+  const isRedo =
+    (key === 'z' && event.shiftKey) || (key === 'y' && !event.shiftKey);
+  if (
+    (!isUndo && !isRedo) ||
+    !isDraft.value ||
+    confirmingLeave.value ||
+    isTextEntry(event.target)
+  ) {
+    return;
+  }
+  event.preventDefault();
+  if (isUndo) {
+    undoEdit();
+  } else {
+    redoEdit();
+  }
+}
+
+/** The built-ins the form lacks, then the pre-written questions: listed
+ * together because a coordinator looks for "the licence question" in one
+ * place, not by whether it fills a profile field. The card says which it is. */
+const builtinItems = computed((): readonly ToolboxItem[] =>
+  draft.value === null
+    ? []
+    : [
+        ...availableBuiltins(draft.value, true).map((id): ToolboxItem => ({
+          kind: 'builtin',
+          id,
+        })),
+        ...availablePresets(draft.value).map((id): ToolboxItem => ({
+          kind: 'preset',
+          id,
+        })),
+      ],
+);
+
+const customItems: readonly ToolboxItem[] = [
+  ...CUSTOM_KINDS.map((custom) => ({ kind: 'custom' as const, custom })),
+  { kind: 'custom', custom: 'section' },
+];
 
 // ── Problems ────────────────────────────────────────────────────────────────
 
@@ -519,23 +651,18 @@ const toast = ref<{
 } | null>(null);
 
 const save = useSaveFormVersion(orgId);
-const publish = usePublishFormVersion(orgId);
 const createVersion = useCreateFormVersion(orgId);
+
+/** A conflict stopped autosave until the coordinator reloads. */
+const halted = ref(false);
+/** The last save was refused or did not arrive; the next edit tries again. */
+const saveFailed = ref(false);
 
 /** The one sentence for a refusal nothing more specific handles. */
 function rejectionText(rejection: FormWriteRejection): string {
   return rejection.reason === 'unavailable'
     ? t('forms.errors.unavailable')
     : rejection.detail;
-}
-
-function problemsToast(count: number, action: 'save' | 'publish'): string {
-  return t(
-    action === 'save'
-      ? 'forms.page.toast.saveRefused'
-      : 'forms.page.toast.publishRefused',
-    { count },
-  );
 }
 
 function expandProblems(problems: readonly DraftProblem[]): void {
@@ -552,16 +679,16 @@ async function saveDraft(): Promise<void> {
   const saved = version.value;
   const current = draft.value;
   const value = form.value;
-  if (saved === null || current === null || value === null || !dirty.value) {
-    return;
-  }
-  if (blocking.value.length > 0) {
-    expandProblems(blocking.value);
-    void nextTick(() => document.getElementById(summaryId)?.focus());
+  if (
+    saved === null ||
+    current === null ||
+    value === null ||
+    !dirty.value ||
+    blocking.value.length > 0
+  ) {
     return;
   }
 
-  toast.value = null;
   serverProblems.value = [];
   // The positions the server will call these questions by, captured now:
   // a refusal names the array that was sent, not whatever is on screen by
@@ -583,17 +710,24 @@ async function saveDraft(): Promise<void> {
   });
 
   if (result.ok) {
+    saveFailed.value = false;
     // Only when nothing was typed while the request was in flight; if it
     // was, those edits stay, and they are dirty against what was just saved.
-    if (draft.value === current) {
-      draft.value = draftOf(result.value);
+    // The server's copy carries the ids it gave new questions; adopting it is
+    // not an undo step.
+    if (history.value !== null && history.value.present === current) {
+      history.value = adopt(history.value, draftOf(result.value));
     }
-    toast.value = { tone: 'info', text: t('forms.page.toast.saved') };
     return;
   }
 
+  saveFailed.value = true;
   const { rejection } = result;
   if (rejection.reason === 'conflict') {
+    // Autosave stops here: the next save would carry the newer etag and
+    // silently overwrite whatever the other tab saved. Reloading is the
+    // coordinator's choice to make.
+    halted.value = true;
     toast.value = {
       tone: 'danger',
       text: t('forms.page.toast.saveConflict'),
@@ -610,7 +744,9 @@ async function saveDraft(): Promise<void> {
       text:
         rejection.problems.length === 0
           ? rejection.detail
-          : problemsToast(rejection.problems.length, 'save'),
+          : t('forms.page.toast.saveRefused', {
+              count: rejection.problems.length,
+            }),
     };
     return;
   }
@@ -620,70 +756,46 @@ async function saveDraft(): Promise<void> {
   };
 }
 
+const autosave = useAutosave({
+  trigger: () => draft.value,
+  canSave: () => dirty.value && blocking.value.length === 0 && !halted.value,
+  save: saveDraft,
+});
+
+/** What the toolbar says about saving, most urgent first. */
+const saveStatus = computed(
+  (): { readonly text: string; readonly tone: 'ok' | 'busy' | 'problem' } => {
+    if (halted.value) {
+      return { text: t('forms.page.toolbar.conflict'), tone: 'problem' };
+    }
+    if (save.isPending.value) {
+      return { text: t('common.status.saving'), tone: 'busy' };
+    }
+    if (!dirty.value) {
+      return { text: t('forms.page.toolbar.allSaved'), tone: 'ok' };
+    }
+    if (blocking.value.length > 0) {
+      return {
+        text: t('forms.page.toolbar.blocked', { count: blocking.value.length }),
+        tone: 'problem',
+      };
+    }
+    if (saveFailed.value && !autosave.waiting.value) {
+      return { text: t('forms.page.toolbar.failed'), tone: 'problem' };
+    }
+    return { text: t('forms.page.toolbar.pending'), tone: 'busy' };
+  },
+);
+
 async function reload(): Promise<void> {
   toast.value = null;
   const fresh = await refetchVersion();
   if (fresh.data?.ok === true) {
-    draft.value = draftOf(fresh.data.value);
+    history.value = startHistory(draftOf(fresh.data.value));
     serverProblems.value = [];
+    halted.value = false;
+    saveFailed.value = false;
   }
-}
-
-const confirmingPublish = ref(false);
-const publishError = ref<string | null>(null);
-
-function askToPublish(): void {
-  publishError.value = null;
-  confirmingPublish.value = true;
-}
-
-async function confirmPublish(): Promise<void> {
-  const saved = version.value;
-  const value = form.value;
-  if (saved === null || value === null) {
-    return;
-  }
-  publishError.value = null;
-  const result = await publish.mutateAsync({
-    formId: value.id,
-    version: saved.version,
-    etag: saved.etag_version,
-  });
-
-  if (result.ok) {
-    confirmingPublish.value = false;
-    chosenVersion.value = result.value.version;
-    toast.value = {
-      tone: 'info',
-      text: t('forms.page.toast.published', {
-        version: result.value.version,
-      }),
-    };
-    return;
-  }
-
-  const { rejection } = result;
-  if (rejection.reason === 'invalid') {
-    confirmingPublish.value = false;
-    serverProblems.value = locateServerProblems(
-      rejection.problems,
-      saved.questions.map((q) => ({ position: q.position, key: q.id })),
-    );
-    expandProblems(serverProblems.value);
-    toast.value = {
-      tone: 'danger',
-      text:
-        rejection.problems.length === 0
-          ? rejection.detail
-          : problemsToast(rejection.problems.length, 'publish'),
-    };
-    void nextTick(() => document.getElementById(summaryId)?.focus());
-    return;
-  }
-  publishError.value =
-    rejection.reason === 'conflict'
-      ? t('forms.page.toast.publishConflict')
-      : rejectionText(rejection);
 }
 
 async function startNewVersion(): Promise<void> {
@@ -724,8 +836,13 @@ async function startNewVersion(): Promise<void> {
 const confirmingLeave = ref(false);
 let answerLeave: ((leave: boolean) => void) | null = null;
 
-/** Resolves once the coordinator has answered the dialog. */
+/** Saves what is pending, and asks only when that leaves something unsaved —
+ * a draft with problems that block saving, or a save that failed. Resolves
+ * once the coordinator has answered. */
 async function confirmDiscard(): Promise<boolean> {
+  if (dirty.value) {
+    await autosave.flush();
+  }
   if (!dirty.value) {
     return true;
   }
@@ -752,9 +869,11 @@ function onBeforeUnload(event: BeforeUnloadEvent): void {
 
 onMounted(() => {
   window.addEventListener('beforeunload', onBeforeUnload);
+  window.addEventListener('keydown', onUndoKey);
 });
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', onBeforeUnload);
+  window.removeEventListener('keydown', onUndoKey);
 });
 
 async function selectVersion(number: number): Promise<void> {
@@ -765,21 +884,8 @@ async function selectVersion(number: number): Promise<void> {
   serverProblems.value = [];
 }
 
-async function selectForm(event: globalThis.Event): Promise<void> {
-  const target = event.target;
-  if (!(target instanceof HTMLSelectElement)) {
-    return;
-  }
-  if (!(await confirmDiscard())) {
-    target.value = formId.value;
-    return;
-  }
-  chosenFormId.value = target.value;
-  chosenVersion.value = null;
-}
-
 function created(value: Form): void {
-  chosenFormId.value = value.id;
+  void chooseForm(value.id);
   chosenVersion.value = null;
   toast.value = {
     tone: 'info',
@@ -789,20 +895,6 @@ function created(value: Form): void {
 
 // ── Presentation ────────────────────────────────────────────────────────────
 
-const tab = ref<'questions' | 'preview'>('questions');
-const tabsId = useId();
-
-function onTabKey(event: KeyboardEvent): void {
-  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
-    return;
-  }
-  event.preventDefault();
-  tab.value = tab.value === 'questions' ? 'preview' : 'questions';
-  void nextTick(() => {
-    document.getElementById(`${tabsId}-${tab.value}`)?.focus();
-  });
-}
-
 function publishedOn(instant: string): string {
   const subject = page.value?.kind === 'own' ? page.value.subject : null;
   return formatDate(Temporal.Instant.from(instant).epochMilliseconds, {
@@ -811,17 +903,27 @@ function publishedOn(instant: string): string {
   });
 }
 
+/** Newest first: the version a coordinator came for — the draft, or what is
+ * live — is the first one read, and v1 drifts right as the history grows. */
 const versions = computed(() =>
-  [...(form.value?.versions ?? [])].sort((a, b) => a.version - b.version),
+  [...(form.value?.versions ?? [])].sort((a, b) => b.version - a.version),
 );
 
-const isPending = computed(
-  () =>
-    scopePending.value ||
-    (formScope.value !== null &&
-      formsPending.value &&
-      formsResult.value === undefined),
-);
+/** The publication tab at this scope, keeping the chosen form. */
+const publication = computed((): RouteLocationRaw => {
+  const params =
+    eventId.value === ''
+      ? { orgId: orgId.value, festivalId: festivalId.value }
+      : { orgId: orgId.value, eventId: eventId.value };
+  return {
+    name:
+      eventId.value === ''
+        ? 'org-festival-publication'
+        : 'org-event-publication',
+    params,
+    query: forms.value.length > 1 ? { form: formId.value } : {},
+  };
+});
 </script>
 
 <template>
@@ -831,6 +933,7 @@ const isPending = computed(
     <HelpModal :title="t('forms.page.title')">
       <p>{{ t('forms.page.help.intro') }}</p>
       <p>{{ t('forms.page.help.draft') }}</p>
+      <p>{{ t('forms.page.help.undo') }}</p>
       <p>{{ t('forms.page.help.reorder') }}</p>
       <p>
         <kbd>{{ t('forms.page.help.shortcutUp') }}</kbd> /
@@ -877,22 +980,12 @@ const isPending = computed(
     />
 
     <template v-else-if="form !== null">
-      <p v-if="forms.length > 1" class="evp-field evp-form-picker">
-        <label for="evp-form-picker">
-          <span>{{ t('forms.page.picker') }}</span>
-          <select id="evp-form-picker" :value="formId" @change="selectForm">
-            <option
-              v-for="candidate in forms"
-              :key="candidate.id"
-              :value="candidate.id"
-            >
-              {{ candidate.name }}
-            </option>
-          </select>
-        </label>
-      </p>
-
-      <FormSettingsPanel :key="form.id" :org-id="orgId" :form="form" />
+      <FormPicker
+        v-if="forms.length > 1"
+        :forms="forms"
+        :form-id="formId"
+        :choose="chooseForm"
+      />
 
       <nav class="evp-versions" aria-labelledby="evp-versions-heading">
         <h3 id="evp-versions-heading">
@@ -942,64 +1035,58 @@ const isPending = computed(
       </p>
 
       <template v-else-if="version !== null && draft !== null">
-        <!-- The draft's own controls, kept in view down a long list: saving
-             and the unsaved-changes state are what a coordinator needs to see
-             from question twelve. -->
+        <!-- The draft's own controls, kept in view down a long list: whether
+             it is saved, and undo, are what a coordinator needs from question
+             twelve. The status is a live region so a screen reader hears a
+             save that failed, not only one that was asked for. -->
         <div
           v-if="isDraft"
           class="evp-toolbar"
           role="group"
           :aria-label="t('forms.page.toolbar.label')"
         >
-          <span class="evp-toolbar-status">
+          <span class="evp-toolbar-status" role="status">
             {{ t('forms.page.toolbar.status', { version: version.version }) }}
-            <strong v-if="dirty" class="evp-unsaved">{{
-              t('forms.page.toolbar.unsaved')
+            <strong v-if="saveStatus.tone === 'problem'" class="evp-unsaved">{{
+              saveStatus.text
             }}</strong>
-            <span v-else class="evp-muted">{{
-              t('forms.page.toolbar.allSaved')
-            }}</span>
+            <span v-else class="evp-muted">{{ saveStatus.text }}</span>
           </span>
           <span class="evp-toolbar-actions">
             <button
               type="button"
-              class="evp-button evp-button--primary"
-              :disabled="!dirty || save.isPending.value"
-              @click="saveDraft"
+              class="evp-icon-button"
+              :disabled="!undoable"
+              :aria-label="t('forms.page.toolbar.undo')"
+              :title="t('forms.page.toolbar.undoHint')"
+              aria-keyshortcuts="Control+Z Meta+Z"
+              @click="undoEdit"
             >
-              {{
-                save.isPending.value
-                  ? t('common.status.saving')
-                  : t('common.actions.save')
-              }}
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M9 14 4 9l5-5" />
+                <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+              </svg>
             </button>
             <button
               type="button"
-              class="evp-button"
-              :disabled="!dirty || save.isPending.value"
-              @click="discard"
+              class="evp-icon-button"
+              :disabled="!redoable"
+              :aria-label="t('forms.page.toolbar.redo')"
+              :title="t('forms.page.toolbar.redoHint')"
+              aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y"
+              @click="redoEdit"
             >
-              {{ t('forms.page.toolbar.discard') }}
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="m15 14 5-5-5-5" />
+                <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
+              </svg>
             </button>
-            <button
-              type="button"
-              class="evp-button"
-              :disabled="
-                dirty || blocking.length > 0 || publish.isPending.value
-              "
-              :aria-describedby="dirty ? 'evp-publish-why' : undefined"
-              aria-haspopup="dialog"
-              @click="askToPublish"
-            >
-              {{ t('forms.page.toolbar.publish') }}
-            </button>
-          </span>
-          <span
-            v-if="dirty"
-            id="evp-publish-why"
-            class="evp-muted evp-toolbar-hint"
-          >
-            {{ t('forms.page.toolbar.publishHint') }}
+            <!-- A link to the tab that publishes, not a publish button: what
+                 is published is the saved draft, and leaving saves what is
+                 pending on the way there. -->
+            <RouterLink class="evp-button" :to="publication">
+              {{ t('forms.page.toolbar.toPublication') }}
+            </RouterLink>
           </span>
         </div>
 
@@ -1081,93 +1168,83 @@ const isPending = computed(
           </ul>
         </section>
 
-        <div
-          role="tablist"
-          :aria-label="t('forms.page.tabs.label')"
-          class="evp-tabs"
-        >
-          <button
-            :id="`${tabsId}-questions`"
-            type="button"
-            role="tab"
-            class="evp-tab"
-            :aria-selected="tab === 'questions'"
-            :aria-controls="`${tabsId}-questions-panel`"
-            :tabindex="tab === 'questions' ? 0 : -1"
-            @click="tab = 'questions'"
-            @keydown="onTabKey"
+        <div>
+          <div
+            v-if="isDraft"
+            class="evp-builder"
+            :class="{ 'evp-builder--dragging': drag.active.value !== null }"
           >
-            {{ t('forms.page.tabs.questions') }}
-          </button>
-          <button
-            :id="`${tabsId}-preview`"
-            type="button"
-            role="tab"
-            class="evp-tab"
-            :aria-selected="tab === 'preview'"
-            :aria-controls="`${tabsId}-preview-panel`"
-            :tabindex="tab === 'preview' ? 0 : -1"
-            @click="tab = 'preview'"
-            @keydown="onTabKey"
-          >
-            {{ t('forms.page.tabs.preview') }}
-          </button>
-        </div>
+            <div class="evp-builder-main">
+              <p class="evp-field evp-privacy">
+                <label for="evp-privacy-notice">
+                  <span>{{ t('forms.page.notice.label') }}</span>
+                  <input
+                    id="evp-privacy-notice"
+                    :value="draft.privacyNoticeVersion"
+                    type="text"
+                    aria-describedby="evp-privacy-notice-hint"
+                    @input="setNotice"
+                  />
+                </label>
+                <span
+                  id="evp-privacy-notice-hint"
+                  class="evp-muted evp-small evp-privacy-hint"
+                >
+                  {{ t('forms.page.notice.hint') }}
+                </span>
+              </p>
 
-        <div
-          v-if="tab === 'questions'"
-          :id="`${tabsId}-questions-panel`"
-          role="tabpanel"
-          :aria-labelledby="`${tabsId}-questions`"
-        >
-          <template v-if="isDraft">
-            <p class="evp-field evp-notice">
-              <label for="evp-privacy-notice">
-                <span>{{ t('forms.page.notice.label') }}</span>
-                <input
-                  id="evp-privacy-notice"
-                  :value="draft.privacyNoticeVersion"
-                  type="text"
-                  aria-describedby="evp-privacy-notice-hint"
-                  @input="setNotice"
-                />
-              </label>
-              <span id="evp-privacy-notice-hint" class="evp-muted evp-small">
-                {{ t('forms.page.notice.hint') }}
-              </span>
-            </p>
-
-            <ol class="evp-questions">
-              <li
-                v-for="(question, index) in draft.questions"
-                :key="question.key"
+              <!-- The drop line is drawn by the gap's own neighbours (the
+                   card below it, or the list's end), so it never shifts the
+                   cards it falls between. -->
+              <ol
+                ref="list"
+                class="evp-questions"
+                :class="{
+                  'evp-drop-end':
+                    dropMarker !== null &&
+                    dropMarker === draft.questions.length,
+                }"
               >
-                <FormQuestionCard
-                  :question="question"
-                  :index="index"
-                  :total="draft.questions.length"
-                  :problems="problemsFor(question.key)"
-                  :expanded="expanded.has(question.key)"
-                  :scope-missions="scopeMissions"
-                  :event-names="eventNames"
-                  :next-key="nextKey"
-                  @update="update(question.key, $event)"
-                  @move="(delta) => move(question.key, delta)"
-                  @remove="remove(question.key)"
-                  @toggle="
-                    setExpanded(question.key, !expanded.has(question.key))
-                  "
-                />
-              </li>
-            </ol>
+                <li
+                  v-for="(question, index) in draft.questions"
+                  :key="question.key"
+                  :class="{
+                    'evp-drop-before': dropMarker === index,
+                    'evp-lifted': liftedKey === question.key,
+                  }"
+                >
+                  <FormQuestionCard
+                    :question="question"
+                    :index="index"
+                    :total="draft.questions.length"
+                    :problems="problemsFor(question.key)"
+                    :expanded="expanded.has(question.key)"
+                    :scope-missions="scopeMissions"
+                    :event-names="eventNames"
+                    :next-key="nextKey"
+                    @update="update(question.key, $event)"
+                    @move="(delta) => move(question.key, delta)"
+                    @remove="remove(question.key)"
+                    @toggle="
+                      setExpanded(question.key, !expanded.has(question.key))
+                    "
+                    @grab="(event) => grab(event, question.key)"
+                  />
+                </li>
+              </ol>
+            </div>
 
-            <section
-              class="evp-panel evp-palette"
+            <aside
+              class="evp-card evp-toolbox"
               :aria-labelledby="paletteHeadingId"
             >
               <h3 :id="paletteHeadingId" tabindex="-1">
                 {{ t('forms.page.palette.heading') }}
               </h3>
+              <p class="evp-muted evp-small">
+                {{ t('forms.page.palette.hint') }}
+              </p>
               <div
                 role="group"
                 aria-labelledby="evp-palette-builtin"
@@ -1176,17 +1253,18 @@ const isPending = computed(
                 <h4 id="evp-palette-builtin">
                   {{ t('forms.page.palette.builtin') }}
                 </h4>
-                <p v-if="palette.length === 0" class="evp-muted evp-small">
+                <p v-if="builtinItems.length === 0" class="evp-muted evp-small">
                   {{ t('forms.page.palette.allAdded') }}
                 </p>
                 <button
-                  v-for="id in palette"
-                  :key="id"
+                  v-for="item in builtinItems"
+                  :key="itemLabel(item)"
                   type="button"
                   class="evp-button evp-palette-button"
-                  @click="addBuiltin(id)"
+                  @pointerdown="pressItem($event, item)"
+                  @click="clickItem(item)"
                 >
-                  + {{ builtinLabel(id) }}
+                  <span aria-hidden="true">+</span> {{ itemLabel(item) }}
                 </button>
               </div>
               <div
@@ -1198,24 +1276,18 @@ const isPending = computed(
                   {{ t('forms.page.palette.custom') }}
                 </h4>
                 <button
-                  v-for="kind in CUSTOM_KINDS"
-                  :key="kind"
+                  v-for="item in customItems"
+                  :key="itemLabel(item)"
                   type="button"
                   class="evp-button evp-palette-button"
-                  @click="addCustom(kind)"
+                  @pointerdown="pressItem($event, item)"
+                  @click="clickItem(item)"
                 >
-                  + {{ kindLabel(kind) }}
-                </button>
-                <button
-                  type="button"
-                  class="evp-button evp-palette-button"
-                  @click="addCustom('section')"
-                >
-                  + {{ t('forms.page.palette.section') }}
+                  <span aria-hidden="true">+</span> {{ itemLabel(item) }}
                 </button>
               </div>
-            </section>
-          </template>
+            </aside>
+          </div>
 
           <!-- Read-only: a published version is what volunteers answered,
                and it is shown as that rather than as a form that refuses to
@@ -1255,53 +1327,10 @@ const isPending = computed(
             </li>
           </ol>
         </div>
-
-        <div
-          v-else
-          :id="`${tabsId}-preview-panel`"
-          role="tabpanel"
-          :aria-labelledby="`${tabsId}-preview`"
-        >
-          <FormPreview
-            :questions="draft.questions"
-            :events="events"
-            :default-locale="form.default_locale"
-          />
-        </div>
       </template>
 
       <p v-else>{{ t('common.status.loading') }}</p>
     </template>
-
-    <ConfirmDialog
-      :open="confirmingPublish"
-      :title="
-        t('forms.page.publishDialog.title', {
-          version: version?.version ?? '',
-        })
-      "
-      :confirm-label="t('forms.page.publishDialog.confirm')"
-      :busy-label="t('forms.page.publishDialog.busy')"
-      :cancel-label="t('common.actions.cancel')"
-      :busy="publish.isPending.value"
-      :error="publishError"
-      @confirm="confirmPublish"
-      @cancel="confirmingPublish = false"
-    >
-      <p>
-        {{ t('forms.page.publishDialog.body') }}
-        <strong>{{ t('forms.page.publishDialog.frozen') }}</strong>
-      </p>
-      <p>{{ t('forms.page.publishDialog.why') }}</p>
-      <template v-if="beforePublish.length > 0">
-        <p>{{ t('forms.page.publishDialog.risk') }}</p>
-        <ul>
-          <li v-for="(p, i) in beforePublish" :key="`${p.code}-${i}`">
-            {{ p.message }}
-          </li>
-        </ul>
-      </template>
-    </ConfirmDialog>
 
     <ConfirmDialog
       :open="confirmingLeave"
@@ -1320,6 +1349,22 @@ const isPending = computed(
   <!-- Outside every branch, so an announcement survives the branch that
        caused it being swapped out. -->
   <p class="evp-visually-hidden" aria-live="polite">{{ announcement }}</p>
+
+  <!-- What is being carried, under the pointer. Hidden from assistive
+       technology: the drag is the pointer path only, and the announcement
+       above says where the question landed. -->
+  <div
+    v-if="drag.active.value !== null"
+    class="evp-ghost"
+    :class="{ 'evp-ghost--nowhere': drag.active.value.gap === null }"
+    :style="{
+      left: `${drag.active.value.x}px`,
+      top: `${drag.active.value.y}px`,
+    }"
+    aria-hidden="true"
+  >
+    {{ ghostLabel }}
+  </div>
 
   <ToastStack>
     <ToastMessage
@@ -1375,21 +1420,15 @@ const isPending = computed(
   padding: 0.75rem;
 }
 
-.evp-form-picker select,
-.evp-notice input {
+.evp-privacy input {
   max-width: 24rem;
 }
 
-.evp-form-picker select {
-  background: var(--evp-surface);
-  border: 1px solid var(--evp-border);
-  border-radius: 0.375rem;
-  color: var(--evp-text);
+/* A block under the input: left inline, its first line sat beside the input
+   and the rest wrapped under it. */
+.evp-privacy-hint {
   display: block;
-  font: inherit;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.75rem;
-  width: 100%;
+  margin-top: 0.25rem;
 }
 
 .evp-versions {
@@ -1478,14 +1517,43 @@ const isPending = computed(
 }
 
 .evp-toolbar-actions {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.evp-toolbar-hint {
-  flex: 1 0 100%;
-  font-size: 0.875rem;
+.evp-icon-button {
+  align-items: center;
+  background: transparent;
+  border: var(--evp-edge) solid var(--evp-border);
+  border-radius: var(--evp-radius-md);
+  color: var(--evp-text);
+  cursor: pointer;
+  display: inline-flex;
+  height: 2.75rem;
+  justify-content: center;
+  padding: 0;
+  width: 2.75rem;
+}
+
+.evp-icon-button:hover:not(:disabled) {
+  border-color: var(--evp-accent);
+}
+
+.evp-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.evp-icon-button svg {
+  fill: none;
+  height: 1.25rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  width: 1.25rem;
 }
 
 .evp-unsaved {
@@ -1526,36 +1594,6 @@ const isPending = computed(
   text-underline-offset: 0.2em;
 }
 
-.evp-tabs {
-  border-bottom: 1px solid var(--evp-border);
-  display: flex;
-  gap: 0.25rem;
-  margin: 0 0 1rem;
-  max-width: 48rem;
-}
-
-.evp-tab {
-  background: none;
-  border: 0;
-  border-bottom: 3px solid transparent;
-  color: var(--evp-text);
-  cursor: pointer;
-  font: inherit;
-  margin-bottom: -1px;
-  min-height: 2.75rem;
-  padding: 0.5rem 1rem;
-}
-
-.evp-tab[aria-selected='true'] {
-  border-bottom-color: var(--evp-accent);
-  color: var(--evp-accent);
-  font-weight: 600;
-}
-
-.evp-notice {
-  max-width: 48rem;
-}
-
 .evp-questions {
   list-style: none;
   margin: 0 0 1rem;
@@ -1578,32 +1616,131 @@ const isPending = computed(
   gap: 0.5rem;
 }
 
-.evp-palette {
-  max-width: 48rem;
+.evp-builder {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
 }
 
-.evp-palette h3 {
+.evp-builder--dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+/* The questions keep the reading measure they had; the toolbox takes what is
+   left beside them, and drops below them once there is not 14 rem left. */
+.evp-builder-main {
+  flex: 1 1 32rem;
+  max-width: 48rem;
+  min-width: 0;
+}
+
+/* Sticky under the draft toolbar, so it is beside whichever card a
+   coordinator has scrolled to — which is the point of it being aside. */
+.evp-toolbox {
+  flex: 1 1 14rem;
+  max-height: calc(100vh - 6rem);
+  max-width: 22rem;
+  overflow-y: auto;
+  padding: 1rem;
+  position: sticky;
+  top: 4.5rem;
+}
+
+.evp-toolbox h3 {
   font-size: 1rem;
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.25rem;
+}
+
+.evp-toolbox > p {
+  margin: 0 0 1rem;
 }
 
 .evp-palette-group {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.375rem;
   margin-bottom: 1rem;
 }
 
 .evp-palette-group h4 {
-  flex: 1 0 100%;
   font-size: 0.9375rem;
   font-weight: 500;
-  margin: 0;
+  margin: 0 0 0.125rem;
 }
 
 .evp-palette-button {
+  cursor: grab;
+  justify-content: flex-start;
   min-height: 2.25rem;
   padding: 0.375rem 0.875rem;
+  text-align: left;
+}
+
+.evp-builder--dragging .evp-palette-button {
+  cursor: grabbing;
+}
+
+/* The drop line: a bar in the gap, drawn by the card under it so the list
+   does not reflow under the pointer while it is being aimed. */
+.evp-questions > li {
+  position: relative;
+}
+
+.evp-drop-before::before,
+.evp-drop-end::after {
+  background: var(--evp-accent);
+  border-radius: var(--evp-radius-sm);
+  content: '';
+  height: 4px;
+  left: 0;
+  max-width: 48rem;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
+.evp-drop-before::before {
+  top: calc(-0.375rem - 2px);
+}
+
+.evp-questions.evp-drop-end {
+  position: relative;
+}
+
+.evp-drop-end::after {
+  bottom: calc(0.375rem - 2px);
+}
+
+/* The card being carried stays where it was, faded and outlined, so the gap
+   it left is visible and letting go anywhere else reads as a move. */
+.evp-lifted {
+  opacity: 0.45;
+}
+
+.evp-ghost {
+  background: var(--evp-surface-raised);
+  border: var(--evp-edge) solid var(--evp-accent);
+  border-radius: var(--evp-radius-md);
+  color: var(--evp-text);
+  font-weight: 600;
+  max-width: 18rem;
+  overflow: hidden;
+  padding: 0.375rem 0.75rem;
+  pointer-events: none;
+  position: fixed;
+  text-overflow: ellipsis;
+  transform: translate(0.75rem, 0.75rem);
+  white-space: nowrap;
+  z-index: 20;
+}
+
+/* Over nothing, letting go drops nothing — said by the dashed edge as well
+   as the dimmer fill, not by colour alone. */
+.evp-ghost--nowhere {
+  border-style: dashed;
+  opacity: 0.7;
 }
 
 .evp-visually-hidden {

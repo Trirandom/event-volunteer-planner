@@ -38,6 +38,11 @@ export default {
       poolConsent: 'Conservation pour les prochains événements',
       commitment: 'Engagement bénévole',
     },
+    /** Pre-written custom questions, offered beside the built-ins. */
+    preset: {
+      experience: 'Niveau d’expérience',
+      drivingLicence: 'Permis de conduire',
+    },
     /** Where a question's answer goes: the tooltip behind « Intégrée » /
      * « Personnalisée » on each card. */
     destination: {
@@ -134,15 +139,16 @@ export default {
   },
 
   page: {
-    title: 'Formulaire',
+    title: 'Éditeur du formulaire',
     help: {
       intro:
         'Le formulaire est ce que remplissent les bénévoles : leurs coordonnées, leurs disponibilités sur chaque événement et les postes qui les intéressent. Un festival a un seul formulaire, qui couvre tous ses événements.',
       draft:
-        'Vous travaillez sur un brouillon, que vous pouvez enregistrer autant de fois que vous le voulez. La publication le fige : chaque réponse reste liée à la version à laquelle elle a répondu. Pour changer un formulaire publié, créez une nouvelle version, modifiez-la, puis publiez-la à son tour.',
+        'Vous travaillez sur un brouillon, enregistré automatiquement à chaque modification. La publication le fige : chaque réponse reste liée à la version à laquelle elle a répondu. Pour changer un formulaire publié, créez une nouvelle version, modifiez-la, puis publiez-la à son tour.',
+      undo: 'Ctrl+Z (Cmd+Z sur Mac) annule la dernière modification et Ctrl+Maj+Z la rétablit, hors champ de texte, où ils agissent sur le texte saisi. L’historique est perdu au rechargement de la page, pas le brouillon.',
       /** Followed by the two keyboard shortcuts. */
       reorder:
-        'Pour réordonner, utilisez les boutons Monter et Descendre, ou ces raccourcis depuis une question (hors champ de texte) :',
+        'Pour réordonner, faites glisser une question par sa poignée, utilisez les boutons Monter et Descendre, ou ces raccourcis depuis une question (hors champ de texte) :',
       /** A key combination, shown in a <kbd>. */
       shortcutUp: 'Alt+↑',
       shortcutDown: 'Alt+↓',
@@ -172,13 +178,20 @@ export default {
       label: 'Brouillon',
       /** Followed by "Unsaved changes" or "Everything is saved". */
       status: 'Brouillon v{version} ·',
-      unsaved: 'Modifications non enregistrées',
       allSaved: 'Tout est enregistré',
-      discard: 'Annuler les modifications',
-      /** Button, verb. */
-      publish: 'Publier',
-      publishHint:
-        'Enregistrez d’abord : c’est la version enregistrée qui est publiée.',
+      /** Link to the publication tab. */
+      toPublication: 'Publier…',
+      /** Shown while an edit waits to be saved. */
+      pending: 'Modifications en attente…',
+      blocked:
+        '{count, plural, one {Non enregistré : un point à corriger} other {Non enregistré : # points à corriger}}',
+      failed:
+        'Échec de l’enregistrement : la prochaine modification réessaiera.',
+      conflict: 'Modifié ailleurs : enregistrement suspendu.',
+      undo: 'Annuler la dernière modification',
+      undoHint: 'Annuler (Ctrl+Z)',
+      redo: 'Rétablir la modification',
+      redoHint: 'Rétablir (Ctrl+Maj+Z)',
     },
     frozen: {
       title: 'Version {version}, publiée le {date}.',
@@ -200,11 +213,6 @@ export default {
       /** Between "Question 3" and the problem's text. */
       separator: ' :',
     },
-    tabs: {
-      label: 'Affichage',
-      questions: 'Questions',
-      preview: 'Aperçu',
-    },
     notice: {
       label: 'Version de la notice de confidentialité',
       hint: 'Enregistrée avec chaque réponse, pour savoir quelle notice la personne a acceptée. Facultatif.',
@@ -212,6 +220,7 @@ export default {
     palette: {
       heading: 'Ajouter une question',
       builtin: 'Questions intégrées',
+      hint: 'Cliquez pour ajouter à la fin, ou faites glisser à l’endroit voulu.',
       allAdded: 'Toutes les questions intégrées sont déjà dans le formulaire.',
       custom: 'Questions personnalisées',
       section: 'Section (titre et texte)',
@@ -233,10 +242,9 @@ export default {
       confirm: 'Abandonner les modifications',
       busy: '…',
       stay: 'Rester sur la page',
-      body: 'Le brouillon a des modifications non enregistrées. Elles seront perdues si vous quittez cette page maintenant.',
+      body: 'Le brouillon n’a pas pu être enregistré : un point bloque l’enregistrement, ou le serveur ne répond pas. Ces modifications seront perdues si vous quittez cette page maintenant.',
     },
     toast: {
-      saved: 'Brouillon enregistré.',
       saveConflict:
         'Ce brouillon a été modifié ailleurs, ou publié, depuis que vous l’avez ouvert : rien n’a été enregistré. Vos modifications sont toujours à l’écran.',
       reload: 'Recharger la version enregistrée (abandonne vos modifications)',
@@ -263,7 +271,10 @@ export default {
         '{named, select, yes {« {label} »} other {La question}} a été retirée du brouillon.',
       added:
         '{named, select, yes {« {label} »} other {La question}} a été ajoutée à la fin du formulaire.',
-      discarded: 'Modifications annulées.',
+      inserted:
+        '{named, select, yes {« {label} »} other {La question}} a été ajoutée en position {position} sur {total}.',
+      undone: 'Modification annulée.',
+      redone: 'Modification rétablie.',
     },
   },
 
@@ -279,6 +290,8 @@ export default {
     moveDown: 'Descendre « {title} »',
     moveDownHint: 'Descendre (Alt+↓)',
     remove: 'Retirer « {title} »',
+    /** Tooltip of the grip a card is dragged by. */
+    dragHint: 'Glisser pour déplacer',
     /** A field label; `lang` is a language code, "fr" or "en". */
     field:
       '{field, select, title {Titre} text {Texte} help {Aide} other {Libellé}} ({lang})',
@@ -315,6 +328,29 @@ export default {
       'Les missions sont cochées d’avance pour le bénévole, sauf celles marquées «\u00a0Non cochée par défaut\u00a0» ou «\u00a018 ans et +\u00a0». Ces réglages se font sur la page Missions, dans la carte de chaque zone.',
   },
 
+  publication: {
+    title: 'Publication',
+    noForm:
+      'Ce périmètre n’a pas encore de formulaire. Créez-le dans l’éditeur, relisez ses questions, puis revenez ici pour le publier.',
+    toBuilder: 'Ouvrir l’éditeur',
+    status: {
+      heading: 'En ligne',
+      live: 'Version {version}, publiée le {date} · {count, plural, one {# question} other {# questions}}. C’est elle que remplissent les bénévoles.',
+      never:
+        'Rien n’est encore publié : le lien public n’affiche aucun formulaire. Publiez le brouillon ci-dessous pour l’ouvrir aux bénévoles.',
+    },
+    draft: {
+      heading: 'Brouillon',
+      /** `replaces` is `yes` when a version is already live. */
+      summary:
+        'Brouillon v{version} · {count, plural, one {# question} other {# questions}}. {replaces, select, yes {Le publier remplace la version en ligne pour les prochaines réponses.} other {Le publier ouvre le formulaire aux bénévoles.}}',
+      /** Button, verb. */
+      publish: 'Publier la version {version}',
+      edit: 'Modifier dans l’éditeur',
+      none: 'Aucun brouillon en cours. Pour changer le formulaire, créez une nouvelle version depuis l’éditeur, modifiez-la, puis publiez-la ici.',
+    },
+  },
+
   settings: {
     title: 'Réglages du formulaire',
     name: 'Nom',
@@ -324,8 +360,8 @@ export default {
     open: 'Lien public ouvert aux nouvelles inscriptions',
     openHint:
       'Fermé, le lien public refuse les nouvelles inscriptions ; les liens personnels envoyés aux bénévoles connus continuent de fonctionner.',
-    noLiveVersion:
-      'Aucune version n’est encore publiée : le lien n’affichera rien tant qu’il n’y en a pas.',
+    /** Followed by the URL, before anything is published. */
+    futureLink: 'Une fois publié, le formulaire sera à cette adresse :',
     saved: 'Réglages enregistrés.',
     conflict:
       'Ces réglages ont été modifiés ailleurs entre-temps. Vérifiez-les puis enregistrez à nouveau.',
@@ -341,9 +377,5 @@ export default {
     slugTaken:
       'Ce lien est déjà utilisé par un autre formulaire. Choisissez-en un autre.',
     create: 'Créer le formulaire',
-  },
-
-  preview: {
-    locale: 'Langue de l’aperçu',
   },
 };

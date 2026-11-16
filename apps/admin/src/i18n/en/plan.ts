@@ -11,9 +11,14 @@ export default {
     shifts: 'Shifts',
     form: 'Form',
     assignments: 'Assignments',
-    submissions: 'Form submissions',
     availability: 'Availability',
     emails: 'Emails',
+  },
+  formTabs: {
+    label: 'Form views',
+    builder: 'Form builder',
+    publication: 'Publication',
+    submissions: 'Submissions',
   },
   scope: {
     label: 'Festival scope',

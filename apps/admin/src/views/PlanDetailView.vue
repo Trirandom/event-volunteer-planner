@@ -108,12 +108,21 @@ type PlanSection = NonNullable<RouteMeta['section']>;
  * is the parent before its redirect has resolved. */
 const section = computed(() => route.meta.section ?? 'details');
 
+/** The sections the rail's one "Formulaire" entry stands for, in the order
+ * their tabs read: the questions are written, then published, then answered. */
+const FORM_TABS = ['form', 'publication', 'submissions'] as const;
+type FormTab = (typeof FORM_TABS)[number];
+
+function isFormTab(named: PlanSection): named is FormTab {
+  return FORM_TABS.some((tab) => tab === named);
+}
+
+const inForm = computed(() => isFormTab(section.value));
+
 /** The form is the festival's, not a day's (ADR-0035), and the submissions
  * table filters by day itself; a strip there would offer a narrowing the
  * section either ignores or already has. */
-const showsDayStrip = computed(
-  () => section.value !== 'form' && section.value !== 'submissions',
-);
+const showsDayStrip = computed(() => !inForm.value);
 
 /** Both scopes offer the same sections, so a link is "this section, at that
  * scope" — one function rather than four hand-written route names that could
@@ -142,6 +151,34 @@ function here(named: PlanSection): RouteLocationRaw {
     ? target('festival', festival.value?.id ?? '', named)
     : target('event', day.id, named);
 }
+
+/** A form tab keeps the form it was on: the builder and the publication tab
+ * read the choice between several forms from `?form=` (`useScopeForm`). The
+ * submissions are the festival's whatever form they came through, and take
+ * no query. */
+function formTab(named: FormTab): RouteLocationRaw {
+  const day = selected.value;
+  const chosen = route.query['form'];
+  const query =
+    named !== 'submissions' && typeof chosen === 'string'
+      ? { form: chosen }
+      : {};
+  const params =
+    day === null
+      ? { orgId: orgId.value, festivalId: festival.value?.id ?? '' }
+      : { orgId: orgId.value, eventId: day.id };
+  return {
+    name: `org-${day === null ? 'festival' : 'event'}-${named}`,
+    params,
+    query,
+  };
+}
+
+const formTabLabels = computed((): Record<FormTab, string> => ({
+  form: t('plan.formTabs.builder'),
+  publication: t('plan.formTabs.publication'),
+  submissions: t('plan.formTabs.submissions'),
+}));
 </script>
 
 <template>
@@ -182,15 +219,13 @@ function here(named: PlanSection): RouteLocationRaw {
             <RouterLink class="evp-rail-link" :to="here('shifts')">
               {{ t('plan.nav.shifts') }}
             </RouterLink>
-            <RouterLink class="evp-rail-link" :to="here('form')">
-              {{ t('plan.nav.form') }}
-            </RouterLink>
             <RouterLink
               class="evp-rail-link"
-              :class="{ 'evp-rail-link--within': section === 'submissions' }"
-              :to="here('submissions')"
+              :class="{ 'evp-rail-link--within': inForm }"
+              :aria-current="inForm ? 'page' : undefined"
+              :to="here('form')"
             >
-              {{ t('plan.nav.submissions') }}
+              {{ t('plan.nav.form') }}
             </RouterLink>
             <RouterLink class="evp-rail-link" :to="here('availability')">
               {{ t('plan.nav.availability') }}
@@ -253,6 +288,26 @@ function here(named: PlanSection): RouteLocationRaw {
           <span class="evp-muted">{{ periodText(selectedPeriod) }}</span>
           <span class="evp-muted">{{ selectedMeta }}</span>
         </p>
+
+        <!-- Links, not an ARIA tablist: each tab is a URL of its own, so it
+             is navigation, and arrow-key tab semantics would promise a panel
+             switch that is really a page change. -->
+        <nav
+          v-if="inForm"
+          :aria-label="t('plan.formTabs.label')"
+          class="evp-form-tabs"
+        >
+          <RouterLink
+            v-for="named in FORM_TABS"
+            :key="named"
+            class="evp-form-tab"
+            :class="{ 'evp-form-tab--current': named === section }"
+            :aria-current="named === section ? 'page' : undefined"
+            :to="formTab(named)"
+          >
+            {{ formTabLabels[named] }}
+          </RouterLink>
+        </nav>
 
         <div class="evp-section">
           <RouterView />
@@ -451,6 +506,36 @@ function here(named: PlanSection): RouteLocationRaw {
   padding: 1rem 1rem 3rem;
 }
 
+/* Under the header, across the content column: the three views of the
+   form. The current one carries an underline and bold weight — never colour
+   alone (docs/14 §2). Wraps rather than scrolls at 320 px. */
+.evp-form-tabs {
+  border-bottom: 1px solid var(--evp-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0 0 1.25rem;
+}
+
+.evp-form-tab {
+  border-bottom: 3px solid transparent;
+  color: var(--evp-text);
+  margin-bottom: -1px;
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  text-decoration: none;
+}
+
+.evp-form-tab:hover {
+  background: var(--evp-surface-raised);
+}
+
+.evp-form-tab--current {
+  border-bottom-color: var(--evp-accent);
+  color: var(--evp-accent);
+  font-weight: 600;
+}
+
 /* Positioned so that a section's help button (`HelpModal`) lands in the same
    corner of the content column on every page, whatever that page renders
    first. */
@@ -460,8 +545,8 @@ function here(named: PlanSection): RouteLocationRaw {
   position: relative;
 }
 
-/* Nothing above it on the form and submissions sections, which have no day
-   strip: the content padding is the whole gap under the header. */
+/* Nothing above it when there is no day strip and no form tabs: the content
+   padding is the whole gap under the header. */
 .evp-section:first-child {
   margin-top: 0;
 }

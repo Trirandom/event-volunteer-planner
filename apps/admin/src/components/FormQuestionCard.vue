@@ -15,10 +15,15 @@
  * missing feature; one that is there, on, and says why it cannot be turned
  * off is the rule explained where it applies (ADR-0025, ADR-0037).
  *
- * **Reordering has three paths**, none of them a drag: the Monter/Descendre
- * buttons, and `Alt+↑`/`Alt+↓` anywhere on the card outside a text field
- * (docs/14 §5: focus-scoped, never while typing). The page moves focus with
- * the card and announces where it landed.
+ * **Reordering has a drag and its non-drag equivalents** (WCAG 2.2 2.5.7,
+ * ADR-0017): the grip at the card's leading edge is the pointer path, and the
+ * Monter/Descendre buttons and `Alt+↑`/`Alt+↓` anywhere on the card outside a
+ * text field (docs/14 §5: focus-scoped, never while typing) are the rest. The
+ * grip is not focusable and is hidden from assistive technology: a keyboard
+ * user already has two ways to move a card, and a focus stop that does
+ * nothing on Enter would be a third control that is not one. The card only
+ * reports the grab; the page owns the drag (`PlanFormView.vue`), because the
+ * drop target is a gap in the whole list.
  */
 import {
   computed,
@@ -68,6 +73,7 @@ const emit = defineEmits<{
   move: [delta: -1 | 1, via: 'up' | 'down' | 'keyboard'];
   remove: [];
   toggle: [];
+  grab: [event: PointerEvent];
 }>();
 
 const base = computed(() => `evp-q-${props.question.key}`);
@@ -183,6 +189,21 @@ const helpNoun = computed(() => (isSection.value ? 'text' : 'help'));
     :aria-labelledby="id('heading')"
   >
     <div class="evp-question-row">
+      <span
+        class="evp-grip"
+        aria-hidden="true"
+        :title="t('forms.card.dragHint')"
+        @pointerdown="emit('grab', $event)"
+      >
+        <svg viewBox="0 0 24 24" focusable="false">
+          <circle cx="9" cy="6" r="1.5" />
+          <circle cx="15" cy="6" r="1.5" />
+          <circle cx="9" cy="12" r="1.5" />
+          <circle cx="15" cy="12" r="1.5" />
+          <circle cx="9" cy="18" r="1.5" />
+          <circle cx="15" cy="18" r="1.5" />
+        </svg>
+      </span>
       <h3 :id="id('heading')" class="evp-question-heading">
         <button
           :id="id('toggle')"
@@ -533,9 +554,38 @@ const helpNoun = computed(() => (isSection.value ? 'text' : 'help'));
   justify-content: space-between;
 }
 
+/* `touch-action: none` on the grip alone: a finger on it drags the card, a
+   finger anywhere else still scrolls the page. */
+.evp-grip {
+  align-self: stretch;
+  align-items: center;
+  border-radius: var(--evp-radius-sm);
+  color: var(--evp-text-muted);
+  cursor: grab;
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+  margin-left: -0.5rem;
+  touch-action: none;
+  user-select: none;
+  width: 1.5rem;
+}
+
+.evp-grip:hover {
+  background: var(--evp-surface-raised);
+  color: var(--evp-text);
+}
+
+.evp-grip svg {
+  fill: currentColor;
+  height: 1.125rem;
+  width: 1.125rem;
+}
+
 .evp-question-heading {
   align-items: center;
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   font-size: 1rem;
   gap: 0.375rem 0.5rem;

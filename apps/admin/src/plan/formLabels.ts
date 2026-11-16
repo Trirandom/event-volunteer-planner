@@ -17,7 +17,7 @@
  */
 import type { QuestionKind } from '../api/forms';
 import { t, type AdminMessageKey } from '../i18n';
-import type { BuiltinId } from './formDraft';
+import type { BuiltinId, PresetId } from './formDraft';
 
 const KIND_LABELS: Readonly<Record<QuestionKind, AdminMessageKey>> = {
   short_text: 'forms.labels.kind.shortText',
@@ -55,6 +55,16 @@ const BUILTIN_LABELS: Readonly<Record<BuiltinId, AdminMessageKey>> = {
 
 export function builtinLabel(id: BuiltinId): string {
   return t(BUILTIN_LABELS[id]);
+}
+
+const PRESET_LABELS: Readonly<Record<PresetId, AdminMessageKey>> = {
+  experience: 'forms.labels.preset.experience',
+  driving_licence: 'forms.labels.preset.drivingLicence',
+};
+
+/** A pre-written question's name in the toolbox. */
+export function presetLabel(id: PresetId): string {
+  return t(PRESET_LABELS[id]);
 }
 
 /** Where a built-in's answer goes — the tooltip behind «Intégrée», and the

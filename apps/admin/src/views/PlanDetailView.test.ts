@@ -70,7 +70,7 @@ const DUB = event({
 });
 
 /** Mirrors the real router (router/index.ts): both URL shapes mount this one
- * component, and each has the same seven sections under it, in the same order
+ * component, and each has the same sections under it, in the same order
  * — the rail links to every one of them, so a section missing here is a
  * `No match for` on mount rather than a quiet gap. */
 function testRouter(): Router {
@@ -98,6 +98,12 @@ function testRouter(): Router {
       name: `org-${scope}-form`,
       component: { template: '<p>form placeholder</p>' },
       meta: { section: 'form' as const },
+    },
+    {
+      path: 'form/publication',
+      name: `org-${scope}-publication`,
+      component: { template: '<p>publication placeholder</p>' },
+      meta: { section: 'publication' as const },
     },
     {
       path: 'assignments',
@@ -187,6 +193,10 @@ function dayLinks(wrapper: Awaited<ReturnType<typeof mountView>>['wrapper']) {
   return wrapper.findAll('nav[aria-label="Festival scope"] a');
 }
 
+function formTabs(wrapper: Awaited<ReturnType<typeof mountView>>['wrapper']) {
+  return wrapper.findAll('nav[aria-label="Form views"] a');
+}
+
 beforeEach(() => {
   vi.spyOn(sessionApi, 'fetchSession').mockResolvedValue(AUTHENTICATED_USER);
 });
@@ -246,7 +256,7 @@ describe('PlanDetailView at festival scope', () => {
 
   /** The form is the festival's (ADR-0035) and its submissions table carries
    * its own day filter, so a strip of days there narrows nothing useful. */
-  it.each(['form', 'submissions'])(
+  it.each(['form', 'form/publication', 'submissions'])(
     'offers no day strip on the %s section',
     async (named) => {
       const { wrapper } = await mountView(
@@ -256,6 +266,71 @@ describe('PlanDetailView at festival scope', () => {
       expect(dayLinks(wrapper)).toHaveLength(0);
     },
   );
+
+  it('lists the form once in the rail, whichever of its views is open', async () => {
+    const { wrapper } = await mountView(
+      '/org-1/festivals/festival-1/submissions',
+    );
+
+    const rail = wrapper.findAll('nav[aria-label="Sections"] a');
+    expect(rail.map((link) => link.text())).toEqual([
+      'Event details',
+      'Missions',
+      'Shifts',
+      'Form',
+      'Availability',
+      'Assignments',
+      'Emails',
+    ]);
+    const form = rail.find((link) => link.text() === 'Form');
+    expect(form?.attributes('href')).toBe('/org-1/festivals/festival-1/form');
+    expect(form?.classes()).toContain('evp-rail-link--within');
+  });
+
+  it.each([
+    ['form', 'Form builder'],
+    ['form/publication', 'Publication'],
+    ['submissions', 'Submissions'],
+  ])(
+    'offers the form’s three views on %s, marking the open one',
+    async (path, current) => {
+      const { wrapper } = await mountView(
+        `/org-1/festivals/festival-1/${path}`,
+      );
+
+      const tabs = formTabs(wrapper);
+      expect(
+        tabs.map((link) => [link.text(), link.attributes('href')]),
+      ).toEqual([
+        ['Form builder', '/org-1/festivals/festival-1/form'],
+        ['Publication', '/org-1/festivals/festival-1/form/publication'],
+        ['Submissions', '/org-1/festivals/festival-1/submissions'],
+      ]);
+      expect(
+        tabs
+          .filter((link) => link.attributes('aria-current') === 'page')
+          .map((link) => link.text()),
+      ).toEqual([current]);
+    },
+  );
+
+  it('carries the chosen form between the builder and the publication tab', async () => {
+    const { wrapper } = await mountView(
+      '/org-1/festivals/festival-1/form?form=form-2',
+    );
+
+    expect(formTabs(wrapper).map((link) => link.attributes('href'))).toEqual([
+      '/org-1/festivals/festival-1/form?form=form-2',
+      '/org-1/festivals/festival-1/form/publication?form=form-2',
+      '/org-1/festivals/festival-1/submissions',
+    ]);
+  });
+
+  it('offers no form tabs outside the form', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    expect(formTabs(wrapper)).toHaveLength(0);
+  });
 
   it('reports the failure rather than an empty page', async () => {
     vi.spyOn(festivals, 'fetchFestival').mockResolvedValue({

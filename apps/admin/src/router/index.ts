@@ -35,6 +35,7 @@ declare module 'vue-router' {
       | 'missions'
       | 'shifts'
       | 'form'
+      | 'publication'
       | 'assignments'
       | 'submissions'
       | 'availability'
@@ -102,10 +103,24 @@ function planSections(scope: 'festival' | 'event'): RouteRecordRaw[] {
       meta: { section: 'shifts' },
     },
     {
+      // The form builder. The rail has one "Formulaire" entry for this, the
+      // publication tab and the submissions: they are three views of one
+      // thing, and two rail entries for it had coordinators looking for the
+      // public link in the wrong one. The tabs under the header are
+      // `PlanDetailView.vue`'s, keyed off `section`.
       path: 'form',
       name: `org-${scope}-form`,
       component: async () => import('../views/PlanFormView.vue'),
       meta: { section: 'form' },
+    },
+    {
+      // A route of its own rather than a panel of the builder, so leaving
+      // the builder with unsaved edits goes through the builder's own guard
+      // and what this tab publishes is always the saved draft.
+      path: 'form/publication',
+      name: `org-${scope}-publication`,
+      component: async () => import('../views/PlanFormPublicationView.vue'),
+      meta: { section: 'publication' },
     },
     {
       // After the shifts it staffs, and before the submissions that feed it:

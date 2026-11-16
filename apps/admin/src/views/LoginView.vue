@@ -106,10 +106,12 @@ function submit(): void {
 </script>
 
 <template>
-  <div class="evp-login-card evp-panel">
+  <div class="evp-card evp-slab evp-slab--lg evp-slab--tint evp-login-card">
     <!-- The mark stands alone here, so unlike the header it is labelled: there
          is no adjacent product name for it to be redundant with. -->
-    <BrandMark :size="44" :label="t('common.productName')" />
+    <span class="evp-tile evp-slab evp-slab--sm">
+      <BrandMark :size="44" :label="t('common.productName')" />
+    </span>
 
     <h1>{{ t('login.title') }}</h1>
     <p class="evp-login-intro">{{ t('login.intro') }}</p>
@@ -136,7 +138,7 @@ function submit(): void {
       <!-- Wrapped *and* `for`/`id`: either alone associates the label, but the
          pair also makes the text itself a click target, which is the whole
          24x24 label rather than the 16px box (docs/14 §2). -->
-      <p class="evp-field">
+      <p class="evp-field evp-field--flat">
         <label for="login-email">
           <span>{{ t('login.email') }}</span>
           <input
@@ -155,7 +157,7 @@ function submit(): void {
         </label>
       </p>
 
-      <p class="evp-field">
+      <p class="evp-field evp-field--flat">
         <label for="login-password">
           <span>{{ t('login.password') }}</span>
           <input
@@ -174,7 +176,7 @@ function submit(): void {
       </p>
 
       <button
-        class="evp-button evp-button--primary"
+        class="evp-button evp-button--primary evp-button--cta evp-slab evp-pressable"
         type="submit"
         :disabled="isPending"
       >
@@ -192,17 +194,21 @@ function submit(): void {
 /* A card rather than a bare form on the page. Sign-in is the one screen an
    unauthenticated visitor is sent to from elsewhere, and a bounded surface with
    the mark on it is what says "you are in the right place" before the fields
-   are read. */
+   are read. Flat, like the landing page it is reached from, and from the same
+   primitives (flat.css): a card on a tinted slab, the mark on the hero's own
+   tile, so the two screens read as one place. A block, so the block's radius. */
 .evp-login-card {
+  border-radius: var(--evp-radius-xl);
   margin: 0 auto;
   max-width: 26rem;
-  padding: 1.75rem 1.5rem 1.5rem;
+  padding: 2rem 1.75rem 1.75rem;
 }
 
 .evp-login-card h1 {
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-  margin: 1rem 0 0.25rem;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 1.25rem 0 0.25rem;
 }
 
 .evp-login-intro {
@@ -215,12 +221,14 @@ function submit(): void {
 }
 
 /* The field sits on the card, not on the page, so it needs the page's own
-   ground to stay distinguishable from what is behind it. */
+   ground to stay distinguishable from what is behind it. Edge, radius and
+   focus are `.evp-field--flat` (styles.css). */
 .evp-login .evp-field input {
   background: var(--evp-surface);
 }
 
 .evp-login .evp-button {
+  margin-top: 0.5rem;
   width: 100%;
 }
 
@@ -230,7 +238,7 @@ function submit(): void {
      is not a message a colour-blind reader can pick out of the page. */
   border: 1px solid var(--evp-danger);
   border-left-width: 4px;
-  border-radius: 0.375rem;
+  border-radius: var(--evp-radius-md);
   color: var(--evp-danger);
   margin: 0 0 1.25rem;
   padding: 0.75rem;

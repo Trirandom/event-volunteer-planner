@@ -230,6 +230,7 @@ Status as in [11 §7](11-engineering-standards.md#7-enforcement-summary).
 | No `tabindex > 0` | ESLint `vuejs-accessibility` + a DOM assertion | check | lint enforced; DOM assertion planned |
 | Focus visible | Assertion that `:focus-visible` styling is not suppressed | test | planned |
 | Contrast | Token-level contrast test over the palette, both themes (`packages/shared/src/tokens.test.ts`) | test | enforced |
+| Flat primitives | `flat.css` declares its scales on a bare `:root`, and no `var(--evp-…)` without a fallback names an undeclared property in either app or the shared package (`packages/shared/src/flat.test.ts`, [ADR-0047](adr/0047-flat-visual-language-in-shared-primitives.md)) | test | enforced |
 | Reduced motion | Assertion that transitions are disabled under the media query | test | planned |
 | Forced colors | Playwright with `forcedColors: "active"` on key screens (the `forced-colors` project) | test | enforced |
 | Reflow | Screenshot assertions at 320 px and 400% zoom | test | planned |

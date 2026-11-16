@@ -102,17 +102,17 @@ const eventsOrgId = computed((): string | null => {
         <template v-if="session?.status === 'authenticated'">
           <RouterLink
             v-if="eventsOrgId !== null"
-            class="evp-nav-link"
+            class="evp-pill"
             :to="{ name: 'org-events', params: { orgId: eventsOrgId } }"
           >
             {{ t('shell.nav.events') }}
           </RouterLink>
-          <RouterLink class="evp-nav-link" to="/admin">
+          <RouterLink class="evp-pill" to="/admin">
             {{ t('shell.nav.admin') }}
           </RouterLink>
         </template>
         <template v-else-if="session !== undefined">
-          <RouterLink class="evp-nav-link" to="/login">
+          <RouterLink class="evp-pill" to="/login">
             {{ t('shell.nav.signIn') }}
           </RouterLink>
         </template>
@@ -186,22 +186,6 @@ const eventsOrgId = computed((): string | null => {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-}
-
-.evp-nav-link {
-  border-radius: 0.375rem;
-  color: var(--evp-accent);
-  /* A nav link is a link, so it is underlined: `accent` and `text` are both
-     dark greens and colour alone does not distinguish them (WCAG 1.4.1). */
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-  /* 24×24 floor from docs/14 §2, reached with padding rather than a min-height
-     that would fight the flex row's baseline. */
-  padding: 0.375rem 0.5rem;
-}
-
-.evp-nav-link:hover {
-  background: var(--evp-surface-raised);
 }
 
 .evp-main {

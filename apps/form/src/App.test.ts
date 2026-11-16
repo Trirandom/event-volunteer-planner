@@ -29,12 +29,20 @@ describe('the form’s language (docs/09 §7)', () => {
 
   it('writes the switcher’s choice into ?lang= and keeps the token', async () => {
     const wrapper = await open('/some-form?lang=en&t=capability');
-    const francais = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Français');
-    expect(francais?.attributes('aria-pressed')).toBe('false');
+    // A dropdown, each language named in itself and tagged with its own
+    // `lang` (WCAG 3.1.2), with the current one selected.
+    const switcher = wrapper.find('select[aria-label="Language"]');
+    expect(
+      switcher
+        .findAll('option')
+        .map((option) => [option.text(), option.attributes('lang')]),
+    ).toEqual([
+      ['Français', 'fr'],
+      ['English', 'en'],
+    ]);
+    expect(switcher.element).toHaveProperty('value', 'en');
 
-    await francais?.trigger('click');
+    await switcher.setValue('fr');
     await flushPromises();
 
     expect(router.currentRoute.value.query).toEqual({

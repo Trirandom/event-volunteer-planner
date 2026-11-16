@@ -4,6 +4,7 @@
 @import 'tailwindcss';
 @import '@evp/shared/brand.css';
 @import '@evp/shared/tokens.css';
+@import '@evp/shared/flat.css';
 
 /* Tailwind v4 discovers sources by scanning. The shared package sits outside
  * this app's directory, so it is declared explicitly or its classes are
@@ -120,6 +121,16 @@ dialog:modal {
   border-color: var(--evp-accent-hover);
 }
 
+/* A call to action: the one button on a screen that should be pressed, and
+ * so the one that wears a slab. Worn with `evp-slab evp-pressable`
+ * (flat.css, ADR-0047), which bring the depth and the press; this adds only
+ * the shape and weight. One per screen at most, or none reads as the one. */
+.evp-button--cta {
+  border-radius: var(--evp-radius-md);
+  font-weight: 700;
+  min-height: 3rem;
+}
+
 /* Disabled is carried by more than colour (docs/14 §2): the cursor changes and
  * the control stops responding, and every disabled control in this application
  * is a control whose label already says what it is doing ("Signing in…"). */
@@ -169,6 +180,27 @@ dialog:modal {
 /* An invalid field is outlined *and* described by the message below it. Colour
  * alone would fail docs/14 §2, and a red border with no text fails it twice. */
 .evp-field input[aria-invalid='true'] {
+  border-color: var(--evp-danger);
+}
+
+/* The flat field (ADR-0047): the flat edge's weight and the control radius.
+ * Still the `border` token, the one proved at 3:1 for a field boundary on both
+ * card and page (docs/14 §2). Focus is still the shared ring (tokens.css); the
+ * accent edge only adds which field the caret is in. The invalid rule is
+ * restated so it outranks the focus colour while the field is focused. */
+.evp-field--flat input,
+.evp-field--flat select {
+  border-radius: var(--evp-radius-md);
+  border-width: var(--evp-edge);
+  transition: border-color var(--evp-duration) ease;
+}
+
+.evp-field--flat input:focus,
+.evp-field--flat select:focus {
+  border-color: var(--evp-accent);
+}
+
+.evp-field--flat input[aria-invalid='true'] {
   border-color: var(--evp-danger);
 }
 

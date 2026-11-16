@@ -19,15 +19,14 @@ test('the coordinator application switches language and remembers it', async ({
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
-  const switcher = page.getByRole('group', { name: 'Language' });
-  await switcher.getByRole('button', { name: 'Français' }).click();
+  await page
+    .getByRole('combobox', { name: 'Language' })
+    .selectOption({ label: 'Français' });
 
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
-  await expect(
-    page.getByRole('group', { name: 'Langue' }).getByRole('button', {
-      name: 'Français',
-    }),
-  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('combobox', { name: 'Langue' })).toHaveValue(
+    'fr',
+  );
   await expect(page.getByRole('link', { name: /code source/i })).toBeVisible();
 
   // The device choice outlives a reload, and wins over the browser's `en-GB`.
@@ -44,9 +43,8 @@ test('the volunteer form follows ?lang= over the browser language', async ({
 
   // The switcher writes the query, so the address is shareable as-is.
   await page
-    .getByRole('group', { name: 'Langue' })
-    .getByRole('button', { name: 'English' })
-    .click();
+    .getByRole('combobox', { name: 'Langue' })
+    .selectOption({ label: 'English' });
   await expect(page).toHaveURL(/[?&]lang=en\b/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('link', { name: /source code/i })).toBeVisible();

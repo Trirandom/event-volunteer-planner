@@ -181,6 +181,17 @@ API types are meant to be **generated** from OpenAPI (ADR-0030), but that
 pipeline is not built: today each admin module in `apps/admin/src/api/` parses
 responses with hand-written valibot schemas. Follow that pattern until it lands.
 
+The look is **flat** (ADR-0047): matte fills, depth as a solid unblurred slab,
+a press only on the one call to action. Colours are the proved tokens
+(`packages/shared/src/tokens.ts`/`tokens.css`); shape, depth and motion are
+the scales and primitives in `packages/shared/src/styles/flat.css`
+(`--evp-radius-*`, `--evp-slab-*`, `.evp-slab`, `.evp-pressable`, `.evp-card`,
+`.evp-tile`, `.evp-icon-tile`, `.evp-notice`, `.evp-pill`; `.evp-button--cta`
+and `.evp-field--flat` in the admin stylesheet). Compose those; a radius or a
+shadow written as a literal in a component is drift. `.evp-panel`,
+`.evp-field` and the default `.evp-button` elsewhere still have the older
+bordered look.
+
 UI text is **never written in a template or a module**: it lives in
 `apps/<app>/src/i18n/{fr,en}/<area>.ts` and is read with that app's `t`
 (`import { t } from '../i18n'`), whose keys are typed against the French

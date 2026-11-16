@@ -35,6 +35,18 @@ export default defineConfig({
       },
       {
         extends: true,
+        test: {
+          // The agent hooks in .claude/hooks (AGENTS.md). Not shipped, but a
+          // hook that misreads a commit command blocks every commit a session
+          // makes, so it is held to the same suite.
+          name: 'harness',
+          root: './.claude/hooks',
+          environment: 'node',
+          include: ['*.test.ts'],
+        },
+      },
+      {
+        extends: true,
         // Both application projects mount `.vue` single-file components in
         // their tests (`EventsView.test.ts`, `params.test.ts`), which is
         // plain, unparsable JS to esbuild without this transform — Vite's own

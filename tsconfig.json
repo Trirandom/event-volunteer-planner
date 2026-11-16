@@ -1,5 +1,6 @@
 {
-  // The tooling configs: ESLint, Vitest, Playwright and the end-to-end specs.
+  // The tooling configs: ESLint, Vitest, Playwright, the end-to-end specs and
+  // the agent hooks.
   // Nothing here is shipped to a browser.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
@@ -20,6 +21,7 @@
     "eslint.config.ts",
     "vitest.config.ts",
     "playwright.config.ts",
-    "e2e/**/*.ts"
+    "e2e/**/*.ts",
+    ".claude/hooks/*.ts"
   ]
 }

@@ -1,6 +1,8 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Other agents reach it through `AGENTS.md`, which also lists the harness
+(the `dev` skill, the commit-message hook).
 
 ## What this is
 
@@ -261,6 +263,11 @@ none of those five tables is judgement, not policy (ADR-0015).
 - Comments explain **why**, not what — this codebase's comments record why the
   obvious approach is wrong here. Match that density and register; a comment
   restating the code gets deleted.
+- Commit messages explain **why**, not what, for the same reason: the diff is
+  the what. Imperative subject, then a body on why the change was needed and
+  why this approach, then the trailers (CONTRIBUTING.md "Commit messages").
+  `.claude/hooks/commit-message.ts` refuses an agent's commit that breaks the
+  checkable parts.
 - Configuration: `EVP_*` env vars parsed once at startup via figment, process
   exits on anything missing or malformed. Any variable may be given as
   `<NAME>_FILE` instead (contents = value); setting both is a startup error.

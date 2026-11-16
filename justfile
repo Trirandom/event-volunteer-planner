@@ -25,6 +25,71 @@ up:
 upd:
     {{compose}} up --build -d
 
+# Frontend only: this stack's `web` and `caddy`, with the API borrowed from
+# another stack on the host (the main checkout's on 8080 unless a port is
+# given). No Rust is compiled and no database starts, so a worktree that only
+# changes apps/ or packages/ is up in seconds. The borrowed API runs that
+# stack's code against that stack's data: once this branch touches crates/ or
+# migrations/, it is testing the wrong backend, so use `just up`.
+#   just up-front          # API from http://localhost:8080
+#   just up-front 8084     # API from the stack on 8084
+up-front backend_port="8080":
+    #!/bin/sh
+    set -eu
+    own=$(sed -n 's/^EVP_HTTP_PORT=//p' .env 2>/dev/null | tail -n 1)
+    if [ "${own:-8080}" = "{{backend_port}}" ]; then
+        echo "port {{backend_port}} is this stack's own Caddy; borrow another stack's" >&2
+        exit 1
+    fi
+    if ! curl -fsS -o /dev/null "http://localhost:{{backend_port}}/api/v1/meta"; then
+        echo "no API answers on :{{backend_port}}; start that stack first (just upd there)" >&2
+        exit 1
+    fi
+    EVP_API_UPSTREAM="host.docker.internal:{{backend_port}}" {{compose}} up --build --no-deps web caddy
+
+# Copy another stack's Rust build into this one: its cargo target and crate
+# registry volumes. Every stack mounts the code at /app and the registry at the
+# same path, so cargo's fingerprints still match: dependencies stay compiled
+# and only the workspace crates, whose files are newer here, rebuild. Run it in
+# a fresh worktree before its first `just up`; it replaces what this stack has
+# built. Copied rather than shared, because a shared target would make
+# concurrent builds queue on cargo's lock and branches overwrite each other's
+# incremental state.
+#   just seed-cache            # from the main checkout (project `evp`)
+#   just seed-cache evp-foo    # from another worktree's project
+seed-cache from="evp":
+    #!/bin/sh
+    set -eu
+    # Git Bash rewrites anything shaped like a Unix path into a Windows one,
+    # which turns the container-side paths below into nonsense.
+    export MSYS_NO_PATHCONV=1
+    name=$({{compose}} config | sed -n 's/^name: //p' | head -n 1)
+    if [ "$name" = "{{from}}" ]; then
+        echo "this stack is {{from}}; nothing to copy" >&2
+        exit 1
+    fi
+    for v in evp-cargo-target evp-cargo-registry; do
+        if ! docker volume inspect "{{from}}_$v" >/dev/null 2>&1; then
+            echo "no volume {{from}}_$v; has that stack built?" >&2
+            exit 1
+        fi
+    done
+    if [ -n "$({{compose}} ps -q api migrate)" ]; then
+        echo "this stack's api is running and writing to its target; just down first" >&2
+        exit 1
+    fi
+    # Through `compose run`, so the destination volumes are created with this
+    # project's labels, as `just up` would create them.
+    {{compose}} run --rm --no-deps -T \
+        -v "{{from}}_evp-cargo-target:/seed/target:ro" \
+        -v "{{from}}_evp-cargo-registry:/seed/registry:ro" \
+        --entrypoint sh api -c '
+            set -eu
+            find /app/target /usr/local/cargo/registry -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            cp -a /seed/target/. /app/target/
+            cp -a /seed/registry/. /usr/local/cargo/registry/
+            du -sh /app/target /usr/local/cargo/registry'
+
 # Stop everything, keep the data.
 down:
     {{compose}} down

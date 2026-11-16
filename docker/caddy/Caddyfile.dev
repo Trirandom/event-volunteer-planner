@@ -18,11 +18,16 @@
 	# The API. `/calendar/*` is deliberately outside `/api/v1` — it is pasted
 	# into calendar clients by hand and lives for years, so it gets a short,
 	# stable path that no future API version renumbers (docs/04 §3).
+	#
+	# The upstream is this stack's `api` unless EVP_API_UPSTREAM names another,
+	# which only `just up-front` does: it points here at a different stack's
+	# Caddy on the host, so a worktree that changes nothing but the frontend
+	# borrows a running API instead of compiling its own (docs/06 §3).
 	handle /api/* {
-		reverse_proxy api:3000
+		reverse_proxy {$EVP_API_UPSTREAM:api:3000}
 	}
 	handle /calendar/* {
-		reverse_proxy api:3000
+		reverse_proxy {$EVP_API_UPSTREAM:api:3000}
 	}
 
 	# The public volunteer form, on its own path prefix and its own bundle. The

@@ -57,36 +57,45 @@ const routeOrgId = useRouteParam('orgId');
 const isWide = computed(() => route.meta.layout === 'wide');
 
 /**
- * Which organisation the header's Events link points at.
+ * The organisation the header names and its links point at.
  *
  * Every org-scoped route carries `orgId` (docs/04 §1 — the org is never
  * inferred), so a header link has to name one. The org already on screen wins,
- * which keeps the link a no-op rather than a silent org switch while a
+ * which keeps the links a no-op rather than a silent org switch while a
  * coordinator is working inside one. Away from an org route there is nothing
  * on screen to follow, so the first membership is the only honest guess; the
- * admin panel remains the place to pick between them, and someone in two orgs
- * needs it either way.
+ * admin panel remains the place to pick between them, and the org's name in
+ * the header is the link there.
  *
  * `null` for a user with no memberships — identity is global and membership is
  * per-organisation (docs/03), so that user exists and must not be given a link
- * to `/undefined/events`.
+ * to `/undefined/events`. Also `null` for an `orgId` in the URL that is none
+ * of this user's memberships: naming an org the API is about to refuse would
+ * put a name in the header that the page under it contradicts.
  */
-const eventsOrgId = computed((): string | null => {
-  if (routeOrgId.value !== '') {
-    return routeOrgId.value;
-  }
+const headerOrg = computed((): { id: string; name: string } | null => {
   if (session.value?.status !== 'authenticated') {
     return null;
   }
-  return session.value.user.memberships[0]?.org_id ?? null;
+  const { memberships } = session.value.user;
+  const membership =
+    routeOrgId.value === ''
+      ? memberships[0]
+      : memberships.find((m) => m.org_id === routeOrgId.value);
+  return membership === undefined
+    ? null
+    : { id: membership.org_id, name: membership.name };
 });
 </script>
 
 <template>
   <a class="evp-skip-link" href="#main">{{ t('shell.skipToContent') }}</a>
 
+  <!-- Full width, not the reading column's 70 rem: the plan pages beneath it
+       run edge to edge, and a header narrower than the page under it reads
+       as belonging to a different page. -->
   <header class="evp-header">
-    <div class="evp-header-inner">
+    <div class="evp-header-start">
       <!-- The mark is the home link, so "Planner" is no longer also a nav
            item. Two links to the same page in one header is two tab stops
            and, for a screen reader listing links, two identical entries. -->
@@ -95,32 +104,51 @@ const eventsOrgId = computed((): string | null => {
         <span class="evp-brand-name">{{ t('common.productName') }}</span>
       </RouterLink>
 
-      <nav :aria-label="t('shell.nav.label')">
-        <!-- Nothing is rendered until the first answer arrives. A "Sign in"
-             link that becomes "Admin panel" a moment later moves the target
-             under a pointer already on its way to it (docs/14 §2). -->
-        <template v-if="session?.status === 'authenticated'">
+      <!-- The organisation being worked in, named on every page: a
+           coordinator in two organisations otherwise has only the URL to tell
+           them apart. It links to the admin panel, which is where the other
+           one is picked, so the panel needs no nav item of its own. Outside
+           the `nav`: it says where you are before it is somewhere to go. -->
+      <RouterLink v-if="headerOrg !== null" class="evp-org" to="/admin">
+        <span class="evp-org-label">{{ t('shell.org.label') }}</span>
+        <span class="evp-org-name">{{ headerOrg.name }}</span>
+      </RouterLink>
+    </div>
+
+    <nav :aria-label="t('shell.nav.label')">
+      <!-- Nothing is rendered until the first answer arrives. A "Sign in"
+           link that becomes "Events" a moment later moves the target under a
+           pointer already on its way to it (docs/14 §2). -->
+      <template v-if="session?.status === 'authenticated'">
+        <template v-if="headerOrg !== null">
           <RouterLink
-            v-if="eventsOrgId !== null"
             class="evp-pill"
-            :to="{ name: 'org-events', params: { orgId: eventsOrgId } }"
+            :to="{ name: 'org-events', params: { orgId: headerOrg.id } }"
           >
             {{ t('shell.nav.events') }}
           </RouterLink>
-          <RouterLink class="evp-pill" to="/admin">
-            {{ t('shell.nav.admin') }}
+          <RouterLink
+            class="evp-pill"
+            :to="{ name: 'org-sms-settings', params: { orgId: headerOrg.id } }"
+          >
+            {{ t('shell.nav.sms') }}
           </RouterLink>
         </template>
-        <template v-else-if="session !== undefined">
-          <RouterLink class="evp-pill" to="/login">
-            {{ t('shell.nav.signIn') }}
-          </RouterLink>
-        </template>
-        <!-- Outside the session branches: a signed-out visitor needs it
-             most, since the login page is where they first meet the UI. -->
-        <LocaleSwitcher :current="locale" @select="chooseLocale" />
-      </nav>
-    </div>
+        <!-- With no organisation to name there is no name to link the panel
+             from, and the panel is still where that user signs out. -->
+        <RouterLink v-else class="evp-pill" to="/admin">
+          {{ t('shell.nav.admin') }}
+        </RouterLink>
+      </template>
+      <template v-else-if="session !== undefined">
+        <RouterLink class="evp-pill" to="/login">
+          {{ t('shell.nav.signIn') }}
+        </RouterLink>
+      </template>
+      <!-- Outside the session branches: a signed-out visitor needs it most,
+           since the login page is where they first meet the UI. -->
+      <LocaleSwitcher :current="locale" @select="chooseLocale" />
+    </nav>
   </header>
 
   <main id="main" class="evp-main" :class="{ 'evp-main--wide': isWide }">
@@ -150,21 +178,26 @@ const eventsOrgId = computed((): string | null => {
 }
 
 .evp-header {
+  align-items: center;
   background: var(--evp-surface);
   border-bottom: 1px solid var(--evp-border);
-}
-
-.evp-header-inner {
-  align-items: center;
   display: flex;
   /* Wraps rather than shrinking the brand away: at 320 px the nav drops to its
-     own line instead of the product name truncating (docs/14 §2). */
+     own line instead of the organisation's name truncating (docs/14 §2). */
   flex-wrap: wrap;
   gap: 0.75rem 1rem;
   justify-content: space-between;
-  margin: 0 auto;
-  max-width: 70rem;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1.5rem;
+}
+
+.evp-header-start {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  /* A long organisation name wraps inside its own link rather than pushing
+     the nav off the row. */
+  min-width: 0;
 }
 
 .evp-brand {
@@ -181,11 +214,46 @@ const eventsOrgId = computed((): string | null => {
   letter-spacing: -0.01em;
 }
 
+/* Set off from the product by a rule rather than by colour, so the two names
+   read as "where" and "what" even in forced-colors mode. The label is a word,
+   not an icon: it is what makes the link's name say what it is. */
+.evp-org {
+  border-inline-start: var(--evp-edge) solid var(--evp-border);
+  border-radius: 0 var(--evp-radius-md) var(--evp-radius-md) 0;
+  color: var(--evp-text);
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+  padding: 0.25rem 0.75rem;
+  text-decoration: none;
+  transition: background-color var(--evp-duration) ease;
+}
+
+.evp-org:hover {
+  background: var(--evp-surface-raised);
+}
+
+.evp-org-label {
+  color: var(--evp-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.evp-org-name {
+  font-size: 1.0625rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
 .evp-header nav {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .evp-main {

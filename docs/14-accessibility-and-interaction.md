@@ -218,7 +218,9 @@ persist. It gets the strictest treatment.
   semantic HTML and native validation first, JavaScript enriching it. The
   availability picker genuinely requires JavaScript and says so.
 - `prefers-color-scheme` honoured; both themes meet contrast requirements
-  independently.
+  independently. The coordinator application's header has a light/dark
+  button that overrides it on that device (`data-theme` on `<html>`, kept in
+  `localStorage`); with no choice made, the system preference still decides.
 - No layout shift: skeletons reserve the space their content will occupy.
 - View Transitions only behind `prefers-reduced-motion`, and never load-bearing
   for comprehension.

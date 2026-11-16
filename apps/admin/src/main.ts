@@ -11,6 +11,13 @@ import { i18n } from './i18n';
 import { initialLocale } from './i18n/preference';
 import { router } from './router';
 import './styles.css';
+import { applyTheme, storedTheme } from './theme/preference';
+
+// First, before the awaited catalogue below: every frame painted before this
+// line is in the system's theme, so a viewer who chose the other one would see
+// it flash. Not an inline script in index.html, which would be earlier still:
+// the CSP is `script-src 'self'` and stays that way (docker/caddy/Caddyfile).
+applyTheme(storedTheme());
 
 const app = createApp(App);
 

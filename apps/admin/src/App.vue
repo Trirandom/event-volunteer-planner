@@ -7,6 +7,7 @@ import { computed, watch } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 
 import { useSession } from './api/useSession';
+import ThemeToggle from './components/ThemeToggle.vue';
 import { locale, setLocale, t } from './i18n';
 import { accountLocale, storeLocale } from './i18n/preference';
 import { useRouteParam } from './router/params';
@@ -148,6 +149,9 @@ const headerOrg = computed((): { id: string; name: string } | null => {
       <!-- Outside the session branches: a signed-out visitor needs it most,
            since the login page is where they first meet the UI. -->
       <LocaleSwitcher :current="locale" @select="chooseLocale" />
+      <!-- Last, so it sits at the header's far end: a display setting, not
+           somewhere to go, and needed signed out as much as signed in. -->
+      <ThemeToggle />
     </nav>
   </header>
 

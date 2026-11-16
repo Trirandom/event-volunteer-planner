@@ -12,7 +12,7 @@
  * home catalogue, since a screenshot carries information this drawing does not.
  *
  * Inline SVG rather than a file under `public/`, so each fill can be a theme
- * token and the drawing follows `prefers-color-scheme` with no second copy.
+ * token and the drawing follows the theme with no second copy.
  * There is no `<text>`: labels would be bare UI strings, and the bars are a
  * picture of a board, not a board.
  */

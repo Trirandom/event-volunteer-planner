@@ -28,7 +28,7 @@ one — never an edit. See [ADR-0001](0001-record-architecture-decisions.md).
 | [0021](0021-retention-tier-follows-table.md) | Retention tier follows the table; explicit consent covers dietary data | Accepted (amends 0018, 0020; amended by 0022, 0025, 0026) |
 | [0022](0022-no-birthdate-collected.md) | Birthdate is not collected; minor night-shift rule removed | Accepted (amends 0021, 0007; amended by 0023) |
 | [0023](0023-adult-declaration-boolean.md) | «J'ai 18 ans ou plus» as a boolean on `participations` | Accepted (amends 0022, 0007; amended by 0026) |
-| [0024](0024-server-side-undo-and-per-item-bulk.md) | Server-side undo; bulk operations report per item | Accepted (amends 0017) |
+| [0024](0024-server-side-undo-and-per-item-bulk.md) | Server-side undo; bulk operations report per item | Accepted (amends 0017; amended by 0048) |
 | [0025](0025-two-consents-processing-and-pool-retention.md) | Two consents: processing mandatory, pool retention optional | Accepted (amends 0018, 0021) |
 | [0026](0026-retention-scope-is-a-table-registry.md) | Retention scope is a table registry; per-edition attributes leave `participations` | Accepted (amends 0018, 0020, 0021) |
 | [0027](0027-volunteer-self-service-rights.md) | Volunteers read, correct and erase their own data via their capability link | Accepted (amends 0008, 0010) |
@@ -52,3 +52,4 @@ one — never an edit. See [ADR-0001](0001-record-architecture-decisions.md).
 | [0045](0045-platform-backoffice-behind-a-deployment-key.md) | A platform backoffice, behind a key the deployment holds | Accepted (amends 0031) |
 | [0046](0046-email-template-edited-as-rich-text-stored-as-html.md) | The schedule email is edited as rich text, and still stored as HTML | Accepted (amends 02 §2) |
 | [0047](0047-flat-visual-language-in-shared-primitives.md) | The interface is flat, and its rules live in one shared stylesheet | Accepted |
+| [0048](0048-form-draft-autosaves-with-editor-undo.md) | A form draft saves itself, and its undo is the editor's | Accepted (amends 0024, 14 §4, 09 §2) |

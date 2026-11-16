@@ -167,6 +167,11 @@ slower even while being more correct.
 This is a genuine backend requirement, not a frontend nicety, and it is why
 every mutating endpoint returns an operation id.
 
+One exception, by design: the **form builder's draft** is a working copy, and
+its Ctrl/Cmd+Z is the editor's own history of the draft, autosaved like any
+edit. Publishing is the domain action there
+([ADR-0048](adr/0048-form-draft-autosaves-with-editor-undo.md)).
+
 ### Command palette
 
 `Ctrl/Cmd+K`. Every action in the application is reachable and searchable from

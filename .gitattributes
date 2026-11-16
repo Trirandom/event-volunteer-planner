@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# LF in every checkout, whatever core.autocrlf says. A Windows clone with
+# the Git-for-Windows default (autocrlf=true) otherwise gets CRLF, and the
+# files that run inside Linux containers break: docker/db/init/*.sh dies on
+# `/bin/bash^M` and leaves the database unhealthy, Caddy and psql read the
+# CR into their input, and pnpm refuses the patches. Prettier and
+# .editorconfig already ask for LF; this makes the checkout agree with them.
+* text=auto eol=lf
+
+# Byte for byte as committed, never converted: a patch's hunks must match
+# the upstream file exactly, and vue-i18n ships dist/vue-i18n.d.ts with CRLF,
+# so those CRs belong in the patch.
+patches/*.patch -text

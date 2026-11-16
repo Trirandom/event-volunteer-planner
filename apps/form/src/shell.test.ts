@@ -28,14 +28,40 @@ function shell(): Element {
 /**
  * Markup as written in a file and as rendered by Vue, made comparable. The
  * `data-v-…` scope id is the parent's scoped style reaching the component's
- * root, a build detail rather than part of the outline.
+ * root, a build detail rather than part of the outline. Normalised on a
+ * cloned tree rather than with regexes over `outerHTML`: string surgery on
+ * markup is what CodeQL reads as incomplete sanitisation, and the DOM already
+ * knows which nodes are comments.
  */
 function normalised(element: Element | undefined): string {
-  return (element?.outerHTML ?? '')
-    .replace(/<!--.*?-->/gs, '')
-    .replace(/ data-v-[0-9a-f]+=""/g, '')
-    .replace(/>\s+</g, '><')
-    .trim();
+  const copy = element?.cloneNode(true);
+  if (!(copy instanceof Element)) {
+    return '';
+  }
+  const walker = copy.ownerDocument.createTreeWalker(
+    copy,
+    NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT,
+  );
+  const noise: Node[] = [];
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    if (
+      node.nodeType === Node.COMMENT_NODE ||
+      node.textContent?.trim() === ''
+    ) {
+      noise.push(node);
+    }
+  }
+  for (const node of noise) {
+    node.parentNode?.removeChild(node);
+  }
+  for (const each of [copy, ...copy.querySelectorAll('*')]) {
+    for (const name of each.getAttributeNames()) {
+      if (name.startsWith('data-v-')) {
+        each.removeAttribute(name);
+      }
+    }
+  }
+  return copy.outerHTML;
 }
 
 beforeEach(() => {

@@ -32,8 +32,13 @@
   --evp-mark: #4a8251;
 }
 
+/* The system preference decides unless the viewer chose a theme with the
+ * header toggle, which sets `data-theme` on <html>. The dark palette is
+ * therefore written twice, once per way of reaching it: a media query and a
+ * selector cannot share one block without a build step, and tokens.test.ts
+ * holds both copies to tokens.ts, so they cannot drift. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --evp-surface: #0e1613;
     --evp-surface-raised: #141f1b;
     --evp-text: #eff6f0;
@@ -48,6 +53,30 @@
     --evp-success: #bedac1;
     --evp-mark: #9ec7a3;
   }
+}
+
+/* `color-scheme` too, or a dark OS still draws native controls and
+ * scrollbars dark on a page the viewer asked to be light. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --evp-surface: #0e1613;
+  --evp-surface-raised: #141f1b;
+  --evp-text: #eff6f0;
+  --evp-text-muted: #82b09e;
+  --evp-border: #4f7d6b;
+  --evp-accent: #9ec7a3;
+  --evp-accent-hover: #bedac1;
+  --evp-on-accent: #0e1613;
+  --evp-focus: #edad45;
+  --evp-danger: #f07775;
+  --evp-warning: #dfb386;
+  --evp-success: #bedac1;
+  --evp-mark: #9ec7a3;
 }
 
 /* docs/14 §2 — focus is never removed, and the indicator must survive

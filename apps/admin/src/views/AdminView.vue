@@ -2,13 +2,13 @@
 <!-- Copyright (C) 2026 Tristan Grunert and contributors -->
 <script setup lang="ts">
 /**
- * The admin panel — a placeholder, and honest about it.
+ * The admin panel: who is signed in, the organisations they may act in, and
+ * the way out.
  *
- * What it does show is not filler: the user and their memberships come from
- * `GET /api/v1/auth/me`, so this page proves the cookie survives a navigation
- * and that row-level security returned the organisations this user may act in
- * and no others. The planner board, the volunteer list and the rest arrive
- * with their milestones (docs/07).
+ * The user and their memberships come from `GET /api/v1/auth/me`, so the list
+ * is exactly the organisations row-level security returned for this user and
+ * no others. This is where a coordinator in more than one organisation picks
+ * between them; the header's organisation name links back here.
  *
  * Rendered defensively rather than assuming the router guard's answer still
  * holds: the session query refetches on window focus, so a session that
@@ -72,20 +72,25 @@ function roleLabel(role: string): string {
         <li
           v-for="membership in session.user.memberships"
           :key="membership.org_id"
+          class="evp-card evp-org"
         >
-          <span class="evp-org-name">{{ membership.name }}</span>
-          <span class="evp-role">{{ roleLabel(membership.role) }}</span>
+          <div class="evp-org-head">
+            <span class="evp-org-name">{{ membership.name }}</span>
+            <span class="evp-role">{{ roleLabel(membership.role) }}</span>
+          </div>
           <span class="evp-muted evp-slug">/{{ membership.slug }}</span>
-          <!-- One link per organisation, not two: festivals and events are
-               one list now (`EventsView.vue`), and this is the only place a
-               coordinator in more than one org picks between them. -->
+          <!-- The same two destinations as the header, per organisation: the
+               header follows the org on screen, and this is the only place a
+               coordinator in more than one org picks a different one. -->
           <span class="evp-org-links">
             <RouterLink
+              class="evp-button evp-button--primary"
               :to="{ name: 'org-events', params: { orgId: membership.org_id } }"
             >
               {{ t('admin.orgs.events') }}
             </RouterLink>
             <RouterLink
+              class="evp-button"
               :to="{
                 name: 'org-sms-settings',
                 params: { orgId: membership.org_id },
@@ -103,12 +108,7 @@ function roleLabel(role: string): string {
       <p v-else>{{ t('admin.orgs.empty') }}</p>
     </section>
 
-    <section aria-labelledby="next-heading" class="evp-panel evp-placeholder">
-      <h2 id="next-heading">{{ t('admin.placeholder.heading') }}</h2>
-      <p>{{ t('admin.placeholder.body') }}</p>
-    </section>
-
-    <p>
+    <p class="evp-signout">
       <button class="evp-button" type="button" @click="signOut">
         {{ t('admin.signOut') }}
       </button>
@@ -129,19 +129,30 @@ function roleLabel(role: string): string {
 </template>
 
 <style scoped>
+/* The landing page's type register (HomeView.vue), so signing in does not
+   drop the application into a second, quieter typeface scale. */
 h1 {
-  font-size: 1.75rem;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.75rem;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0 0 0.5rem;
 }
 
 .evp-identity {
   color: var(--evp-text-muted);
-  margin: 0 0 2rem;
+  margin: 0 0 2.5rem;
 }
 
 .evp-identity strong {
   color: var(--evp-text);
+}
+
+/* Vue condenses the whitespace between two elements on separate lines to
+   nothing, which ran the name into its parenthesis. A margin, not a literal
+   space in the template, which would be a bare string to the i18n lint. */
+.evp-identity strong + .evp-muted {
+  margin-inline-start: 0.25em;
 }
 
 .evp-muted {
@@ -149,41 +160,42 @@ h1 {
 }
 
 h2 {
-  font-size: 1.125rem;
-  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
 }
 
+/* auto-fill rather than a breakpoint: one card per row when one is what fits,
+   which is also what 400% zoom does (docs/14 §2). */
 .evp-orgs {
-  border: 1px solid var(--evp-border);
-  border-radius: 0.5rem;
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   list-style: none;
   margin: 0;
-  overflow: hidden;
   padding: 0;
 }
 
-.evp-orgs li {
+.evp-org {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.evp-org-head {
   /* Wraps rather than truncates: an organisation name the coordinator cannot
-     read is not a row, and docs/14 §2 forbids horizontal scrolling at 320 px. */
+     read is not a card. */
+  align-items: baseline;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
   gap: 0.25rem 0.75rem;
-  padding: 0.75rem 1rem;
-}
-
-/* Hovering a row raises it to the card ground. No new token: `surfaceRaised`
-   is proved against every foreground that can appear in a row. */
-.evp-orgs li:hover {
-  background: var(--evp-surface-raised);
-}
-
-.evp-orgs li + li {
-  border-top: 1px solid var(--evp-border);
 }
 
 .evp-org-name {
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 /* The role is a border and a word, never a colour alone (docs/14 §2). The tint
@@ -194,7 +206,7 @@ h2 {
   border-radius: 999px;
   color: var(--evp-accent);
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
   padding: 0.0625rem 0.5rem;
 }
 
@@ -204,23 +216,16 @@ h2 {
 
 .evp-org-links {
   display: flex;
-  flex-basis: 100%;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
 }
 
-.evp-org-links a {
-  color: var(--evp-accent);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+.evp-org-links .evp-button {
+  border-radius: var(--evp-radius-md);
 }
 
-.evp-placeholder {
-  margin: 2rem 0;
-}
-
-.evp-placeholder p {
-  color: var(--evp-text-muted);
-  margin: 0;
-  max-width: 60ch;
+.evp-signout {
+  margin: 2.5rem 0 0;
 }
 </style>

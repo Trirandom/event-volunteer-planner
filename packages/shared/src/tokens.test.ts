@@ -75,35 +75,58 @@ describe('tokens.css', () => {
     'utf8',
   );
 
-  function blockFor(theme: ThemeName): string {
-    if (theme === 'light') {
-      const match = /:root\s*\{([^}]*)\}/.exec(css);
-      return match?.[1] ?? '';
-    }
-    const match =
-      /@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/.exec(
-        css,
-      );
-    return match?.[1] ?? '';
-  }
+  /**
+   * Every block that paints a theme, by where it applies. The dark palette is
+   * written twice — once for the system preference, once for an explicit
+   * choice that overrides it — and both copies are held to tokens.ts, so the
+   * duplication cannot drift.
+   */
+  const blocks: readonly { theme: ThemeName; where: string; re: RegExp }[] = [
+    { theme: 'light', where: 'bare :root', re: /^:root\s*\{([^}]*)\}/m },
+    {
+      theme: 'dark',
+      where: 'prefers-color-scheme: dark, unless light was chosen',
+      re: /@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme='light'\]\)\s*\{([^}]*)\}/,
+    },
+    {
+      theme: 'dark',
+      where: "an explicit [data-theme='dark']",
+      re: /^:root\[data-theme='dark'\]\s*\{([^}]*)\}/m,
+    },
+  ];
 
-  for (const theme of themes) {
-    it(`declares every ${theme} token with the value tokens.ts proved`, () => {
-      const block = blockFor(theme);
-      expect(block, `no ${theme} :root block found in tokens.css`).not.toBe('');
+  for (const { theme, where, re } of blocks) {
+    it(`declares every ${theme} token for ${where}`, () => {
+      const block = re.exec(css)?.[1] ?? '';
+      expect(block, `no ${theme} block for ${where} in tokens.css`).not.toBe(
+        '',
+      );
 
       for (const token of tokenNames) {
         const hex = palettes[theme][token];
         const name = cssVariableName(token);
-        expect(block, `${name} missing from the ${theme} block`).toContain(
+        expect(block, `${name} missing from the ${where} block`).toContain(
           `${name}:`,
         );
         const declared = new RegExp(`${name}:\\s*(#[0-9a-f]{6})`).exec(block);
         expect(
           declared?.[1],
-          `${name} in tokens.css disagrees with tokens.ts`,
+          `${name} for ${where} disagrees with tokens.ts`,
         ).toBe(hex);
       }
+    });
+  }
+
+  // `color-scheme: light dark` lets the browser draw native controls and
+  // scrollbars from the OS preference, which an explicit choice must beat.
+  for (const theme of themes) {
+    it(`pins native controls to ${theme} when ${theme} is chosen`, () => {
+      const block =
+        new RegExp(
+          `^:root\\[data-theme='${theme}'\\]\\s*\\{([^}]*)\\}`,
+          'm',
+        ).exec(css)?.[1] ?? '';
+      expect(block).toMatch(new RegExp(`color-scheme:\\s*${theme};`));
     });
   }
 });

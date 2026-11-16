@@ -18,8 +18,8 @@
  *
  * `inline` rather than a plain `@theme`: it makes the utility carry
  * `var(--evp-accent)` directly instead of going through a second variable
- * declared on `:root`. Both follow `prefers-color-scheme`, since that override
- * also lands on `:root` — but only the inlined form follows a token overridden
+ * declared on `:root`. Both follow the theme, system or chosen, since either
+ * override lands on `:root` — but only the inlined form follows a token overridden
  * on a subtree, which is what a per-event or high-contrast theme would be. */
 @theme inline {
   --color-evp-surface: var(--evp-surface);

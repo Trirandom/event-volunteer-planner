@@ -17,4 +17,10 @@ export default {
     /** A small label above the organisation’s name. */
     label: 'Organisation',
   },
+  /** The light/dark button at the far right of the header. Each label names
+   * what pressing it does, since the icon on its own is not a name. */
+  theme: {
+    toDark: 'Passer au thème sombre',
+    toLight: 'Passer au thème clair',
+  },
 };

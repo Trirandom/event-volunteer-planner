@@ -15,4 +15,8 @@ export default {
   org: {
     label: 'Organisation',
   },
+  theme: {
+    toDark: 'Switch to dark theme',
+    toLight: 'Switch to light theme',
+  },
 } satisfies typeof fr;

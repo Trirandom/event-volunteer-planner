@@ -215,9 +215,10 @@ dialog:modal {
 
 /* ── Surfaces ────────────────────────────────────────────────────────────────
  *
- * One panel, used by the About box, the placeholder notice and the
- * organisation list. Three views had grown three copies of the same border
- * and radius. */
+ * The bordered panel from before the flat language (ADR-0047), still under
+ * most forms. Several views had grown copies of the same border and radius.
+ * The admin and events pages have moved to `.evp-card`; the rest follow
+ * screen by screen. */
 
 .evp-panel {
   background: var(--evp-surface-raised);

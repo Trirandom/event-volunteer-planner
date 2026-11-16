@@ -42,6 +42,10 @@ export default {
     finished: '· finished',
     noEventsYet: 'No events yet.',
     noEvents: 'No events.',
+    kind: {
+      festival: 'Festival',
+      event: 'Event',
+    },
   },
   newEvent: {
     addAnotherEvent: 'Add another event',

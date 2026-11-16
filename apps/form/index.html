@@ -19,7 +19,33 @@
     <title>Formulaire bénévoles</title>
   </head>
   <body>
-    <div id="app"></div>
+    <!-- The loading page, painted from this file and the stylesheet alone,
+         before the application has downloaded (docs/01 §5); Vue replaces it
+         on mount. Markup only, no words: the header's mark as App.vue draws
+         it and FormSkeleton.vue's outline, which shell.test.ts holds this
+         copy to. The real loading page announces itself, so this one is
+         hidden from assistive technology. -->
+    <div id="app">
+      <div class="evp-page" aria-hidden="true">
+        <div class="evp-form-header">
+          <img
+            class="evp-brand-mark"
+            src="/f/logo.svg"
+            alt=""
+            width="28"
+            height="28"
+            decoding="async"
+          />
+        </div>
+        <div class="evp-skeleton" aria-hidden="true">
+          <div class="evp-skeleton-title"></div>
+          <div class="evp-skeleton-line"></div>
+          <div class="evp-skeleton-field"></div>
+          <div class="evp-skeleton-field"></div>
+          <div class="evp-skeleton-field"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

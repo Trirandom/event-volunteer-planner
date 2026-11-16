@@ -355,6 +355,31 @@ Server-rendering the form was considered and rejected: the picker needs
 client-side geometry and interaction regardless, so SSR would add a Node
 process in production to save one small request.
 
+The two things SSR would have bought are had without it, and they are what
+holds the first-paint budget ([01 §5](01-product-spec.md)):
+
+- **Something on screen before any script runs.** `index.html` carries the
+  loading page itself, the header's mark and the form's outline
+  (`FormSkeleton.vue`), styled by the stylesheet the page already blocks on.
+  The form draws the same outline while it loads, so the application taking
+  over changes nothing visible. The copy holds no words, since UI text lives
+  in the catalogues ([16 §6](16-i18n-and-time.md)), and `shell.test.ts` keeps
+  it identical to the component.
+- **The form request leaves at once.** Left to the application,
+  `GET /api/v1/public/forms/{slug}` waited for the entry chunk, the router and
+  the `FormView` chunk, three round trips in a row. A separate half-kilobyte
+  entry (`src/early.ts`), placed in `<head>` as an async module by the build
+  (`build/firstPaint.ts`), reads the slug and token from the address and sends
+  it while the application is still downloading. The first load of that form
+  takes the response. Every later one (a retry, a stale version, a lapsed
+  captcha) asks again. The same plugin preloads the `FormView` chunk. Not an
+  inline script: the CSP is `script-src 'self'`.
+
+Measured cold on the worked example under DevTools "Fast 3G" with a 4× CPU
+slowdown at 400 px, 11-run medians: first paint went from 2.5 s to 1.5 s, the
+form request from starting at 3.1 s to 1.3 s, and the form became usable at
+3.8 s instead of 4.7 s.
+
 ## 7. Localisation
 
 Question labels, help text and option labels are stored per locale:

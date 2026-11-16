@@ -4,6 +4,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { early } from '../api/early';
 import App from '../App.vue';
 import { demoForm } from '../dev/demoForm';
 import { router } from '../router';
@@ -322,6 +323,48 @@ describe('the volunteer form', () => {
       captcha: { number: 37, signature: 'signed-2' },
     });
     expect(wrapper.text()).not.toContain('anti-robot');
+    wrapper.unmount();
+  });
+});
+
+describe('the form request started before the application (docs/01 §5)', () => {
+  const route = { slug: 'soundclash', token: 'capability' };
+
+  function formRequests(): number {
+    return vi
+      .mocked(globalThis.fetch)
+      .mock.calls.filter(
+        ([url]) => typeof url === 'string' && url.includes('/public/forms/'),
+      ).length;
+  }
+
+  it('renders from the early response without asking again', async () => {
+    early.start(route, () =>
+      Promise.resolve(
+        respond(200, {
+          ...demoForm,
+          form: { ...demoForm.form, slug: 'soundclash' },
+        }),
+      ),
+    );
+    const wrapper = await open();
+
+    expect(wrapper.find('h1').text()).toBe('Bénévoles Soundclash 26');
+    expect(formRequests()).toBe(0);
+    wrapper.unmount();
+  });
+
+  it('reports a failed early request, and retries over the network', async () => {
+    early.start(route, () => Promise.reject(new TypeError('offline')));
+    const wrapper = await open();
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+    expect(formRequests()).toBe(0);
+
+    await wrapper.find('[role="alert"] button').trigger('click');
+    await flushPromises();
+    expect(formRequests()).toBe(1);
+    expect(wrapper.find('h1').text()).toBe('Bénévoles Soundclash 26');
     wrapper.unmount();
   });
 });

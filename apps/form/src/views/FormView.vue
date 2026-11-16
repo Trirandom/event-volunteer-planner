@@ -20,8 +20,10 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 
+import { early } from '../api/early';
 import {
   fetchPublicForm,
+  receivePublicForm,
   submitForm,
   type AnswerValue,
   type Localized,
@@ -42,6 +44,7 @@ import {
   windowsFor,
   type DayAnswer,
 } from '../availability/model';
+import FormSkeleton from '../components/FormSkeleton.vue';
 import QuestionField from '../components/QuestionField.vue';
 import {
   fieldError,
@@ -112,10 +115,15 @@ async function load(carry?: {
   availability: Record<string, DayAnswer>;
 }): Promise<void> {
   phase.value = 'loading';
+  // Taken on every load and used at most once (`api/early.ts`): the first load
+  // finds the request already under way, a retry or a reload does not.
+  const sentEarly = early.take({ slug: slug.value, token: token.value });
   const result =
     import.meta.env.DEV && slug.value === 'demo'
       ? { ok: true as const, value: (await import('../dev/demoForm')).demoForm }
-      : await fetchPublicForm(slug.value, token.value);
+      : sentEarly === null
+        ? await fetchPublicForm(slug.value, token.value)
+        : await receivePublicForm(sentEarly);
 
   if (!result.ok) {
     phase.value =
@@ -369,9 +377,10 @@ watch(phase, async (next, previous) => {
 <template>
   <UnavailableView v-if="phase === 'unavailable'" />
 
-  <div v-else-if="phase === 'loading'" class="evp-form-note" role="status">
+  <div v-else-if="phase === 'loading'">
     <h1 class="evp-visually-hidden">{{ t('form.title') }}</h1>
-    {{ t('form.loading') }}
+    <p class="evp-visually-hidden" role="status">{{ t('form.loading') }}</p>
+    <FormSkeleton />
   </div>
 
   <div v-else-if="phase === 'unreachable'" class="evp-banner" role="alert">

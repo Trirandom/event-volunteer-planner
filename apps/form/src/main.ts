@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Tristan Grunert and contributors
 
+// First, so that in development, where nothing runs it ahead of this module,
+// the form request still leaves before Vue is evaluated (`early.ts`).
+import './early';
+
 import { createApp } from 'vue';
 
 import App from './App.vue';

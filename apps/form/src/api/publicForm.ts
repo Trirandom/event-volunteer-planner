@@ -17,7 +17,14 @@ import * as v from 'valibot';
 
 import type { CaptchaSolution } from '../captcha/solve';
 
-import { request, requestAccepted, type ApiResult, type Failure } from './http';
+import { publicFormPath as path } from './early';
+import {
+  receive,
+  request,
+  requestAccepted,
+  type ApiResult,
+  type Failure,
+} from './http';
 
 const id = v.pipe(v.string(), v.minLength(1));
 const instant = v.pipe(v.string(), v.isoTimestamp());
@@ -172,11 +179,6 @@ export const publicFormSchema = v.object({
 
 export type PublicForm = v.InferOutput<typeof publicFormSchema>;
 
-function path(slug: string, token: string | null, suffix = ''): string {
-  const query = token === null ? '' : `?t=${encodeURIComponent(token)}`;
-  return `/api/v1/public/forms/${encodeURIComponent(slug)}${suffix}${query}`;
-}
-
 export async function fetchPublicForm(
   slug: string,
   token: string | null,
@@ -190,6 +192,13 @@ export async function fetchPublicForm(
     },
     publicFormSchema,
   );
+}
+
+/** The same response, from the request `api/early.ts` sent before boot. */
+export async function receivePublicForm(
+  pending: Promise<Response>,
+): Promise<ApiResult<PublicForm>> {
+  return receive(pending, publicFormSchema);
 }
 
 export interface SubmissionBody {

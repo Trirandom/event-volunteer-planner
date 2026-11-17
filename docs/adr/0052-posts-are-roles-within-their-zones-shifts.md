@@ -65,8 +65,12 @@ the post's shift and an identical zone shift.
 
 **The boards show one row per zone.** On the shift board the zone's posts are
 named in its label, with their bounds, and the bars are the zone's. On the
-assignation board a slot's seats are its posts' seats, then the zone's own.
-Assigning into a post seat sends its `post_id`.
+assignation board a slot's seats are its posts' seats, then the zone's own,
+and each post keeps the same lines in every slot of a lane: the row header
+names the post once, level with them, the way the spreadsheet's merged cells
+did, and a slot with fewer of that post's people leaves the line empty
+rather than let a role-less seat rise into it. Assigning into a post seat
+sends its `post_id`.
 
 ## Alternatives considered
 

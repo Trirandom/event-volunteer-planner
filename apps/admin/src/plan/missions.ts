@@ -128,8 +128,9 @@ interface MissionDraft {
 
 /** Plain `toLowerCase`, not `toLocaleLowerCase`: the latter reads the host's
  * default locale, which is the same ambient dependency `time/clock.ts` exists
- * to keep out of pure code. */
-function normalise(name: string): string {
+ * to keep out of pure code. Exported because the roster lines a post's seats
+ * up under the same key its row folded the post by. */
+export function normalise(name: string): string {
   return name.trim().toLowerCase();
 }
 

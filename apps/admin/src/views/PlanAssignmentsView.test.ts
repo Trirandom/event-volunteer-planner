@@ -520,8 +520,8 @@ describe('PlanAssignmentsView — writing', () => {
   });
 
   /** The bar manager works the bar's shift (ADR-0052): their seat is in the
-   * bar's slot, says which role it is for, and sends that post with the
-   * placement. */
+   * bar's slot, on the line the row header names "Bar manager", and sends
+   * that post with the placement. */
   it('rosters somebody into the post a seat is for', async () => {
     vi.spyOn(locations, 'fetchLocations').mockResolvedValue({
       ok: true,
@@ -545,12 +545,17 @@ describe('PlanAssignmentsView — writing', () => {
     });
 
     const wrapper = await mountView('/org-1/events/open-air/assignments');
-    const seats = wrapper.find('.evp-slot').findAll('.evp-seat');
-    expect(seats.map((seat) => seat.find('.evp-seat-post').exists())).toEqual([
-      true,
-      false,
-    ]);
-    expect(seats[0]?.text()).toContain('Bar manager');
+    const band = wrapper.find('.evp-row .evp-post-band');
+    expect(band.text()).toBe('Bar manager');
+    // The header's line and the seat's are the same one: the first below
+    // the slot's label strip.
+    expect(band.attributes('style')).toContain('top: 1rem');
+    expect(
+      wrapper
+        .find('.evp-slot')
+        .findAll('.evp-seat')
+        .map((seat) => seat.attributes('style')),
+    ).toEqual(['grid-row: 2;', 'grid-row: 3;']);
     await chooseByText(wrapper, 0, 'Camille');
 
     expect(create).toHaveBeenCalledWith('org-1', 'open-air', {

@@ -38,7 +38,7 @@ import type { Assignment } from '../api/assignments';
 import type { Participation } from '../api/participations';
 import { packLanes } from '../board/lanes';
 import type { MissionRow } from '../board/runs';
-import type { VolunteerBounds } from './missions';
+import { normalise, type VolunteerBounds } from './missions';
 
 /** `Date.parse` is banned (docs/16 §4): it accepts strings that are not RFC
  * 3339 and answers `NaN` for the rest, which here would be a window silently
@@ -73,6 +73,11 @@ export interface Seat {
    * (role-less) seats. What an assignment made from it sends as `post_id`. */
   readonly postId: string | null;
   readonly postName: string | null;
+  /** Which line of its slot the seat is drawn on, counted from the first
+   * seat line. A post's seats take the same lines in every slot of a lane,
+   * so the row header names the post once, level with them; a slot with
+   * fewer of that post's people than its neighbour leaves the rest empty. */
+  readonly line: number;
   /**
    * This seat is beyond what the slot requires.
    *
@@ -108,6 +113,25 @@ export interface Slot {
   readonly seatOffset: number;
 }
 
+/** A post's lines in one lane: where the row header writes its name. */
+export interface PostBand {
+  readonly key: string;
+  readonly name: string;
+  /** The first line, counted from the lane's first seat line. */
+  readonly start: number;
+  readonly size: number;
+}
+
+/** One lane row of a mission: its place in the row, and its post bands. */
+export interface RosterLane {
+  readonly row: number;
+  /** Seat lines above it, as `Slot.seatOffset`. */
+  readonly seatOffset: number;
+  /** How many seat lines tall it is: every slot in it is drawn this tall. */
+  readonly height: number;
+  readonly posts: readonly PostBand[];
+}
+
 export interface RosterRow {
   readonly key: string;
   readonly name: string;
@@ -119,6 +143,7 @@ export interface RosterRow {
    * where two days run the post at the same time. The view needs it because
    * each lane carries its own label strip above its seats. */
   readonly laneCount: number;
+  readonly lanes: readonly RosterLane[];
 }
 
 /** How a slot stands against what it asked for. Never colour alone in the
@@ -182,6 +207,10 @@ function roomFor(
   return filled + 1;
 }
 
+/** The band of a zone's own (role-less) seats, below its posts'. Not a
+ * possible post key: those are names, trimmed, and this has a space. */
+const ZONE_BAND = ' zone';
+
 function seatGroup(
   shiftId: string,
   post: { readonly id: string; readonly name: string } | null,
@@ -195,6 +224,7 @@ function seatGroup(
     holder: holders[index] ?? null,
     postId: post?.id ?? null,
     postName: post?.name ?? null,
+    line: index,
     extra: index >= required,
   }));
 }
@@ -351,24 +381,50 @@ export function rosterRows(
       key: slot.shiftId,
     }));
 
-    // A lane row is as tall as its tallest slot, not as the row's tallest
-    // anywhere: a mission with one eight-person night would otherwise be eight
-    // seats tall on every other day of the festival.
-    const laneHeights: number[] = Array.from(
-      { length: Math.max(packed.rowCount, 1) },
-      () => 1,
+    // Posts are matched to the row's header by the name it folded them by:
+    // Saturday's "Caisse" and Sunday's are two ids and one line.
+    const keyOfPost = new Map(
+      row.runs.flatMap((run) =>
+        run.posts.map((post) => [post.id, normalise(post.name)] as const),
+      ),
     );
-    for (const lane of packed.lanes) {
-      laneHeights[lane.row] = Math.max(
-        laneHeights[lane.row] ?? 1,
-        lane.item.seats.length,
-      );
-    }
-    const laneOffsets = laneHeights.map((_height, index) =>
-      laneHeights.slice(0, index).reduce((total, height) => total + height, 0),
+    const bandOf = (seat: Seat): string =>
+      seat.postId === null
+        ? ZONE_BAND
+        : (keyOfPost.get(seat.postId) ?? ZONE_BAND);
+    const order = [...row.posts.map((post) => post.key), ZONE_BAND];
+
+    // A band is as tall as its tallest slot *in that lane*, not as the row's
+    // tallest anywhere: a mission with one eight-person night would otherwise
+    // be eight seats tall on every other day of the festival.
+    const laneCount = Math.max(packed.rowCount, 1);
+    const bandStarts = Array.from({ length: laneCount }, (_unused, lane) => {
+      const inLane = packed.lanes.filter((placed) => placed.row === lane);
+      const starts = new Map<string, number>();
+      const sizes = new Map<string, number>();
+      let next = 0;
+      for (const key of order) {
+        const size = Math.max(
+          0,
+          ...inLane.map(
+            (placed) =>
+              placed.item.seats.filter((seat) => bandOf(seat) === key).length,
+          ),
+        );
+        starts.set(key, next);
+        sizes.set(key, size);
+        next += size;
+      }
+      return { starts, sizes, height: Math.max(next, 1) };
+    });
+    const laneOffsets = bandStarts.map((_lane, index) =>
+      bandStarts
+        .slice(0, index)
+        .reduce((total, lane) => total + lane.height, 0),
     );
 
-    const slots = packed.lanes.map(({ item, row }): Slot => {
+    const slots = packed.lanes.map(({ item, row: laneRow }): Slot => {
+      const starts = bandStarts[laneRow]?.starts;
       return {
         key: item.shiftId,
         shiftId: item.shiftId,
@@ -380,12 +436,30 @@ export function rosterRows(
         endMs: item.endMs,
         requiredCount: item.requiredCount,
         maxCount: item.maxCount,
-        seats: item.seats,
+        seats: item.seats.map((seat) => ({
+          ...seat,
+          line: (starts?.get(bandOf(seat)) ?? 0) + seat.index,
+        })),
         filled: item.filled,
-        laneRow: row,
-        seatOffset: laneOffsets[row] ?? 0,
+        laneRow,
+        seatOffset: laneOffsets[laneRow] ?? 0,
       };
     });
+
+    const lanes = bandStarts.map((lane, index): RosterLane => ({
+      row: index,
+      seatOffset: laneOffsets[index] ?? 0,
+      height: lane.height,
+      // A post nobody holds on any slot of this lane, and with no floor,
+      // has no line to name.
+      posts: row.posts.flatMap((post): PostBand[] => {
+        const size = lane.sizes.get(post.key) ?? 0;
+        const start = lane.starts.get(post.key) ?? 0;
+        return size > 0
+          ? [{ key: post.key, name: post.name, start, size }]
+          : [];
+      }),
+    }));
 
     return {
       key: row.key,
@@ -394,8 +468,9 @@ export function rosterRows(
       // Chronological: the line reads left to right whatever order the days
       // were fetched in.
       slots: [...slots].sort((a, b) => a.startMs - b.startMs),
-      seatRows: laneHeights.reduce((total, height) => total + height, 0),
-      laneCount: laneHeights.length,
+      seatRows: lanes.reduce((total, lane) => total + lane.height, 0),
+      laneCount: lanes.length,
+      lanes,
     };
   });
 }

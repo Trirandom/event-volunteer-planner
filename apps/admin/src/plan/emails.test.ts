@@ -57,6 +57,7 @@ function slot(
     },
     postId: null,
     postName: null,
+    line: index,
     extra: false,
   }));
   return {
@@ -78,6 +79,7 @@ function slot(
         holder: null,
         postId: null,
         postName: null,
+        line: seats.length,
         extra: true,
       },
     ],
@@ -95,6 +97,7 @@ function row(name: string, slots: readonly Slot[]): RosterRow {
     slots,
     seatRows: 1,
     laneCount: 1,
+    lanes: [{ row: 0, seatOffset: 0, height: 1, posts: [] }],
   };
 }
 

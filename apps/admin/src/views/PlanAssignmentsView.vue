@@ -81,6 +81,8 @@ import {
   rowCoverage,
   slotState,
   type Candidate,
+  type PostBand,
+  type RosterLane,
   type RosterRow,
   type Seat,
   type Slot,
@@ -294,16 +296,31 @@ function laneHeight(row: RosterRow): string {
 /**
  * Where a slot's box sits: its hours horizontally, and vertically the seats of
  * every lane above it plus one label strip per lane, including its own.
+ *
+ * As tall as its lane rather than as its own seats: a post's seats sit on the
+ * post's line (`Seat.line`), so a slot short of cashiers has an empty line
+ * where its neighbour has a second one, not a role-less seat risen into it.
  */
-function slotStyle(slot: Slot): Record<string, string> {
+function slotStyle(row: RosterRow, slot: Slot): Record<string, string> {
+  const lines = row.lanes[slot.laneRow]?.height ?? slot.seats.length;
   return {
     ...boxStyle(slot.startMs, slot.endMs),
     top: `${String(slot.seatOffset * SEAT_REM + slot.laneRow * LANE_LABEL_REM)}rem`,
-    height: `${String(slot.seats.length * SEAT_REM + LANE_LABEL_REM)}rem`,
+    height: `${String(lines * SEAT_REM + LANE_LABEL_REM)}rem`,
+    gridTemplateRows: `${String(LANE_LABEL_REM)}rem repeat(${String(lines)}, ${String(SEAT_REM)}rem)`,
     // The day's own colour, the same one its line carries on the strip above.
     // A custom property rather than a `background`, because the stylesheet
     // spends it on the left edge and on the label and only it knows which.
     '--evp-slot-color': eventColor(slot.color),
+  };
+}
+
+/** A post's lines, in the row header or across the lane: below the label
+ * strips of its own lane and those above it. */
+function bandStyle(lane: RosterLane, band: PostBand): Record<string, string> {
+  return {
+    top: `${String((lane.seatOffset + band.start) * SEAT_REM + (lane.row + 1) * LANE_LABEL_REM)}rem`,
+    height: `${String(band.size * SEAT_REM)}rem`,
   };
 }
 
@@ -1300,6 +1317,27 @@ function onBoardWheel(event: WheelEvent): void {
                 })
               }}
             </span>
+            <!-- Each post named once, level with its seats in every slot
+                 (ADR-0052): the spreadsheet's merged cell, where the seats
+                 themselves are too narrow at most zooms to carry the name. -->
+            <ul
+              v-if="row.lanes.some((lane) => lane.posts.length > 0)"
+              class="evp-post-bands"
+              :aria-label="
+                t('assignments.board.postsLabel', { mission: row.name })
+              "
+            >
+              <template v-for="lane in row.lanes" :key="lane.row">
+                <li
+                  v-for="band in lane.posts"
+                  :key="`${String(lane.row)}:${band.key}`"
+                  class="evp-post-band"
+                  :style="bandStyle(lane, band)"
+                >
+                  {{ band.name }}
+                </li>
+              </template>
+            </ul>
           </div>
 
           <div
@@ -1344,13 +1382,25 @@ function onBoardWheel(event: WheelEvent): void {
               aria-hidden="true"
             />
 
+            <!-- The post's lines carried across the board, so the header's
+                 name is still readable as a row at Sunday's end. -->
+            <template v-for="lane in row.lanes" :key="lane.row">
+              <span
+                v-for="band in lane.posts"
+                :key="`${String(lane.row)}:${band.key}`"
+                class="evp-lane-post"
+                :style="bandStyle(lane, band)"
+                aria-hidden="true"
+              />
+            </template>
+
             <!-- One slot per shift, and inside it one dropdown per place. -->
             <div
               v-for="slot in row.slots"
               :key="slot.key"
               class="evp-slot"
               :class="`evp-slot--${slotState(slot)}`"
-              :style="slotStyle(slot)"
+              :style="slotStyle(row, slot)"
             >
               <span class="evp-slot-head">
                 <span class="evp-slot-hours">{{ slotHours(slot) }}</span>
@@ -1362,6 +1412,7 @@ function onBoardWheel(event: WheelEvent): void {
                 v-for="seat in slot.seats"
                 :key="seat.key"
                 class="evp-seat"
+                :style="{ gridRow: seat.line + 2 }"
                 :class="{
                   'evp-seat--extra': seat.extra,
                   'evp-seat--hole': !seat.extra && seat.holder === null,
@@ -1406,15 +1457,6 @@ function onBoardWheel(event: WheelEvent): void {
                   <span class="evp-visually-hidden">
                     {{ seatLabel(row, slot, seat) }}
                   </span>
-                  <!-- Which role this seat is for, ahead of who holds it: the
-                       post's seats sit in the zone's slot (ADR-0052), and
-                       only this tag tells them from the zone's own. -->
-                  <span
-                    v-if="seat.postName !== null"
-                    class="evp-seat-post"
-                    aria-hidden="true"
-                    >{{ seat.postName }}</span
-                  >
                   <span class="evp-seat-select-text">{{
                     seatTriggerLabel(seat)
                   }}</span>
@@ -1655,6 +1697,38 @@ h2 {
   overflow-wrap: break-word;
 }
 
+/* The header's post column: the right of the gutter, so the mission's own
+   name keeps the left and the two never collide whatever the seat count. */
+.evp-gutter:has(.evp-post-bands) {
+  padding-right: 6.75rem;
+}
+
+.evp-post-bands {
+  bottom: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 6.5rem;
+}
+
+.evp-post-band {
+  align-items: center;
+  border-left: 2px solid var(--evp-border);
+  color: var(--evp-text-muted);
+  display: flex;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  padding: 0 0.375rem;
+  position: absolute;
+  right: 0;
+  width: 100%;
+}
+
 .evp-also,
 .evp-mission-count {
   color: var(--evp-text-muted);
@@ -1676,6 +1750,7 @@ h2 {
    slot behind it. */
 .evp-lane-outside,
 .evp-lane-band,
+.evp-lane-post,
 .evp-lane-fold,
 .evp-public-rule {
   pointer-events: none;
@@ -1686,6 +1761,16 @@ h2 {
   bottom: 0;
   position: absolute;
   top: 0;
+}
+
+/* A post's lines as a quiet rule above and below, not a fill: the slots on
+   top already carry the surface colour, and the rule is what the eye follows
+   back to the header. */
+.evp-lane-post {
+  border-block: 1px dotted var(--evp-border);
+  left: 0;
+  position: absolute;
+  right: 0;
 }
 
 /* Stripes rather than a flat tint: at 3:1 a flat tint either disappears in
@@ -1814,13 +1899,14 @@ h2 {
 .evp-slot {
   background: var(--evp-surface-raised);
   border-top: 3px solid var(--evp-slot-color);
-  display: flex;
-  flex-direction: column;
+  /* Rows set inline (`slotStyle`): the label strip, then one per seat line. */
+  display: grid;
   overflow: hidden;
   position: absolute;
 }
 
 .evp-slot-head {
+  grid-row: 1;
   align-items: baseline;
   color: var(--evp-text-muted);
   display: flex;
@@ -1876,27 +1962,10 @@ h2 {
      the slot beside it — the full name is in the listbox and in the label a
      screen reader reads. */
   width: 100%;
-  /* A row, so a post's seat can carry its role ahead of the name. */
-  align-items: center;
-  display: flex;
-  gap: 0.25rem;
-}
-
-.evp-seat-post {
-  color: var(--evp-text-muted);
-  flex: 0 1 auto;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  max-width: 45%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .evp-seat-select-text {
   display: block;
-  flex: 1 1 auto;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -57,6 +57,8 @@ export default {
       'aussi {count, plural, one {# autre jour} other {# autres jours}}',
     /** Per mission: places filled / places required. */
     missionCount: '{filled, number}/{required, number} en place',
+    /** The row header's list of the zone's posts, each level with its seats. */
+    postsLabel: 'Postes de {mission}',
   },
   seat: {
     /** The empty choice on a filled seat: picking it takes the person off. */

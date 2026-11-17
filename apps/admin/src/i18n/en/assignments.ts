@@ -42,6 +42,7 @@ export default {
       'Hide the {length} with no day on them again, from {start} to {end}',
     alsoAtDays: 'also {count, plural, one {# other day} other {# other days}}',
     missionCount: '{filled, number}/{required, number} placed',
+    postsLabel: 'Posts of {mission}',
   },
   seat: {
     remove: '— remove —',

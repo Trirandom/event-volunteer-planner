@@ -106,10 +106,6 @@ export default {
     upTo: 'Jusqu’à {max, plural, one {# bénévole} other {# bénévoles}}',
   },
   card: {
-    /** Accessible name of the day-count tooltip; `days` is the list of names. */
-    runsOnDays:
-      'Déclarée sur {count, plural, one {# jour} other {# jours}}\u00a0: {days}',
-    dayCount: '{count, plural, one {# jour} other {# jours}}',
     unsaved: 'Modifications non enregistrées',
     /** Icon button label and tooltip; `name` is the mission’s name. */
     remove: 'Supprimer {name}',
@@ -124,9 +120,6 @@ export default {
       optIn: 'Non cochée par défaut',
       optInVaries: 'Cochée par défaut selon le jour',
     },
-    /** `missing` and `days` are lists of day names. */
-    notDeclaredOn:
-      'Aucune déclaration sur {missing}. L’enregistrement modifie {days} sans toucher à ces jours-là.',
     /** Shown for a day that has no value for a field the days disagree on. */
     nothingSaid: 'rien d’indiqué',
     /** Same, for a volunteer bound. */
@@ -142,11 +135,6 @@ export default {
     flagOff: 'non',
     unifyFlag:
       'Cochez ou décochez la case pour appliquer le même choix à tous les jours.',
-    saved: 'Enregistré.',
-    savedOnDays:
-      'Enregistré sur {count, plural, one {# jour} other {# jours}}.',
-    /** Submit button, verb. */
-    saveChanges: 'Enregistrer les modifications',
     deleteConfirm: {
       /** `name` is the mission’s name. */
       title: 'Supprimer {name}\u00a0?',
@@ -160,6 +148,55 @@ export default {
         'Supprimer {kind, select, zone {la zone} other {le poste}} {name} sur {days}, ainsi que {count, plural, one {le poste qui y est rattaché} other {les # postes qui y sont rattachés}} ({names}) et tous les créneaux déjà créés sur l’un ou l’autre\u00a0?',
       irreversible: 'Cette action est irréversible.',
     },
+  },
+  /** The day checkboxes on an open zone; `name` is the zone, `day` a day's name. */
+  days: {
+    legend: 'Jours où cette zone a lieu',
+    lastDay:
+      'Une zone a lieu au moins un jour. Pour la retirer de tous, supprimez-la.',
+    /** `days` is the refused day, with the server’s reason. */
+    notAdded: '{name} n’a pas été ajoutée. {days}',
+    postsNotCopied:
+      '{name} a été ajoutée à {day}, sans {count, plural, one {# de ses postes} other {# de ses postes}}. {days}',
+    notRemoved: '{name} n’a pas été retirée. {days}',
+    checkFailed:
+      'Impossible de vérifier les créneaux de {day}, rien n’a donc été retiré. Réessayez.',
+    confirm: {
+      title: 'Retirer {name} de {day}\u00a0?',
+      intro: 'Retirer {name} de {day} supprime aussi, ce jour-là\u00a0:',
+      /** `names` lists the posts. */
+      posts: '{count, plural, one {le poste} other {les # postes}} {names}',
+      shifts:
+        '{count, plural, one {# créneau déjà créé} other {# créneaux déjà créés}}',
+      confirm: 'Retirer ce jour',
+      busy: 'Retrait…',
+    },
+  },
+  /** The page's save status and undo, above the list. */
+  toolbar: {
+    label: 'Enregistrement et annulation',
+    allSaved: 'Tout est enregistré',
+    blocked:
+      '{count, plural, one {Une mission n’est pas enregistrée\u00a0: voir sa ligne} other {# missions ne sont pas enregistrées\u00a0: voir leurs lignes}}',
+    undo: 'Annuler la dernière modification',
+    undoHint: 'Annuler (Ctrl+Z)',
+    redo: 'Rétablir la modification',
+    redoHint: 'Rétablir (Ctrl+Maj+Z)',
+  },
+  /** Announced after an undo or a redo, or why one did not happen. */
+  history: {
+    undone: 'Modification annulée.',
+    redone: 'Modification rétablie.',
+    gone: 'Cette mission n’est plus sur la page\u00a0: rien à annuler.',
+    dayHasShifts:
+      '{name} a maintenant des créneaux le {day}\u00a0; décochez le jour vous-même si vous voulez les supprimer avec.',
+  },
+  /** Asked when leaving with a mission that cannot be saved. */
+  leave: {
+    title: 'Quitter sans enregistrer\u00a0?',
+    body: 'Au moins une mission a une modification qui ne peut pas être enregistrée — sa ligne dit pourquoi. En quittant, cette modification est perdue.',
+    confirm: 'Quitter quand même',
+    stay: 'Rester sur la page',
   },
   newZone: {
     /** Button opening the form. */

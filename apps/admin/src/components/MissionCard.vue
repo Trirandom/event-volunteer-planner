@@ -14,21 +14,22 @@
  *
  * **Every write here is a fan-out.** The card shows one mission; the database
  * holds one row per day it runs on, and saving writes all of them
- * (`api/useMissionWrites.ts`). That is why a day count sits right on the
- * heading rather than nowhere — it is what makes "this affects four days"
- * visible *before* the button is pressed. The names behind it (its tooltip)
- * are the fold's own receipt: two unrelated posts that happen to share a word
- * show up here as one mission on days that make no sense together, and the
- * day names are how that becomes visible without reading every row.
+ * (`api/useMissionWrites.ts`). That is why a zone's row names its days: it
+ * is what makes "this affects four days" visible before anything is typed.
  *
- * **The draft is re-seeded when the mission changes underneath it, unless it
- * is dirty.** A save invalidates the queries behind the page, so without the
- * re-seed the fields would keep showing what was typed rather than what was
- * stored, and a server that normalised the value would be invisible. With it
- * and without the dirty check, a background refetch would wipe what somebody
- * was halfway through typing.
+ * **It saves itself** about a second after the last edit (ADR-0049,
+ * `plan/useAutosave.ts`), and every edit is recorded as a step the page can
+ * undo (`plan/useMissionEditing.ts`). A draft with a problem is not sent; the
+ * row says why, and the next edit tries again.
+ *
+ * **The draft is re-seeded only for a change made elsewhere.** A save
+ * invalidates the queries behind the page, so the mission changes under the
+ * draft after every save. Re-seeding then would replace what is being typed
+ * with its trimmed, saved form: "Serve " becomes "Serve", and the next word
+ * lands glued to it. So the draft is replaced only when it was in step with
+ * the old mission and is not with the new one, which is somebody else's edit.
  */
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import {
   refusedDaysText,
@@ -39,9 +40,12 @@ import {
 import ConfirmDialog from './ConfirmDialog.vue';
 import { t, type AdminMessageKey } from '../i18n';
 import InfoTooltip from './InfoTooltip.vue';
+import MissionDays from './MissionDays.vue';
 import {
+  missionId,
   missionKind,
   volunteerBoundsLabel,
+  type DayRef,
   type Mission,
 } from '../plan/missionCatalog';
 import {
@@ -51,6 +55,11 @@ import {
   type MissionDraft,
   type MissionProblem,
 } from '../plan/missionDraft';
+import { useAutosave } from '../plan/useAutosave';
+import {
+  injectMissionEditing,
+  type MissionSaveState,
+} from '../plan/useMissionEditing';
 
 const props = defineProps<{
   readonly orgId: string;
@@ -71,6 +80,9 @@ const props = defineProps<{
    * this page exists to stop happening again).
    */
   readonly nestedPosts?: readonly Mission[];
+  /** Every day of the festival, for a zone's day toggles. Left out at event
+   * scope, where there is one day and nothing to choose. */
+  readonly days?: readonly DayRef[];
 }>();
 
 const emit = defineEmits<{ removed: [key: string] }>();
@@ -83,11 +95,43 @@ const pending = computed(
   () => draftChanges(props.mission, draft.value) !== null,
 );
 
+const editing = injectMissionEditing();
+/** Fixed for the card's life, so a rename mid-word does not orphan its undo
+ * steps (`missionId`). */
+const id = missionId(props.mission);
+
+/** The draft as last recorded, so the next edit's step has a "before". Kept
+ * as a copy because `v-model` edits the draft in place. */
+let recorded: MissionDraft = { ...draft.value };
+/** Set while the draft is replaced by the page (undo, re-seed): that is not
+ * the coordinator's edit, and recording it would make undo undo itself. */
+let replacing = false;
+
+function replaceDraft(next: MissionDraft): void {
+  replacing = true;
+  draft.value = { ...next };
+}
+
+watch(
+  draft,
+  (next) => {
+    const after = { ...next };
+    if (replacing) {
+      replacing = false;
+    } else {
+      editing?.record({ kind: 'edit', missionId: id, before: recorded, after });
+    }
+    recorded = after;
+  },
+  { deep: true },
+);
+
 watch(
   () => props.mission,
-  (mission) => {
-    if (!pending.value) {
-      draft.value = draftOf(mission);
+  (mission, previous) => {
+    const wasInStep = draftChanges(previous, draft.value) === null;
+    if (wasInStep && draftChanges(mission, draft.value) !== null) {
+      replaceDraft(draftOf(mission));
     }
   },
 );
@@ -110,7 +154,6 @@ const remove = useDeleteMission(() => props.orgId);
 /** What the last write was refused for, kept on screen rather than shown as a
  * toast — docs/02 §7. */
 const refusal = ref<string | null>(null);
-const saved = ref(false);
 /** Drives `ConfirmDialog`'s `open`. */
 const confirmingDelete = ref(false);
 /** A removal's refusal, shown inside the dialog rather than in the form: the
@@ -147,16 +190,43 @@ async function save(): Promise<void> {
   if (changes === null || problem.value !== null) {
     return;
   }
-  refusal.value = null;
-  saved.value = false;
-
   const outcome = await update.mutateAsync({
     placements: props.mission.placements,
     changes,
   });
 
   refusal.value = refusalText(outcome, 'save');
-  saved.value = refusal.value === null;
+}
+
+const autosave = useAutosave({
+  trigger: () => ({ ...draft.value }),
+  canSave: () => pending.value && problem.value === null,
+  save,
+});
+
+const saveState = computed((): MissionSaveState => {
+  // Before `pending`: an emptied name is no change `draftChanges` can send,
+  // and is still an edit that is not saved.
+  if (problem.value !== null) {
+    return 'blocked';
+  }
+  if (!pending.value) {
+    return 'saved';
+  }
+  if (update.isPending.value || autosave.waiting.value) {
+    return 'saving';
+  }
+  return refusal.value === null ? 'saving' : 'blocked';
+});
+
+if (editing !== null) {
+  onBeforeUnmount(
+    editing.register(id, {
+      setDraft: replaceDraft,
+      flush: autosave.flush,
+      state: () => saveState.value,
+    }),
+  );
 }
 
 function askToDelete(): void {
@@ -238,10 +308,24 @@ const isZone = computed(() => missionKind(props.mission) === 'zone');
  * festival of a dozen zones was a dozen screens of text boxes, and the page's
  * actual question — what missions are there, and are they staffed and briefed
  * — could only be answered by scrolling through all of them. Closed, each
- * card is its name, its days and a one-line summary (`summary`, below), and
+ * card is one line: its name, its days and a summary (`summary`, below), and
  * the form is one press on the heading away.
+ *
+ * A model rather than local state because the page hangs "add a post" off an
+ * open zone: most zones never have posts, and an add-a-post button under
+ * every one of them was most of the page's height.
  */
-const expanded = ref(false);
+const expanded = defineModel<boolean>('expanded', { default: false });
+
+/** A zone's days are choosable when there is more than one to choose from. */
+const dayToggles = computed(() =>
+  isZone.value && props.days !== undefined && props.days.length > 1
+    ? {
+        days: props.days,
+        group: { zone: props.mission, posts: props.nestedPosts ?? [] },
+      }
+    : null,
+);
 
 /**
  * What the collapsed card says about the mission in one line: the briefing's
@@ -309,10 +393,13 @@ const dayNames = computed(() =>
 
 const busy = computed(() => update.isPending.value || remove.isPending.value);
 
-/** Unsaved edits survive a collapse — the draft lives here, not in the form —
- * so the collapsed card has to say they are there, or they are lost the day
- * somebody reloads the page assuming there was nothing to lose. */
-const unsavedWhileCollapsed = computed(() => !expanded.value && pending.value);
+/** An edit that cannot be saved survives a collapse, since the draft lives
+ * here and not in the form. So the closed row has to say it is there, or it
+ * is lost the day somebody reloads the page assuming there was nothing to
+ * lose. */
+const unsavedWhileCollapsed = computed(
+  () => !expanded.value && saveState.value === 'blocked',
+);
 
 const kind = computed(() => missionKind(props.mission));
 
@@ -353,13 +440,13 @@ const confirmText = computed(() => {
 
 <template>
   <section
-    class="evp-panel evp-mission"
+    class="evp-mission"
     :class="{ 'evp-mission--open': expanded }"
     :aria-labelledby="fieldId('heading')"
   >
     <div class="evp-mission-row">
       <h3 :id="fieldId('heading')" class="evp-mission-heading">
-        <!-- The name is the disclosure: the biggest target on the card, and
+        <!-- The name is the disclosure: the biggest target on the row, and
              the thing a coordinator reaches for to "open the bar". A heading
              wrapping a button (not the reverse) keeps the heading in the
              document outline while the button carries `aria-expanded`. -->
@@ -387,39 +474,54 @@ const confirmText = computed(() => {
           </svg>
           <span class="evp-mission-name">{{ mission.name }}</span>
         </button>
-        <span class="evp-tag evp-tag--kind">{{ kindLabel }}</span>
-        <!-- A zone's card has the room for the days at full size, and it is
-             the level a coordinator reads to decide "does this belong on
-             every day of the festival?" — worth showing without a hover. A
-             post stays compact, so the same information is a count with the
-             names behind a tooltip instead. -->
-        <span v-if="isZone" class="evp-days">
-          <span v-for="day in dayNames" :key="day" class="evp-day">{{
-            day
-          }}</span>
-        </span>
-        <span v-else class="evp-days">
-          <InfoTooltip
-            v-if="dayNames.length > 1"
-            :text="dayNames.join(', ')"
-            :tooltip-id="fieldId('days')"
-            :label="
-              t('missions.card.runsOnDays', {
-                count: dayNames.length,
-                days: dayNames.join(', '),
-              })
-            "
-          >
-            {{ t('missions.card.dayCount', { count: dayNames.length }) }}
-          </InfoTooltip>
-          <span v-else-if="dayNames.length === 1" class="evp-tag">{{
-            dayNames[0]
-          }}</span>
-        </span>
-        <span v-if="unsavedWhileCollapsed" class="evp-tag evp-tag--unsaved">
-          {{ t('missions.card.unsaved') }}
-        </span>
+        <!-- Posts only: a zone is the default, and its tag on every row said
+             nothing. A post is the exception the indent already shows, and
+             the tag keeps it legible where it cannot be nested (an orphan). -->
+        <span v-if="!isZone" class="evp-tag evp-tag--kind">{{
+          kindLabel
+        }}</span>
       </h3>
+
+      <!-- Only the days the zone runs on: a day it skips is simply absent,
+           so nothing on the closed row has to be decoded. They are chosen in
+           the open row, where each is a labelled checkbox. A post shows none:
+           it runs on its zone's days (created on each, copied when a day is
+           ticked, cascaded when one is unticked), so repeating them under
+           every post said nothing new. At event scope there is one day, and
+           naming it is noise. -->
+      <span v-if="isZone && dayCount > 1" class="evp-days">
+        <span v-for="day in dayNames" :key="day" class="evp-day">{{
+          day
+        }}</span>
+      </span>
+
+      <!-- The condensed reading, on the same line and cut with an ellipsis
+           rather than wrapped: a closed row's whole point is a predictable
+           height. Hidden once the form is open, where every one of these is
+           a field of its own. -->
+      <p v-if="!expanded" class="evp-summary">
+        <span
+          class="evp-summary-briefing"
+          :class="{ 'evp-summary-missing': briefingSummary.missing }"
+          >{{ briefingSummary.text }}</span
+        >
+        <span v-if="addressSummary !== null" class="evp-summary-item">{{
+          addressSummary
+        }}</span>
+        <span v-if="volunteersSummary !== null" class="evp-summary-item">{{
+          volunteersSummary
+        }}</span>
+        <span
+          v-for="flag in formFlagsSummary"
+          :key="flag"
+          class="evp-summary-item evp-summary-flag"
+          >{{ flag }}</span
+        >
+      </p>
+
+      <span v-if="unsavedWhileCollapsed" class="evp-tag evp-tag--unsaved">
+        {{ t('missions.card.unsaved') }}
+      </span>
 
       <div class="evp-mission-row-actions">
         <button
@@ -445,42 +547,18 @@ const confirmText = computed(() => {
       </div>
     </div>
 
-    <!-- The condensed reading. Hidden once the form is open, where every one
-         of these is a field of its own and saying it twice is noise. -->
-    <p v-if="!expanded" class="evp-summary">
-      <span
-        class="evp-summary-briefing"
-        :class="{ 'evp-summary-missing': briefingSummary.missing }"
-        >{{ briefingSummary.text }}</span
-      >
-      <span v-if="addressSummary !== null" class="evp-summary-item">{{
-        addressSummary
-      }}</span>
-      <span v-if="volunteersSummary !== null" class="evp-summary-item">{{
-        volunteersSummary
-      }}</span>
-      <span
-        v-for="flag in formFlagsSummary"
-        :key="flag"
-        class="evp-summary-item evp-summary-flag"
-        >{{ flag }}</span
-      >
-    </p>
-
-    <p v-if="mission.missingFrom.length > 0" class="evp-hint">
-      {{
-        t('missions.card.notDeclaredOn', {
-          missing: mission.missingFrom.map((day) => day.eventName).join(', '),
-          days: dayNames.join(', '),
-        })
-      }}
-    </p>
+    <MissionDays
+      v-if="expanded && dayToggles !== null"
+      :org-id="orgId"
+      :group="dayToggles.group"
+      :days="dayToggles.days"
+    />
 
     <form
       v-if="expanded"
       :id="fieldId('form')"
       novalidate
-      @submit.prevent="save"
+      @submit.prevent="autosave.flush"
     >
       <p class="evp-field">
         <label :for="fieldId('name')">
@@ -735,72 +813,77 @@ const confirmText = computed(() => {
           </template>
         </p>
 
-        <!-- Not `evp-field`: its global rule stretches every input to the
+        <!-- The two form flags side by side when there is room: they are a
+             pair of yes/no answers about one thing, how the form offers the
+             zone. -->
+        <div class="evp-flags">
+          <!-- Not `evp-field`: its global rule stretches every input to the
              full width and a text box's height, which is wrong for a tick. -->
-        <div class="evp-flag">
-          <label :for="fieldId('checked-by-default')" class="evp-check">
-            <input
-              :id="fieldId('checked-by-default')"
-              type="checkbox"
-              :checked="draft.checkedByDefault === true"
-              :indeterminate="draft.checkedByDefault === null"
-              :aria-describedby="fieldId('checked-by-default-hint')"
-              @change="setCheckedByDefault"
-            />
-            <span>{{ t('missions.fields.checkedByDefault') }}</span>
-          </label>
-          <p :id="fieldId('checked-by-default-hint')" class="evp-hint">
-            {{ t('missions.fields.checkedByDefaultHint') }}
-          </p>
-          <template v-if="draft.checkedByDefault === null">
-            <ul class="evp-varies">
-              <li
-                v-for="placement in mission.placements"
-                :key="placement.locationId"
-              >
-                <strong>{{ placement.eventName }}:</strong>
-                {{
-                  placement.checkedByDefault === true
-                    ? t('missions.card.flagOn')
-                    : t('missions.card.flagOff')
-                }}
-              </li>
-            </ul>
-            <p class="evp-hint">{{ t('missions.card.unifyFlag') }}</p>
-          </template>
-        </div>
+          <div class="evp-flag">
+            <label :for="fieldId('checked-by-default')" class="evp-check">
+              <input
+                :id="fieldId('checked-by-default')"
+                type="checkbox"
+                :checked="draft.checkedByDefault === true"
+                :indeterminate="draft.checkedByDefault === null"
+                :aria-describedby="fieldId('checked-by-default-hint')"
+                @change="setCheckedByDefault"
+              />
+              <span>{{ t('missions.fields.checkedByDefault') }}</span>
+            </label>
+            <p :id="fieldId('checked-by-default-hint')" class="evp-hint">
+              {{ t('missions.fields.checkedByDefaultHint') }}
+            </p>
+            <template v-if="draft.checkedByDefault === null">
+              <ul class="evp-varies">
+                <li
+                  v-for="placement in mission.placements"
+                  :key="placement.locationId"
+                >
+                  <strong>{{ placement.eventName }}:</strong>
+                  {{
+                    placement.checkedByDefault === true
+                      ? t('missions.card.flagOn')
+                      : t('missions.card.flagOff')
+                  }}
+                </li>
+              </ul>
+              <p class="evp-hint">{{ t('missions.card.unifyFlag') }}</p>
+            </template>
+          </div>
 
-        <div class="evp-flag">
-          <label :for="fieldId('adults-only')" class="evp-check">
-            <input
-              :id="fieldId('adults-only')"
-              type="checkbox"
-              :checked="draft.adultsOnly === true"
-              :indeterminate="draft.adultsOnly === null"
-              :aria-describedby="fieldId('adults-only-hint')"
-              @change="setAdultsOnly"
-            />
-            <span>{{ t('missions.fields.adultsOnly') }}</span>
-          </label>
-          <p :id="fieldId('adults-only-hint')" class="evp-hint">
-            {{ t('missions.fields.adultsOnlyHint') }}
-          </p>
-          <template v-if="draft.adultsOnly === null">
-            <ul class="evp-varies">
-              <li
-                v-for="placement in mission.placements"
-                :key="placement.locationId"
-              >
-                <strong>{{ placement.eventName }}:</strong>
-                {{
-                  placement.adultsOnly === true
-                    ? t('missions.card.flagOn')
-                    : t('missions.card.flagOff')
-                }}
-              </li>
-            </ul>
-            <p class="evp-hint">{{ t('missions.card.unifyFlag') }}</p>
-          </template>
+          <div class="evp-flag">
+            <label :for="fieldId('adults-only')" class="evp-check">
+              <input
+                :id="fieldId('adults-only')"
+                type="checkbox"
+                :checked="draft.adultsOnly === true"
+                :indeterminate="draft.adultsOnly === null"
+                :aria-describedby="fieldId('adults-only-hint')"
+                @change="setAdultsOnly"
+              />
+              <span>{{ t('missions.fields.adultsOnly') }}</span>
+            </label>
+            <p :id="fieldId('adults-only-hint')" class="evp-hint">
+              {{ t('missions.fields.adultsOnlyHint') }}
+            </p>
+            <template v-if="draft.adultsOnly === null">
+              <ul class="evp-varies">
+                <li
+                  v-for="placement in mission.placements"
+                  :key="placement.locationId"
+                >
+                  <strong>{{ placement.eventName }}:</strong>
+                  {{
+                    placement.adultsOnly === true
+                      ? t('missions.card.flagOn')
+                      : t('missions.card.flagOff')
+                  }}
+                </li>
+              </ul>
+              <p class="evp-hint">{{ t('missions.card.unifyFlag') }}</p>
+            </template>
+          </div>
         </div>
       </template>
 
@@ -815,27 +898,6 @@ const confirmText = computed(() => {
       <p v-else-if="refusal !== null" class="evp-error" role="alert">
         {{ refusal }}
       </p>
-      <p v-else-if="saved && !pending" class="evp-saved" role="status">
-        {{
-          dayCount > 1
-            ? t('missions.card.savedOnDays', { count: dayNames.length })
-            : t('missions.card.saved')
-        }}
-      </p>
-
-      <div class="evp-actions">
-        <button
-          type="submit"
-          class="evp-button evp-button--primary"
-          :disabled="!pending || problem !== null || busy"
-        >
-          {{
-            update.isPending.value
-              ? t('common.status.saving')
-              : t('missions.card.saveChanges')
-          }}
-        </button>
-      </div>
     </form>
 
     <!-- Says what goes with it, because the cascade is not obvious and is
@@ -861,29 +923,23 @@ const confirmText = computed(() => {
 
 <style scoped>
 .evp-mission {
-  margin-bottom: 1rem;
-  /* The section inherits the board's full-window layout so the rail does not
-     move between sections (`router/index.ts`); a briefing read at 1800 px is
-     a briefing nobody reads. */
-  max-width: 44rem;
+  padding: 0.5rem 0.75rem;
 }
 
-/* One line by default: the heading and its actions share a row, and the
-   heading itself only wraps when a long name plus every tag genuinely does
-   not fit — the common case (a name, a kind, a day count) stays one line. */
+/* One line: name, kind, days, summary, actions. It wraps only where the
+   window is too narrow for them, and then the summary is what moves to a line
+   of its own, since it is the one piece already cut to fit. */
 .evp-mission-row {
   align-items: center;
   display: flex;
-  gap: 0.5rem;
-  justify-content: space-between;
-  margin: 0 0 0.375rem;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.75rem;
 }
 
 .evp-mission-heading {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
-  font-size: 1.0625rem;
+  font-size: 1rem;
   gap: 0.5rem;
   margin: 0;
   min-width: 0;
@@ -893,6 +949,7 @@ const confirmText = computed(() => {
   display: flex;
   flex-shrink: 0;
   gap: 0.25rem;
+  margin-left: auto;
 }
 
 .evp-icon-button {
@@ -998,19 +1055,8 @@ const confirmText = computed(() => {
   margin-top: 0.25rem;
 }
 
-.evp-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
 .evp-error {
   color: var(--evp-danger);
-  margin: 0 0 0.75rem;
-}
-
-.evp-saved {
-  color: var(--evp-success);
   margin: 0 0 0.75rem;
 }
 
@@ -1067,15 +1113,14 @@ const confirmText = computed(() => {
   color: var(--evp-text);
 }
 
-/* One line, lined up under the name rather than the chevron, and cut with an
-   ellipsis rather than wrapped: the collapsed card's whole point is a
-   predictable height. The full text is one press away. */
+/* Takes what the row has left, and gives way first when it has nothing. */
 .evp-summary {
   color: var(--evp-text-muted);
   display: flex;
+  flex: 1 1 14rem;
   font-size: 0.875rem;
   gap: 0.75rem;
-  margin: 0 0 0 1.625rem;
+  margin: 0;
   min-width: 0;
 }
 
@@ -1101,6 +1146,14 @@ const confirmText = computed(() => {
   margin-right: 0.75rem;
 }
 
+/* Lined up under the name rather than the chevron, and as wide as the row
+   it opens from: a narrower form left a band of empty panel on its right.
+   The list itself is capped (`PlanMissionsView.vue`), which is what keeps a
+   briefing readable on a wide screen. */
+.evp-mission form {
+  margin-left: 1.625rem;
+}
+
 .evp-mission form {
   margin-top: 0.75rem;
 }
@@ -1114,8 +1167,18 @@ const confirmText = computed(() => {
 
 /* ── Form flags ───────────────────────────────────────────────────────────── */
 
+.evp-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2rem;
+}
+
+/* Each wide enough for its label on one line; below two of those, they
+   stack. */
 .evp-flag {
+  flex: 1 1 18rem;
   margin: 0 0 0.5rem;
+  min-width: 0;
 }
 
 .evp-check {

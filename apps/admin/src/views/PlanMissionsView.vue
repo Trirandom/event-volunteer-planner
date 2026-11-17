@@ -24,14 +24,18 @@
  * Both are visible, because every card lists the days it covers — a reading no
  * card can give without also giving away a fold nobody intended.
  */
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 
 import { useMissionCatalog, usePlanScope } from '../api/usePlan';
+import ConfirmDialog from '../components/ConfirmDialog.vue';
 import HelpModal from '../components/HelpModal.vue';
 import MissionCard from '../components/MissionCard.vue';
 import NewMissionForm from '../components/NewMissionForm.vue';
 import NewPostForm from '../components/NewPostForm.vue';
-import { groupByZone } from '../plan/missionCatalog';
+import { groupByZone, missionId } from '../plan/missionCatalog';
+import { undoKeyOf } from '../plan/undoKeys';
+import { provideMissionEditing } from '../plan/useMissionEditing';
 import { t } from '../i18n';
 import { useRouteParam } from '../router/params';
 
@@ -81,6 +85,92 @@ const dayCount = computed(() => catalog.value.days.length);
  * cascade would take with it.
  */
 const grouped = computed(() => groupByZone(catalog.value.missions));
+
+/**
+ * Zones whose row is open, by `missionId`. Kept here rather than in each card
+ * because the open state is also what shows "add a post" under the zone's
+ * posts: most zones never get one, and the button under every zone was most
+ * of the page. By id and not by name, so a rename, saved mid-word, does not
+ * close the row being typed in.
+ */
+const openZones = ref<ReadonlySet<string>>(new Set());
+
+function setZoneOpen(key: string, open: boolean): void {
+  const next = new Set(openZones.value);
+  if (open) {
+    next.add(key);
+  } else {
+    next.delete(key);
+  }
+  openZones.value = next;
+}
+
+// ── Saving and undo (ADR-0049) ──────────────────────────────────────────────
+
+const editing = provideMissionEditing({
+  orgId,
+  groups: () => grouped.value.zones,
+});
+const { undoable, redoable, saveState, announcement } = editing;
+
+const saveStatus = computed(() => {
+  const state = saveState.value;
+  if (state.state === 'blocked') {
+    return t('missions.toolbar.blocked', { count: state.blocked });
+  }
+  return state.state === 'saving'
+    ? t('common.status.saving')
+    : t('missions.toolbar.allSaved');
+});
+
+const confirmingLeave = ref(false);
+let answerLeave: ((leave: boolean) => void) | null = null;
+
+/** Sends what is pending, and asks only when something still cannot be saved
+ * (ADR-0048's rule, kept here). */
+async function confirmLeave(): Promise<boolean> {
+  await editing.flushAll();
+  if (saveState.value.state !== 'blocked') {
+    return true;
+  }
+  confirmingLeave.value = true;
+  return new Promise((resolve) => {
+    answerLeave = resolve;
+  });
+}
+
+function answer(leave: boolean): void {
+  confirmingLeave.value = false;
+  answerLeave?.(leave);
+  answerLeave = null;
+}
+
+onBeforeRouteLeave(confirmLeave);
+onBeforeRouteUpdate(confirmLeave);
+
+function onUndoKey(event: KeyboardEvent): void {
+  const command = undoKeyOf(event);
+  if (command === null || confirmingLeave.value) {
+    return;
+  }
+  event.preventDefault();
+  void (command === 'undo' ? editing.undo() : editing.redo());
+}
+
+function onBeforeUnload(event: BeforeUnloadEvent): void {
+  if (saveState.value.state !== 'saved') {
+    event.preventDefault();
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onUndoKey);
+  window.addEventListener('beforeunload', onBeforeUnload);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onUndoKey);
+  window.removeEventListener('beforeunload', onBeforeUnload);
+});
 </script>
 
 <template>
@@ -102,6 +192,54 @@ const grouped = computed(() => groupByZone(catalog.value.missions));
       {{ t('missions.view.locationsFailed') }}
     </p>
 
+    <!-- Whether everything is saved, and undo: the two things a coordinator
+         needs from anywhere down a long list. The status is a live region,
+         so a save that could not happen is heard, not only seen. -->
+    <div
+      v-if="catalog.missions.length > 0"
+      class="evp-toolbar"
+      role="group"
+      :aria-label="t('missions.toolbar.label')"
+    >
+      <span
+        class="evp-toolbar-status"
+        :class="{
+          'evp-toolbar-status--blocked': saveState.state === 'blocked',
+        }"
+        role="status"
+        >{{ saveStatus }}</span
+      >
+      <button
+        type="button"
+        class="evp-icon-button"
+        :disabled="!undoable"
+        :aria-label="t('missions.toolbar.undo')"
+        :title="t('missions.toolbar.undoHint')"
+        aria-keyshortcuts="Control+Z Meta+Z"
+        @click="editing.undo"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M9 14 4 9l5-5" />
+          <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="evp-icon-button"
+        :disabled="!redoable"
+        :aria-label="t('missions.toolbar.redo')"
+        :title="t('missions.toolbar.redoHint')"
+        aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y"
+        @click="editing.redo"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="m15 14 5-5-5-5" />
+          <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
+        </svg>
+      </button>
+      <span class="evp-visually-hidden" role="status">{{ announcement }}</span>
+    </div>
+
     <NewMissionForm
       v-if="catalog.days.length > 0"
       :org-id="orgId"
@@ -116,28 +254,32 @@ const grouped = computed(() => groupByZone(catalog.value.missions));
       {{ t('missions.view.empty') }}
     </p>
 
-    <!-- Below `evp-mission-group-wide`'s breakpoint, a zone and its posts are
-         two things stacked with a rail between them (`.evp-posts`) — a
-         narrow column has no room to show them side by side and reads them
-         fine in sequence. Past it, they are laid out as one card because a
-         wide-screen coordinator is looking at both at once and two panels
-         touching read as unrelated. -->
-    <template v-for="group in grouped.zones" :key="group.zone.key">
-      <div class="evp-mission-group">
-        <div class="evp-mission-group-zone">
-          <MissionCard
-            :org-id="orgId"
-            :mission="group.zone"
-            :taken-keys="takenKeys"
-            :day-count="dayCount"
-            :nested-posts="group.posts"
-          />
-        </div>
+    <!-- One list rather than a panel per mission: a festival's missions are
+         read as a column, name by name, and a dozen boxed cards spent most
+         of their height on borders. A zone's posts sit indented under it, so
+         the tree is a shape rather than a fact only the kind tags state. -->
+    <div
+      v-if="grouped.zones.length > 0 || grouped.orphans.length > 0"
+      class="evp-mission-list"
+    >
+      <div
+        v-for="group in grouped.zones"
+        :key="missionId(group.zone)"
+        class="evp-mission-group"
+      >
+        <MissionCard
+          :org-id="orgId"
+          :mission="group.zone"
+          :taken-keys="takenKeys"
+          :day-count="dayCount"
+          :nested-posts="group.posts"
+          :days="catalog.days"
+          :expanded="openZones.has(missionId(group.zone))"
+          @update:expanded="setZoneOpen(missionId(group.zone), $event)"
+        />
 
-        <!-- Indented under the zone that holds them at narrow widths, so the
-             hierarchy is a shape on screen rather than a fact only the
-             "Zone"/"Post" tags state. -->
         <div
+          v-if="group.posts.length > 0 || openZones.has(missionId(group.zone))"
           class="evp-posts"
           role="group"
           :aria-label="
@@ -146,7 +288,7 @@ const grouped = computed(() => groupByZone(catalog.value.missions));
         >
           <MissionCard
             v-for="post in group.posts"
-            :key="post.key"
+            :key="missionId(post)"
             :org-id="orgId"
             :mission="post"
             :taken-keys="takenKeys"
@@ -154,26 +296,44 @@ const grouped = computed(() => groupByZone(catalog.value.missions));
           />
 
           <NewPostForm
+            v-if="openZones.has(missionId(group.zone))"
             :org-id="orgId"
             :zone="group.zone"
             :taken-keys="takenKeys"
           />
         </div>
       </div>
-    </template>
 
-    <!-- A post whose zone this catalog cannot identify — its own zone row is
-         gone, or the days disagree about which zone it is in. Shown flat
-         rather than dropped, with the same "Post" tag, so it stays reachable
-         even when it cannot be nested with confidence. -->
-    <MissionCard
-      v-for="orphan in grouped.orphans"
-      :key="orphan.key"
-      :org-id="orgId"
-      :mission="orphan"
-      :taken-keys="takenKeys"
-      :day-count="dayCount"
-    />
+      <!-- A post whose zone this catalog cannot identify: its own zone row is
+           gone, or the days disagree about which zone it is in. Shown flat
+           rather than dropped, with the same "Post" tag, so it stays
+           reachable even when it cannot be nested with confidence. -->
+      <MissionCard
+        v-for="orphan in grouped.orphans"
+        :key="missionId(orphan)"
+        class="evp-mission-group"
+        :org-id="orgId"
+        :mission="orphan"
+        :taken-keys="takenKeys"
+        :day-count="dayCount"
+      />
+    </div>
+
+    <!-- Mounted only while asking, so it is never in the way of the page's
+         own dialogs. -->
+    <ConfirmDialog
+      v-if="confirmingLeave"
+      :open="true"
+      :title="t('missions.leave.title')"
+      :confirm-label="t('missions.leave.confirm')"
+      :busy-label="t('missions.leave.confirm')"
+      :busy="false"
+      :cancel-label="t('missions.leave.stay')"
+      @confirm="answer(true)"
+      @cancel="answer(false)"
+    >
+      <p>{{ t('missions.leave.body') }}</p>
+    </ConfirmDialog>
   </template>
 </template>
 
@@ -203,61 +363,100 @@ h2 {
   padding: 0.75rem;
 }
 
-.evp-mission-group {
-  margin-bottom: 1rem;
+.evp-mission-list {
+  background: var(--evp-surface-raised);
+  border: var(--evp-edge) solid var(--evp-border);
+  border-radius: var(--evp-radius-lg);
+  margin-top: 1rem;
+  max-width: 72rem;
 }
 
-/* The visual half of "a zone contains its posts" — indentation plus a rail,
-   so the grouping survives even for somebody skimming past the text tags. */
+.evp-mission-group + .evp-mission-group {
+  border-top: var(--evp-edge) solid var(--evp-border);
+}
+
+/* Indented under the zone, with a rail, so the grouping survives for
+   somebody skimming past the text tags. */
 .evp-posts {
   border-left: 2px solid var(--evp-border);
-  margin: -0.5rem 0 1.5rem 1.25rem;
-  padding-left: 1rem;
+  margin: 0 0 0.5rem 1.5rem;
+  padding-left: 0.5rem;
 }
 
-/* Past this width there is room to show a zone and its posts side by side,
-   so the pair is folded into one outer card instead of two touching panels —
-   `MissionCard.vue`'s own border/background is switched off for both and the
-   outer card draws the one border around them. */
-@media (min-width: 60rem) {
-  .evp-mission-group {
-    align-items: flex-start;
-    background: var(--evp-surface-raised);
-    border: 1px solid var(--evp-border);
-    border-radius: 0.5rem;
-    display: flex;
-    max-width: 72rem;
-  }
+.evp-posts :deep(.evp-mission) {
+  padding-block: 0.25rem;
+}
 
-  .evp-mission-group-zone {
-    flex: 1 1 45%;
-    min-width: 0;
-  }
+.evp-posts :deep(.evp-add-post) {
+  margin: 0.25rem 0.75rem 0.5rem;
+}
 
-  .evp-mission-group .evp-posts {
-    border-left: 1px solid var(--evp-border);
-    flex: 1 1 55%;
-    margin: 0;
-    min-width: 0;
-    padding: 1rem 1rem 1rem 1.25rem;
-  }
+/* Kept in view down a long list, as the form builder's is. */
+.evp-toolbar {
+  align-items: center;
+  background: var(--evp-surface);
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  max-width: 72rem;
+  padding-block: 0.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
 
-  .evp-mission-group :deep(.evp-mission) {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    margin-bottom: 0;
-    max-width: none;
-  }
+.evp-toolbar-status {
+  color: var(--evp-text-muted);
+  font-size: 0.875rem;
+  margin-right: 0.5rem;
+}
 
-  /* A rule between posts (and before the "add a post" control below them)
-     rather than a gap, since a gap alone would not say where one post's
-     fields end and the next one's name begins once the outer card's own
-     border is the only one left. */
-  .evp-mission-group .evp-posts :deep(.evp-mission) {
-    border-bottom: 1px solid var(--evp-border);
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
+.evp-toolbar-status--blocked {
+  color: var(--evp-danger);
+  font-weight: 600;
+}
+
+.evp-icon-button {
+  align-items: center;
+  background: transparent;
+  border: var(--evp-edge) solid transparent;
+  border-radius: var(--evp-radius-md);
+  color: var(--evp-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  padding: 0;
+  width: 2rem;
+}
+
+.evp-icon-button svg {
+  fill: none;
+  height: 1.125rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  width: 1.125rem;
+}
+
+.evp-icon-button:hover:not([disabled]) {
+  background: var(--evp-surface-raised);
+  color: var(--evp-text);
+}
+
+.evp-icon-button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.evp-visually-hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 </style>

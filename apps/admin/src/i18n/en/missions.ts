@@ -89,8 +89,6 @@ export default {
     upTo: 'Up to {max, plural, one {# volunteer} other {# volunteers}}',
   },
   card: {
-    runsOnDays: 'Runs on {count, plural, one {# day} other {# days}}: {days}',
-    dayCount: '{count, plural, one {# day} other {# days}}',
     unsaved: 'Unsaved changes',
     remove: 'Remove {name}',
     summary: {
@@ -102,8 +100,6 @@ export default {
       optIn: 'Not ticked by default',
       optInVaries: 'Ticked by default on some days',
     },
-    notDeclaredOn:
-      'Not declared on {missing}. Saving changes {days} and leaves those alone.',
     nothingSaid: 'nothing said',
     noBound: 'none',
     unifyDescription: 'Use one description on every day',
@@ -115,9 +111,6 @@ export default {
     flagOn: 'yes',
     flagOff: 'no',
     unifyFlag: 'Tick or untick the box to apply one choice to every day.',
-    saved: 'Saved.',
-    savedOnDays: 'Saved on {count, plural, one {# day} other {# days}}.',
-    saveChanges: 'Save changes',
     deleteConfirm: {
       title: 'Remove {name}?',
       confirmZone: 'Remove zone',
@@ -128,6 +121,49 @@ export default {
         'Remove the {kind, select, zone {zone} other {post}} {name} from {days}, along with {count, plural, one {# post} other {# posts}} nested under it ({names}) and every shift already cut on any of them?',
       irreversible: 'This cannot be undone.',
     },
+  },
+  days: {
+    legend: 'Days this zone runs on',
+    lastDay:
+      'A zone runs on at least one day. To remove it from all of them, delete it.',
+    notAdded: '{name} was not added. {days}',
+    postsNotCopied:
+      '{name} was added to {day} without {count, plural, one {# of its posts} other {# of its posts}}. {days}',
+    notRemoved: '{name} was not removed. {days}',
+    checkFailed:
+      'Could not check the shifts on {day}, so nothing was removed. Try again.',
+    confirm: {
+      title: 'Remove {name} from {day}?',
+      intro: 'Removing {name} from {day} also deletes, on that day:',
+      posts: '{count, plural, one {the post} other {the # posts}} {names}',
+      shifts:
+        '{count, plural, one {# shift already created} other {# shifts already created}}',
+      confirm: 'Remove this day',
+      busy: 'Removing…',
+    },
+  },
+  toolbar: {
+    label: 'Saving and undo',
+    allSaved: 'Everything is saved',
+    blocked:
+      '{count, plural, one {One mission is not saved: see its row} other {# missions are not saved: see their rows}}',
+    undo: 'Undo the last change',
+    undoHint: 'Undo (Ctrl+Z)',
+    redo: 'Redo the change',
+    redoHint: 'Redo (Ctrl+Shift+Z)',
+  },
+  history: {
+    undone: 'Change undone.',
+    redone: 'Change redone.',
+    gone: 'That mission is no longer on the page: nothing to undo.',
+    dayHasShifts:
+      '{name} now has shifts on {day}; untick the day yourself if you mean to delete them with it.',
+  },
+  leave: {
+    title: 'Leave without saving?',
+    body: 'At least one mission has a change that cannot be saved — its row says why. Leaving loses that change.',
+    confirm: 'Leave anyway',
+    stay: 'Stay on the page',
   },
   newZone: {
     open: 'Add a zone',

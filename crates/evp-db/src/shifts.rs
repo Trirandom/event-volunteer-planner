@@ -141,7 +141,7 @@ pub async fn get(
 /// [`crate::locations::parent_is_a_zone_of`] exists: `shifts`' foreign key is
 /// `(location_id, org_id) REFERENCES locations(id, org_id)`, which stops a
 /// cross-tenant location and nothing else. Within one organisation, a shift of
-/// the Open Air could be filed under a post of Dub & 2step, and only the
+/// the Open Air could be filed under a zone of Dub & 2step, and only the
 /// within-event trigger would notice — and only if the two events' periods
 /// happened not to overlap, which for a festival's own events they usually do.
 ///

@@ -227,6 +227,7 @@ async fn roster(
         &NewAssignment {
             shift_id,
             participation_id,
+            post_id: None,
             acknowledged_warnings: Vec::new(),
         },
     )

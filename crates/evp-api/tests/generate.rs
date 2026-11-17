@@ -41,30 +41,20 @@ async fn seed(router: &axum::Router, org_id: uuid::Uuid, cookie: &str) -> (Strin
         .to_owned();
 
     let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/locations");
-    let zone = Call::new("POST", &base)
-        .signed_in_as(cookie)
-        .body(json!({ "kind": "zone", "name": "Bar" }))
-        .send(router)
-        .await;
-    let zone_id = zone
-        .body
-        .pointer("/location/id")
-        .and_then(Value::as_str)
-        .expect("zone id")
-        .to_owned();
-
+    // Two zones rather than two posts of one: shifts live on zones
+    // (ADR-0052), so a zone is what a generation run is aimed at.
     let mut posts = Vec::new();
     for name in ["Bar 1", "Bar 2"] {
-        let post = Call::new("POST", &base)
+        let zone = Call::new("POST", &base)
             .signed_in_as(cookie)
-            .body(json!({ "kind": "post", "name": name, "parent_id": zone_id }))
+            .body(json!({ "kind": "zone", "name": name }))
             .send(router)
             .await;
         posts.push(
-            post.body
+            zone.body
                 .pointer("/location/id")
                 .and_then(Value::as_str)
-                .expect("post id")
+                .expect("zone id")
                 .to_owned(),
         );
     }

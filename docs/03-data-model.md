@@ -652,7 +652,9 @@ CREATE TABLE locations (
   -- How many volunteers the mission takes: the fewest it should be staffed
   -- with and the most it may hold. Each NULL when nobody has said — neither
   -- zero nor "unbounded". Zones and posts alike, and a zone's bounds are its
-  -- own statement, never a sum over its posts. The shift-level
+  -- own statement, never a sum over its posts: they count everyone on the
+  -- zone's shift, posts included, and a post's bounds are the part of that
+  -- reserved for the role (ADR-0052). The shift-level
   -- required_count/max_count below stay the per-slot numbers; these are the
   -- mission's standing answer.
   min_volunteers smallint CHECK (min_volunteers >= 0),
@@ -984,6 +986,9 @@ CREATE TABLE assignments (
   shift_id         uuid NOT NULL,
   participation_id uuid NOT NULL,
   volunteer_id     uuid NOT NULL,        -- denormalised: exclusion constraints cannot join
+  -- The post of the shift's zone this volunteer holds; NULL works the zone
+  -- itself (ADR-0052). Deleting the post leaves them on the zone's shift.
+  post_id          uuid,
   period           tstzrange NOT NULL,   -- denormalised from shifts.period, trigger-maintained
   status           assignment_status NOT NULL DEFAULT 'draft',
 
@@ -998,6 +1003,8 @@ CREATE TABLE assignments (
   UNIQUE (id, org_id),
   FOREIGN KEY (shift_id, org_id)  REFERENCES shifts(id, org_id) ON DELETE CASCADE,
   FOREIGN KEY (event_id, org_id)  REFERENCES events(id, org_id) ON DELETE CASCADE,
+  FOREIGN KEY (post_id, org_id)   REFERENCES locations(id, org_id)
+    ON DELETE SET NULL (post_id),
   -- guarantees volunteer_id really is this participation's volunteer
   FOREIGN KEY (participation_id, volunteer_id)
     REFERENCES participations(id, volunteer_id) ON DELETE CASCADE,
@@ -1110,6 +1117,21 @@ CREATE CONSTRAINT TRIGGER participations_withdrawal_check
   DEFERRABLE INITIALLY IMMEDIATE
   FOR EACH ROW EXECUTE FUNCTION participations_withdrawal_is_clean();
 ```
+
+**A post is a role within its zone's shifts** ([ADR-0052](adr/0052-posts-are-roles-within-their-zones-shifts.md)).
+Shifts live on zones: a constraint trigger on `shifts` refuses one whose
+`location_id` is a post (`shift_on_post`, on insert and on a move). The role
+is the assignment's `post_id`, and a constraint trigger in both directions
+keeps it a post *of the shift's zone* (`assignment_post_outside_zone`): on the
+assignment when `post_id`, `shift_id` or `status` changes, and on the shift
+when a move would take tagged live placements to another zone. A cancelled
+placement holds no role and is checked on neither side. Both raise `23514`.
+They are structural hygiene, like the period sync above, and not counted
+among the six.
+
+Migration `…120100_shifts_live_on_zones` folded the post shifts that existed
+before: one with the same period as a shift of its zone merged into it, its
+placements tagged with the post; any other moved to the zone whole.
 
 With these, all six hard rules in
 [05 §2](05-scheduling-rules.md#2-hard-rules) have a mechanism in this schema.
@@ -1875,10 +1897,11 @@ one is on the review list in
 ## 5. Query notes
 
 **Coverage** — the query the dashboard lives on. For each shift, how many
-non-cancelled assignments against `required_count`:
+non-cancelled assignments against `required_count`. Shifts are on zones, so a
+post's placements are already counted in their zone's row (ADR-0052):
 
 ```sql
-SELECT s.id, s.period, l.name AS post, s.required_count,
+SELECT s.id, s.period, l.name AS zone, s.required_count,
        count(a.id) FILTER (WHERE a.status <> 'cancelled') AS filled
 FROM shifts s
 JOIN locations l ON l.id = s.location_id

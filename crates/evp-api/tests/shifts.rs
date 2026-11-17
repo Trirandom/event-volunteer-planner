@@ -17,13 +17,14 @@ use axum::http::StatusCode;
 use serde_json::{Value, json};
 use support::{Call, create_event_body, pool, router, seed_member};
 
-/// An event running 2026-07-04T06:00Z → 2026-07-07T06:00Z, one zone and one
-/// post inside it. Returns `(event_id, post_id)`.
+/// An event running 2026-07-04T06:00Z → 2026-07-07T06:00Z, and one zone to
+/// schedule on. Returns `(event_id, zone_id)`. A zone, not a post: shifts
+/// live on zones (ADR-0052).
 #[expect(
     clippy::expect_used,
     reason = "test fixture — a setup failure must abort the test loudly"
 )]
-async fn seed_event_with_post(
+async fn seed_event_with_zone(
     router: &axum::Router,
     org_id: uuid::Uuid,
     cookie: &str,
@@ -41,12 +42,14 @@ async fn seed_event_with_post(
         .expect("a created event carries a string id")
         .to_owned();
 
-    let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/locations");
-    let zone = Call::new("POST", &base)
-        .signed_in_as(cookie)
-        .body(json!({ "kind": "zone", "name": "Bar" }))
-        .send(router)
-        .await;
+    let zone = Call::new(
+        "POST",
+        format!("/api/v1/orgs/{org_id}/events/{event_id}/locations"),
+    )
+    .signed_in_as(cookie)
+    .body(json!({ "kind": "zone", "name": "Bar" }))
+    .send(router)
+    .await;
     let zone_id = zone
         .body
         .pointer("/location/id")
@@ -54,19 +57,7 @@ async fn seed_event_with_post(
         .expect("a created zone carries a string id")
         .to_owned();
 
-    let post = Call::new("POST", &base)
-        .signed_in_as(cookie)
-        .body(json!({ "kind": "post", "name": "Bar 1", "parent_id": zone_id }))
-        .send(router)
-        .await;
-    let post_id = post
-        .body
-        .pointer("/location/id")
-        .and_then(Value::as_str)
-        .expect("a created post carries a string id")
-        .to_owned();
-
-    (event_id, post_id)
+    (event_id, zone_id)
 }
 
 fn shift_body(location_id: &str, start: &str, end: &str) -> Value {
@@ -82,13 +73,13 @@ async fn a_shift_inside_its_event_is_created_and_listed() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, cookie) = seed_member(&pool, "coordinator").await;
-    let (event_id, post_id) = seed_event_with_post(&router, org_id, &cookie).await;
+    let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &cookie).await;
     let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/shifts");
 
     let created = Call::new("POST", &base)
         .signed_in_as(&cookie)
         .body(shift_body(
-            &post_id,
+            &zone_id,
             "2026-07-04T18:00:00Z",
             "2026-07-04T20:00:00Z",
         ))
@@ -110,7 +101,7 @@ async fn a_shift_inside_its_event_is_created_and_listed() {
     assert_eq!(listed.body["data"].as_array().map(Vec::len), Some(1));
     assert_eq!(
         listed.body.pointer("/data/0/location_id"),
-        Some(&json!(post_id))
+        Some(&json!(zone_id))
     );
 }
 
@@ -121,7 +112,7 @@ async fn a_shift_outside_its_event_is_refused() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, cookie) = seed_member(&pool, "coordinator").await;
-    let (event_id, post_id) = seed_event_with_post(&router, org_id, &cookie).await;
+    let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &cookie).await;
 
     // The event starts on the 4th; this is the day before.
     let answer = Call::new(
@@ -130,7 +121,7 @@ async fn a_shift_outside_its_event_is_refused() {
     )
     .signed_in_as(&cookie)
     .body(shift_body(
-        &post_id,
+        &zone_id,
         "2026-07-03T18:00:00Z",
         "2026-07-03T20:00:00Z",
     ))
@@ -153,7 +144,7 @@ async fn a_shift_longer_than_a_day_is_refused() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, cookie) = seed_member(&pool, "coordinator").await;
-    let (event_id, post_id) = seed_event_with_post(&router, org_id, &cookie).await;
+    let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &cookie).await;
 
     // Inside the event, and 25 hours long: `shifts_period_sane`.
     let answer = Call::new(
@@ -162,7 +153,7 @@ async fn a_shift_longer_than_a_day_is_refused() {
     )
     .signed_in_as(&cookie)
     .body(shift_body(
-        &post_id,
+        &zone_id,
         "2026-07-04T07:00:00Z",
         "2026-07-05T08:00:00Z",
     ))
@@ -181,7 +172,7 @@ async fn an_empty_or_inverted_period_is_refused() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, cookie) = seed_member(&pool, "coordinator").await;
-    let (event_id, post_id) = seed_event_with_post(&router, org_id, &cookie).await;
+    let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &cookie).await;
     let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/shifts");
 
     for (start, end) in [
@@ -190,7 +181,7 @@ async fn an_empty_or_inverted_period_is_refused() {
     ] {
         let answer = Call::new("POST", &base)
             .signed_in_as(&cookie)
-            .body(shift_body(&post_id, start, end))
+            .body(shift_body(&zone_id, start, end))
             .send(&router)
             .await;
         assert_eq!(
@@ -207,7 +198,7 @@ async fn max_count_below_required_count_is_refused() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, cookie) = seed_member(&pool, "coordinator").await;
-    let (event_id, post_id) = seed_event_with_post(&router, org_id, &cookie).await;
+    let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &cookie).await;
 
     let answer = Call::new(
         "POST",
@@ -215,7 +206,7 @@ async fn max_count_below_required_count_is_refused() {
     )
     .signed_in_as(&cookie)
     .body(json!({
-        "location_id": post_id,
+        "location_id": zone_id,
         "period": { "start": "2026-07-04T18:00:00Z", "end": "2026-07-04T20:00:00Z" },
         "required_count": 4,
         "max_count": 2
@@ -232,7 +223,7 @@ async fn max_count_below_required_count_is_refused() {
 
 /// `shifts`' composite foreign key on `location_id` carries `org_id`, not
 /// `event_id` — the same gap the location tree has on `parent_id`. Without a
-/// handler check, a shift of the Open Air could be filed under a post of Dub &
+/// handler check, a shift of the Open Air could be filed under a zone of Dub &
 /// 2step, and only the `shifts_within_event` trigger would notice, and only if
 /// the two events' periods happened not to overlap.
 #[tokio::test]
@@ -240,8 +231,8 @@ async fn a_shift_may_not_be_filed_under_a_location_of_another_event() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, cookie) = seed_member(&pool, "coordinator").await;
-    let (first_event, first_post) = seed_event_with_post(&router, org_id, &cookie).await;
-    let (second_event, _second_post) = seed_event_with_post(&router, org_id, &cookie).await;
+    let (first_event, first_zone) = seed_event_with_zone(&router, org_id, &cookie).await;
+    let (second_event, _second_zone) = seed_event_with_zone(&router, org_id, &cookie).await;
 
     // Both fixture events run over the same days, so the within-event trigger
     // is satisfied and this would otherwise be stored.
@@ -251,7 +242,7 @@ async fn a_shift_may_not_be_filed_under_a_location_of_another_event() {
     )
     .signed_in_as(&cookie)
     .body(shift_body(
-        &first_post,
+        &first_zone,
         "2026-07-04T18:00:00Z",
         "2026-07-04T20:00:00Z",
     ))
@@ -271,13 +262,13 @@ async fn moving_a_shift_needs_the_current_etag_and_stays_inside_the_event() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, cookie) = seed_member(&pool, "coordinator").await;
-    let (event_id, post_id) = seed_event_with_post(&router, org_id, &cookie).await;
+    let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &cookie).await;
     let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/shifts");
 
     let created = Call::new("POST", &base)
         .signed_in_as(&cookie)
         .body(shift_body(
-            &post_id,
+            &zone_id,
             "2026-07-04T18:00:00Z",
             "2026-07-04T20:00:00Z",
         ))
@@ -332,7 +323,7 @@ async fn the_listing_filters_by_window_and_by_location() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, cookie) = seed_member(&pool, "coordinator").await;
-    let (event_id, post_id) = seed_event_with_post(&router, org_id, &cookie).await;
+    let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &cookie).await;
     let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/shifts");
 
     for (start, end) in [
@@ -341,7 +332,7 @@ async fn the_listing_filters_by_window_and_by_location() {
     ] {
         let answer = Call::new("POST", &base)
             .signed_in_as(&cookie)
-            .body(shift_body(&post_id, start, end))
+            .body(shift_body(&zone_id, start, end))
             .send(&router)
             .await;
         assert_eq!(answer.status, StatusCode::CREATED, "{:?}", answer.body);
@@ -375,7 +366,7 @@ async fn a_zone_lead_may_read_shifts_but_not_write_them() {
     let router = router(pool.clone());
     let (org_id, owner_cookie) = seed_member(&pool, "owner").await;
     let lead_cookie = support::add_member(&pool, org_id, "zone_lead").await;
-    let (event_id, post_id) = seed_event_with_post(&router, org_id, &owner_cookie).await;
+    let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &owner_cookie).await;
     let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/shifts");
 
     let read = Call::new("GET", &base)
@@ -387,7 +378,7 @@ async fn a_zone_lead_may_read_shifts_but_not_write_them() {
     let refused = Call::new("POST", &base)
         .signed_in_as(&lead_cookie)
         .body(shift_body(
-            &post_id,
+            &zone_id,
             "2026-07-04T18:00:00Z",
             "2026-07-04T20:00:00Z",
         ))
@@ -401,13 +392,13 @@ async fn deleting_a_shift_removes_it() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, cookie) = seed_member(&pool, "coordinator").await;
-    let (event_id, post_id) = seed_event_with_post(&router, org_id, &cookie).await;
+    let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &cookie).await;
     let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/shifts");
 
     let created = Call::new("POST", &base)
         .signed_in_as(&cookie)
         .body(shift_body(
-            &post_id,
+            &zone_id,
             "2026-07-04T18:00:00Z",
             "2026-07-04T20:00:00Z",
         ))

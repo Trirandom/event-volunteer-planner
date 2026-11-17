@@ -244,6 +244,7 @@ async fn create_assignment(
         &evp_db::assignments::NewAssignment {
             shift_id,
             participation_id,
+            post_id: None,
             acknowledged_warnings: request.acknowledge_warnings,
         },
     )

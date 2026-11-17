@@ -6,7 +6,7 @@
  * it should exist.
  *
  * A component per mission rather than one form over a map keyed by mission id,
- * for the reason `EventDetailsForm.vue` gives: a festival has a dozen of these
+ * for the reason `EventCard.vue` gives: a festival has a dozen of these
  * on screen at once, and a coordinator writing the bar's briefing while the
  * entrance's edit is still unsaved needs a dozen independent drafts and a
  * dozen independent error lines. One form would make that one shared dirty
@@ -55,6 +55,7 @@ import {
   type MissionDraft,
   type MissionProblem,
 } from '../plan/missionDraft';
+import { togglesRow } from '../plan/rowToggle';
 import { useAutosave } from '../plan/useAutosave';
 import {
   injectMissionEditing,
@@ -317,6 +318,13 @@ const isZone = computed(() => missionKind(props.mission) === 'zone');
  */
 const expanded = defineModel<boolean>('expanded', { default: false });
 
+/** The whole closed line opens the row, not only its name (`rowToggle.ts`). */
+function onRowClick(event: MouseEvent): void {
+  if (togglesRow(event)) {
+    expanded.value = !expanded.value;
+  }
+}
+
 /** A zone's days are choosable when there is more than one to choose from. */
 const dayToggles = computed(() =>
   isZone.value && props.days !== undefined && props.days.length > 1
@@ -444,7 +452,8 @@ const confirmText = computed(() => {
     :class="{ 'evp-mission--open': expanded }"
     :aria-labelledby="fieldId('heading')"
   >
-    <div class="evp-mission-row">
+    <!-- eslint-disable-next-line vuejs-accessibility/click-events-have-key-events, vuejs-accessibility/no-static-element-interactions -- a wider pointer target only; the keyboard and screen-reader path is the name's own disclosure button, with `aria-expanded`, and making the line focusable too would put a second stop on every row -->
+    <div class="evp-mission-row" @click="onRowClick">
       <h3 :id="fieldId('heading')" class="evp-mission-heading">
         <!-- The name is the disclosure: the biggest target on the row, and
              the thing a coordinator reaches for to "open the bar". A heading
@@ -931,6 +940,8 @@ const confirmText = computed(() => {
    of its own, since it is the one piece already cut to fit. */
 .evp-mission-row {
   align-items: center;
+  /* The whole line is a pointer target (`onRowClick`). */
+  cursor: pointer;
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem 0.75rem;

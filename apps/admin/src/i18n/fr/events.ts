@@ -136,11 +136,6 @@ export default {
       '{detail} Rechargez la page pour récupérer la dernière version avant de modifier à nouveau.',
     saveUnavailable: 'Le serveur est injoignable : rien n’a été enregistré.',
     deleteUnavailable: 'Le serveur est injoignable : rien n’a été supprimé.',
-    saved: 'Enregistré.',
-    saveChanges: 'Enregistrer les modifications',
-    /** Button: throw away unsaved edits. */
-    discard: 'Abandonner',
-    delete: 'Supprimer cet événement',
     deleteHint:
       'L’archivage garde lisible un planning publié ; la suppression, non. Réservez ceci à un événement qui n’aurait jamais dû exister.',
     deleteConfirm:
@@ -166,6 +161,41 @@ export default {
         'la façon dont un événement est dessiné partout où il apparaît à côté d’un autre : la barre des jours ci-dessus, et chaque pastille qui le nomme. Chaque couleur proposée reste lisible avec un texte noir comme blanc.',
     },
     noDays:
-      'Ce festival n’a encore aucun jour : il n’y a rien à configurer. Ajoutez le premier ci-dessous.',
+      'Ce festival n’a encore aucun jour : il n’y a rien à configurer. Ajoutez le premier ci-dessus.',
+  },
+  /** An event's row in the details list. */
+  card: {
+    /** Closed row: the published opening hours; `open` and `close` are times. */
+    doors: 'Ouverture {open}–{close}',
+    noDoors: 'Aucun horaire d’ouverture publié',
+    /** Closed row: an edit that cannot be saved is still in the open form. */
+    unsaved: 'Non enregistré',
+    /** Delete icon's label. */
+    remove: 'Supprimer {name}',
+    deleteTitle: 'Supprimer {name}\u00a0?',
+  },
+  /** The page's save status and undo, above the list. */
+  toolbar: {
+    label: 'Enregistrement et annulation',
+    allSaved: 'Tout est enregistré',
+    blocked:
+      '{count, plural, one {Un événement n’est pas enregistré\u00a0: voir sa ligne} other {# événements ne sont pas enregistrés\u00a0: voir leurs lignes}}',
+    undo: 'Annuler la dernière modification',
+    undoHint: 'Annuler (Ctrl+Z)',
+    redo: 'Rétablir la modification',
+    redoHint: 'Rétablir (Ctrl+Maj+Z)',
+  },
+  /** Announced after an undo or a redo, or why one did not happen. */
+  history: {
+    undone: 'Modification annulée.',
+    redone: 'Modification rétablie.',
+    gone: 'Cet événement n’est plus sur la page\u00a0: rien à annuler.',
+  },
+  /** Asked when leaving with an event that cannot be saved. */
+  leave: {
+    title: 'Quitter sans enregistrer\u00a0?',
+    body: 'Au moins un événement a une modification qui ne peut pas être enregistrée — sa ligne dit pourquoi. En quittant, cette modification est perdue.',
+    confirm: 'Quitter quand même',
+    stay: 'Rester sur la page',
   },
 };

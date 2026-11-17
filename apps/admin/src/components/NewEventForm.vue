@@ -19,7 +19,7 @@
  *
  * Behind a disclosure, because the common visit to the details section is
  * correcting hours that already exist, and an open five-field form above the
- * day cards pushes them off the first screen.
+ * day rows pushes them off the first screen.
  *
  * The events list mounts it too, once per festival card (`placement:
  * 'agenda'`), for the same reason: the festival is already on screen, so
@@ -350,8 +350,8 @@ const hint = computed(() => {
 <style scoped>
 .evp-add {
   margin-bottom: 1.5rem;
-  /* The same column the detail cards keep: a datetime field stretched across
-     the board's full-window layout is unreadable (`EventDetailsForm.vue`). */
+  /* The same column an open event row keeps: a datetime field stretched
+     across the board's full-window layout is unreadable (`EventCard.vue`). */
   max-width: 44rem;
 }
 

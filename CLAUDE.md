@@ -34,7 +34,9 @@ out of order, driven by the first real festival, Soundclash 26):
   accounts and assign members, through the `app.backoffice` RLS scope
   (`evp-api/src/backoffice.rs`, `evp_db::backoffice`); its writes are the
   first `audit_log` rows. Off (404) when the key is unset.
-- **Admin plan pages:** details → missions → shifts → form (one rail entry,
+- **Admin plan pages:** details (one row per event, saved as it is edited
+  with page-level Ctrl+Z, ADR-0051; sixteen offered colours, ADR-0050) →
+  missions → shifts → form (one rail entry,
   three tabs: builder `…/form` with a drag-and-drop toolbox, publication
   `…/form/publication`, submissions `…/submissions` + `…/submissions/review`)
   → availability → assignments → emails (template

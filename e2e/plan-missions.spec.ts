@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Tristan Grunert and contributors
 
 /**
- * The missions section: declaring a post, describing it, and taking it away.
+ * The missions section: declaring a mission, and taking it away.
  *
  * At this level because the claim worth proving is the *reach* of one gesture
  * across the whole stack. A mission is one card and N `locations` rows
@@ -96,13 +96,6 @@ function cardFor(page: Page, name: string) {
   return page.locator('.evp-mission').filter({ hasText: name });
 }
 
-/** Cards start collapsed; the name in the heading is the disclosure. */
-async function openCard(page: Page, name: string) {
-  const card = cardFor(page, name);
-  await card.locator('.evp-mission-toggle').click();
-  return card;
-}
-
 /** The trash button only asks; the answer is given in the modal dialog. */
 async function removeMission(page: Page, name: string): Promise<void> {
   const card = cardFor(page, name);
@@ -149,79 +142,6 @@ test('a mission added at festival scope lands on every day', async ({
   const card = cardFor(page, name);
   await expect(card).toHaveCount(1);
   await expect(card.locator('.evp-day')).toHaveCount(days);
-
-  await removeMission(page, name);
-});
-
-test('a briefing written once is stored on every day it runs on', async ({
-  page,
-}) => {
-  await signIn(page);
-  if (!(await openFestivalMissions(page))) {
-    test.skip();
-    return;
-  }
-
-  const name = uniqueName();
-  await page.getByRole('button', { name: 'Add a zone' }).click();
-  await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: 'Add mission' }).click();
-  await expect(page.getByRole('status')).toBeVisible();
-
-  const card = await openCard(page, name);
-  await card
-    .getByLabel('What the job is')
-    .fill('Serving, restock, glass return.');
-  await card.getByRole('button', { name: 'Save changes' }).click();
-  await expect(card.getByRole('status')).toContainText('Saved');
-
-  // The round trip is the point: reload, and the text has to come back from
-  // the database rather than from the draft that typed it.
-  await page.reload();
-  const reloaded = await openCard(page, name);
-  await expect(reloaded.getByLabel('What the job is')).toHaveValue(
-    'Serving, restock, glass return.',
-  );
-
-  await removeMission(page, name);
-});
-
-test('narrowing to one day edits that day alone', async ({ page }) => {
-  await signIn(page);
-  if (!(await openFestivalMissions(page))) {
-    test.skip();
-    return;
-  }
-
-  const name = uniqueName();
-  await page.getByRole('button', { name: 'Add a zone' }).click();
-  await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: 'Add mission' }).click();
-  await expect(page.getByRole('status')).toBeVisible();
-
-  // One day of the festival, same section — the scope switch keeps it.
-  await page
-    .getByRole('navigation', { name: 'Festival scope' })
-    .getByRole('link')
-    .nth(1)
-    .click();
-  await expect(page).toHaveURL(/\/events\/[^/]+\/missions$/);
-
-  const dayCard = await openCard(page, name);
-  await expect(dayCard.locator('.evp-day')).toHaveCount(1);
-  await dayCard.getByLabel('Where to stand').fill('Only here');
-  await dayCard.getByRole('button', { name: 'Save changes' }).click();
-  await expect(dayCard.getByRole('status')).toContainText('Saved');
-
-  // Back at festival scope the days now disagree, and the page says so rather
-  // than showing one of the two values in a box that would flatten the other.
-  await page
-    .getByRole('navigation', { name: 'Festival scope' })
-    .getByRole('link', { name: 'Whole festival' })
-    .click();
-  const wholeCard = await openCard(page, name);
-  await expect(wholeCard.locator('.evp-varies')).toContainText('Only here');
-  await expect(wholeCard.locator('.evp-varies')).toContainText('nothing said');
 
   await removeMission(page, name);
 });

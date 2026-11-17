@@ -4,10 +4,11 @@
 /**
  * The details section, mounted through the router.
  *
- * Two claims are worth a component test rather than leaving to `eventDraft`'s
- * unit tests and the e2e suite. The scope rule — one card per day at festival
- * scope, one at day scope — is the whole reason this section exists at both
- * URLs. And the redirect after a delete is a *race*: the mutation invalidates
+ * Several claims are worth a component test rather than leaving to
+ * `eventDraft`'s unit tests and the e2e suite. The scope rule — one row per day
+ * at festival scope, one at day scope — is the whole reason this section exists
+ * at both URLs. Saving without a button and Ctrl+Z (ADR-0051) are wiring
+ * between the rows and the page that no unit test sees. And the redirect after a delete is a *race*: the mutation invalidates
  * the queries this page reads, so a handler that looks the festival up in live
  * state after the delete finds nothing and sends the coordinator to the wrong
  * page. That one was a real bug, found in a browser, and it is silent in every
@@ -24,6 +25,7 @@ import * as events from '../api/events';
 import type * as festivalsApi from '../api/festivals';
 import * as festivals from '../api/festivals';
 import * as sessionApi from '../api/session';
+import { AUTOSAVE_DELAY_MS } from '../plan/useAutosave';
 import PlanDetailsView from './PlanDetailsView.vue';
 
 function session(role: string): sessionApi.Session {
@@ -138,7 +140,23 @@ async function mountView(path: string) {
   return { wrapper, router };
 }
 
+/** jsdom has no `showModal`/`close` — stubbed as `HelpModal.test.ts` does, so
+ * what is asserted is the wiring, and `open` is readable off the element. */
+function stubDialogs(): void {
+  HTMLDialogElement.prototype.showModal = vi.fn(function showModal(
+    this: HTMLDialogElement,
+  ) {
+    this.setAttribute('open', '');
+  });
+  HTMLDialogElement.prototype.close = vi.fn(function close(
+    this: HTMLDialogElement,
+  ) {
+    this.removeAttribute('open');
+  });
+}
+
 beforeEach(() => {
+  stubDialogs();
   vi.spyOn(sessionApi, 'fetchSession').mockResolvedValue(session('owner'));
   vi.spyOn(festivals, 'fetchFestival').mockResolvedValue({
     ok: true,
@@ -155,10 +173,10 @@ afterEach(() => {
 });
 
 describe('PlanDetailsView', () => {
-  it('shows one card per day at festival scope', async () => {
+  it('shows one row per day at festival scope', async () => {
     const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
 
-    const headings = wrapper.findAll('.evp-details h3').map((h) => h.text());
+    const headings = wrapper.findAll('.evp-event h3').map((h) => h.text());
     expect(headings).toEqual(['Open Air', 'Dub & 2step']);
   });
 
@@ -173,7 +191,7 @@ describe('PlanDetailsView', () => {
   it('shows only the selected day at event scope', async () => {
     const { wrapper } = await mountView('/org-1/events/dub/details');
 
-    const headings = wrapper.findAll('.evp-details h3').map((h) => h.text());
+    const headings = wrapper.findAll('.evp-event h3').map((h) => h.text());
     expect(headings).toEqual(['Dub & 2step']);
   });
 
@@ -191,7 +209,7 @@ describe('PlanDetailsView', () => {
     expect(inputs[3]?.element.value).toBe('');
   });
 
-  it('offers the 32 choosable colours, with the stored one chosen', async () => {
+  it('offers the sixteen choosable colours, with the stored one chosen', async () => {
     const { wrapper } = await mountView('/org-1/events/dub/details');
 
     const radios = wrapper.findAll<HTMLInputElement>('input[type="radio"]');
@@ -202,9 +220,9 @@ describe('PlanDetailsView', () => {
   /**
    * The column still admits 64 and the server still allocates out of all of
    * them, so an event can arrive holding a colour the picker no longer
-   * offers. It gets a 33rd swatch rather than a grid with nothing ticked —
-   * without it, saving a change to the hours would move the event to whatever
-   * colour happened to be selected instead.
+   * offers. It gets a seventeenth swatch rather than a row with nothing
+   * ticked — without it, saving a change to the hours would move the event to
+   * whatever colour happened to be selected instead.
    */
   it('keeps a colour outside the offered range selectable', async () => {
     vi.spyOn(events, 'fetchEvent').mockResolvedValue({
@@ -226,7 +244,7 @@ describe('PlanDetailsView', () => {
     );
     const { wrapper } = await mountView('/org-1/events/dub/details');
 
-    expect(wrapper.find('.evp-danger-zone').exists()).toBe(false);
+    expect(wrapper.find('.evp-icon-button--danger').exists()).toBe(false);
   });
 
   /**
@@ -239,10 +257,8 @@ describe('PlanDetailsView', () => {
     vi.spyOn(events, 'deleteEvent').mockResolvedValue({ ok: true });
     const { wrapper, router } = await mountView('/org-1/events/dub/details');
 
-    await wrapper.find('.evp-danger-zone button').trigger('click');
-    await wrapper
-      .find('.evp-danger-zone button.evp-button--danger')
-      .trigger('click');
+    await wrapper.find('.evp-icon-button--danger').trigger('click');
+    await wrapper.find('.evp-confirm-destroy').trigger('click');
     await flushPromises();
 
     expect(router.currentRoute.value.path).toBe(
@@ -259,10 +275,8 @@ describe('PlanDetailsView', () => {
     vi.spyOn(events, 'deleteEvent').mockResolvedValue({ ok: true });
     const { wrapper, router } = await mountView('/org-1/events/solo/details');
 
-    await wrapper.find('.evp-danger-zone button').trigger('click');
-    await wrapper
-      .find('.evp-danger-zone button.evp-button--danger')
-      .trigger('click');
+    await wrapper.find('.evp-icon-button--danger').trigger('click');
+    await wrapper.find('.evp-confirm-destroy').trigger('click');
     await flushPromises();
 
     expect(router.currentRoute.value.path).toBe('/org-1/events');
@@ -277,10 +291,194 @@ describe('PlanDetailsView', () => {
     await wrapper
       .findAll<HTMLInputElement>('input[type="radio"]')[9]
       ?.setValue();
-    await wrapper.find('form').trigger('submit');
+    await wrapper.find('.evp-event form').trigger('submit');
     await flushPromises();
 
     expect(patch).toHaveBeenCalledWith('org-1', 'dub', 1, { color: 9 });
+  });
+});
+
+describe('PlanDetailsView — the list', () => {
+  /** "Exactly like missions": the add button is the first thing under the
+   * page's toolbar, not below the last day. */
+  it('puts the add form above the days', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+
+    const order = wrapper
+      .findAll('.evp-add, .evp-event-list')
+      .map((element) => element.classes()[0]);
+    expect(order).toEqual(['evp-add', 'evp-event-list']);
+  });
+
+  /** A festival's days read as a column; six open forms would bury it. */
+  it('lists a festival closed, and opens a row from its name', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+    expect(wrapper.findAll('input[type="datetime-local"]')).toHaveLength(0);
+
+    await wrapper.findAll('.evp-event-toggle')[1]?.trigger('click');
+
+    expect(wrapper.findAll('input[type="datetime-local"]')).toHaveLength(4);
+    expect(
+      wrapper.findAll('.evp-event-toggle')[1]?.attributes('aria-expanded'),
+    ).toBe('true');
+  });
+
+  it('opens a row from anywhere on its line, not only its name', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+
+    await wrapper.findAll('.evp-summary')[1]?.trigger('click');
+
+    expect(
+      wrapper.findAll('.evp-event-toggle')[1]?.attributes('aria-expanded'),
+    ).toBe('true');
+    expect(wrapper.findAll('input[type="datetime-local"]')).toHaveLength(4);
+  });
+
+  /** The bin asks its own question; it must not also fold the row. */
+  it('leaves the row as it is when its delete button is pressed', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+
+    await wrapper.findAll('.evp-icon-button--danger')[0]?.trigger('click');
+
+    expect(
+      wrapper.findAll('.evp-event-toggle')[0]?.attributes('aria-expanded'),
+    ).toBe('false');
+  });
+
+  /** The closed row says what the open one would: hours, and doors. */
+  it('summarises each day on its closed row', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+
+    const summary = wrapper.findAll('.evp-summary')[0]?.text() ?? '';
+    expect(summary).toContain('10:00');
+    expect(summary).toContain('No door times published');
+  });
+});
+
+describe('PlanDetailsView — saving as it goes, and undo', () => {
+  function pressKeys(init: KeyboardEventInit): void {
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { bubbles: true, ...init }),
+    );
+  }
+
+  /** A server that keeps what it is sent, so a refetch after a save reads
+   * the saved row back, as the real one does. */
+  function storingServer(initial: eventsApi.Event) {
+    let stored = initial;
+    vi.spyOn(events, 'fetchEvent').mockImplementation(() =>
+      Promise.resolve({ ok: true, value: stored }),
+    );
+    return vi
+      .spyOn(events, 'patchEventDetails')
+      .mockImplementation((_org, _event, version, changes) => {
+        stored = {
+          ...stored,
+          ...(changes.color === undefined ? {} : { color: changes.color }),
+          version: version + 1,
+        };
+        return Promise.resolve({ ok: true, event: stored });
+      });
+  }
+
+  it('has no save button: an edit is sent once it settles', async () => {
+    const patch = storingServer(DUB);
+    const { wrapper } = await mountView('/org-1/events/dub/details');
+    expect(wrapper.find('.evp-event button[type="submit"]').exists()).toBe(
+      false,
+    );
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      await wrapper
+        .findAll<HTMLInputElement>('input[type="radio"]')[4]
+        ?.setValue();
+      expect(patch).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(AUTOSAVE_DELAY_MS);
+    } finally {
+      vi.useRealTimers();
+    }
+    await flushPromises();
+
+    expect(patch).toHaveBeenCalledWith('org-1', 'dub', 1, { color: 4 });
+    expect(wrapper.find('.evp-toolbar-status').text()).toBe(
+      'Everything is saved',
+    );
+  });
+
+  /** The undo is a forward write: the next PATCH asserts the version the
+   * first save produced, not the one the page first rendered. */
+  it('Ctrl+Z puts the colour back, and that is saved like any edit', async () => {
+    const patch = storingServer(DUB);
+    const { wrapper } = await mountView('/org-1/events/dub/details');
+    await wrapper
+      .findAll<HTMLInputElement>('input[type="radio"]')[4]
+      ?.setValue();
+    await wrapper.find('.evp-event form').trigger('submit');
+    await flushPromises();
+    patch.mockClear();
+
+    pressKeys({ key: 'z', ctrlKey: true });
+    await flushPromises();
+    expect(
+      wrapper.findAll<HTMLInputElement>('input[type="radio"]')[1]?.element
+        .checked,
+    ).toBe(true);
+    expect(wrapper.find('[role="status"].evp-visually-hidden').text()).toBe(
+      'Change undone.',
+    );
+
+    await wrapper.find('.evp-event form').trigger('submit');
+    await flushPromises();
+    expect(patch).toHaveBeenCalledWith('org-1', 'dub', 2, { color: 1 });
+  });
+
+  it('redoes what was undone', async () => {
+    storingServer(DUB);
+    const { wrapper } = await mountView('/org-1/events/dub/details');
+    await wrapper
+      .findAll<HTMLInputElement>('input[type="radio"]')[4]
+      ?.setValue();
+
+    pressKeys({ key: 'z', ctrlKey: true });
+    await flushPromises();
+    pressKeys({ key: 'z', ctrlKey: true, shiftKey: true });
+    await flushPromises();
+
+    expect(
+      wrapper.findAll<HTMLInputElement>('input[type="radio"]')[4]?.element
+        .checked,
+    ).toBe(true);
+  });
+
+  /** A draft the server would refuse is not sent, and the page says one
+   * event is unsaved instead of claiming everything is. */
+  it('holds back a draft that ends before it starts, and says so', async () => {
+    const patch = storingServer(DUB);
+    const { wrapper } = await mountView('/org-1/events/dub/details');
+
+    await wrapper.find('#evp-dub-end').setValue('2026-08-02T19:00');
+    await wrapper.find('.evp-event form').trigger('submit');
+    await flushPromises();
+
+    expect(patch).not.toHaveBeenCalled();
+    expect(wrapper.find('.evp-event .evp-error').text()).toContain(
+      'end after it starts',
+    );
+    expect(wrapper.find('.evp-toolbar-status').text()).toContain(
+      'One event is not saved',
+    );
+  });
+
+  /** The closed row is where a blocked edit would otherwise be forgotten. */
+  it('marks a closed row whose edit cannot be saved', async () => {
+    storingServer(DUB);
+    const { wrapper } = await mountView('/org-1/events/dub/details');
+
+    await wrapper.find('#evp-dub-end').setValue('2026-08-02T19:00');
+    await wrapper.find('.evp-event-toggle').trigger('click');
+
+    expect(wrapper.find('.evp-tag--unsaved').text()).toBe('Not saved');
   });
 });
 

@@ -117,10 +117,6 @@ export default {
     saveUnavailable: 'The server could not be reached, so nothing was saved.',
     deleteUnavailable:
       'The server could not be reached, so nothing was deleted.',
-    saved: 'Saved.',
-    saveChanges: 'Save changes',
-    discard: 'Discard',
-    delete: 'Delete this event',
     deleteHint:
       'Archiving keeps a published roster readable; deleting does not. Use this for an event that should never have existed.',
     deleteConfirm:
@@ -145,6 +141,34 @@ export default {
         'how an event is drawn wherever it appears beside another one: the day strip above, and every chip that names it. Every colour offered reads against both black and white text.',
     },
     noDays:
-      'This festival has no days yet, so there is nothing to configure. Add the first one below.',
+      'This festival has no days yet, so there is nothing to configure. Add the first one above.',
+  },
+  card: {
+    doors: 'Doors {open}–{close}',
+    noDoors: 'No door times published',
+    unsaved: 'Not saved',
+    remove: 'Delete {name}',
+    deleteTitle: 'Delete {name}?',
+  },
+  toolbar: {
+    label: 'Saving and undo',
+    allSaved: 'Everything is saved',
+    blocked:
+      '{count, plural, one {One event is not saved: see its row} other {# events are not saved: see their rows}}',
+    undo: 'Undo the last change',
+    undoHint: 'Undo (Ctrl+Z)',
+    redo: 'Redo the change',
+    redoHint: 'Redo (Ctrl+Shift+Z)',
+  },
+  history: {
+    undone: 'Change undone.',
+    redone: 'Change redone.',
+    gone: 'That event is no longer on the page, so there is nothing to undo.',
+  },
+  leave: {
+    title: 'Leave without saving?',
+    body: 'At least one event has a change that cannot be saved — its row says why. Leaving loses that change.',
+    confirm: 'Leave anyway',
+    stay: 'Stay on the page',
   },
 } satisfies typeof fr;

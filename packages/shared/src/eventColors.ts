@@ -18,8 +18,7 @@
  * clearing 4.5:1 on both sides admits a band of sRGB relative luminance
  * roughly 0.175–0.183 wide and nothing else. Every colour below therefore
  * sits at essentially one luminance (≈0.179, giving ≈4.56:1 each way) and
- * varies only in hue and chroma: 32 hues at full in-gamut chroma, then the
- * same 32 again at half. There is no "light" or "dark" variant to be had, and
+ * varies only in hue and chroma. There is no "light" or "dark" variant to be had, and
  * asking for one would be asking to fail the gate.
  *
  * **The order is part of the contract, twice over.**
@@ -33,36 +32,42 @@
  * moved. Appending past 64 needs the column's `CHECK` widened in a new
  * migration.
  *
- * And the sequence is deliberately not the colour wheel: consecutive indices
- * step 13/32 of the way around it, ~146° apart. The server hands a new event
- * the lowest index its siblings are not using, so "the next colour" has to be
- * one nobody will confuse with the last one — which a hue-ordered list would
- * get exactly wrong. The first 32 are the full-chroma half, so a festival
- * exhausts the vivid colours before it reaches the muted ones.
+ * And the order is what a festival's days are handed: the server gives a new
+ * event the lowest index its siblings are not using, so the first *n* entries
+ * are an *n*-day festival's colours. Indices 0–15 are therefore chosen and
+ * ordered for distance (ADR-0050): the 16 contrast-passing colours whose
+ * closest pair is as far apart as possible in OKLab, each one the farthest
+ * remaining from all before it. They were once a 13/32 hue step, which kept
+ * neighbours apart but put index 5 one thirty-second of a turn from index 0 —
+ * two days nobody could tell apart. 16–63 are still that older sequence, kept
+ * because an event may hold one of them.
  */
 
 /**
  * Indexed by `events.color`. Generated against the luminance target described
  * above rather than picked by eye — see the module comment for why the values
- * are as narrow in lightness as they are.
+ * are as narrow in lightness as they are. `eventColors.test.ts` gates both the
+ * contrast and the distance.
  */
 export const eventColors: readonly string[] = [
+  // 0–15: the offered sixteen (ADR-0050), farthest-point ordered.
   '#e40079',
-  '#00882b',
-  '#894eff',
-  '#9c6d00',
-  '#007fa2',
-  '#e8005a',
-  '#008752',
-  '#a537ff',
-  '#907200',
-  '#007db1',
-  '#eb0033',
-  '#008666',
-  '#c000f7',
-  '#847600',
-  '#0079c7',
-  '#de3200',
+  '#008a01',
+  '#0a6aff',
+  '#b70aff',
+  '#af6304',
+  '#8c66a3',
+  '#018092',
+  '#e52701',
+  '#8259ec',
+  '#d900b9',
+  '#bd5560',
+  '#4a74c4',
+  '#807701',
+  '#ad47cd',
+  '#3f8459',
+  '#bc4996',
+  // 16–63: the original hue-stepped sequence, drawable but no longer offered.
   '#008574',
   '#ce00d6',
   '#767b00',
@@ -117,31 +122,28 @@ export const eventColors: readonly string[] = [
 export const eventColorCount = 64;
 
 /**
- * How many of them a coordinator is *offered*.
+ * How many of them a coordinator is *offered*: one row of sixteen (ADR-0050).
  *
- * Fewer than the column admits, and deliberately not the same number. The
- * second half of the list is the first half again at half chroma — the same
- * 32 hues, muted — and on a grid of swatches those are the pairs a person
- * hesitates over: picking between `#e40079` and `#b15a77` is a decision about
- * nothing, made 32 times. The vivid half is also the half that survives being
- * shrunk to a 10 px dot in a day strip, which is where an event colour is
- * mostly read.
+ * Fewer than the column admits, and deliberately not the same number. At one
+ * luminance only hue and chroma separate colours, and sixteen is about as many
+ * as stay plainly distinct that way; past it, a grid of swatches turns into
+ * pairs a person hesitates over, a decision about nothing.
  *
  * It is a *choice* count rather than a shorter palette because the order is
- * the contract (see above): dropping entries 32–63 would recolour every event
+ * the contract (see above): dropping entries would recolour every event
  * already sitting on one of them, and the column would still hand them back.
- * So the muted half stays drawable and stops being offerable — an event that
- * holds one keeps it, and `eventColorChoices` is what puts it back on screen
- * beside the 32 rather than leaving its owner looking at a grid with nothing
+ * So the rest stay drawable and stop being offerable — an event that holds
+ * one keeps it, and `eventColorChoices` is what puts it back on screen beside
+ * the sixteen rather than leaving its owner looking at a row with nothing
  * selected in it.
  */
-export const eventColorChoiceCount = 32;
+export const eventColorChoiceCount = 16;
 
 /**
  * The indices a picker should show for an event currently on `current`.
  *
  * The offered range, plus `current` appended when it falls outside it — never
- * inserted in its place in the order, because the 32 are a contiguous block a
+ * inserted in its place in the order, because the sixteen are a contiguous block a
  * keyboard walks through and a hole in it would be one arrow key landing on a
  * colour nobody can choose again once they leave.
  *

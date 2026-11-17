@@ -86,6 +86,13 @@ async function openADayDetails(page: Page): Promise<boolean> {
   return true;
 }
 
+/** The page saves by itself (ADR-0051); this waits for it to say so. */
+async function expectAllSaved(page: Page): Promise<void> {
+  await expect(page.locator('.evp-toolbar-status')).toHaveText(
+    'Everything is saved',
+  );
+}
+
 test('the rail names the production and reaches the details section', async ({
   page,
 }) => {
@@ -121,8 +128,7 @@ test('door times are typed in and can be taken back off', async ({ page }) => {
 
   await page.getByLabel('Doors open').fill(start);
   await page.getByLabel('Doors close').fill(end);
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByRole('status')).toContainText('Saved');
+  await expectAllSaved(page);
 
   await page.reload();
   expect(await page.getByLabel('Doors open').inputValue()).toBe(start);
@@ -130,8 +136,7 @@ test('door times are typed in and can be taken back off', async ({ page }) => {
   // The half a plain optional could not express: "there are no published
   // hours" is a decision, and it has to be storable.
   await page.getByRole('button', { name: 'Publish no door times' }).click();
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByRole('status')).toContainText('Saved');
+  await expectAllSaved(page);
 
   await page.reload();
   expect(await page.getByLabel('Doors open').inputValue()).toBe('');
@@ -154,9 +159,9 @@ test('doors outside the working hours are refused before the round trip', async 
   await page.getByLabel('Doors close').fill(end.replace(/T\d\d:/u, 'T23:'));
 
   await expect(page.getByRole('alert')).toContainText(/cannot fall outside/);
-  await expect(
-    page.getByRole('button', { name: 'Save changes' }),
-  ).toBeDisabled();
+  await expect(page.locator('.evp-toolbar-status')).toContainText(
+    'One event is not saved',
+  );
 });
 
 test('a colour picked on the form is the colour the event keeps', async ({
@@ -168,22 +173,53 @@ test('a colour picked on the form is the colour the event keeps', async ({
     return;
   }
 
+  // Sixteen offered (ADR-0050), plus one when the event holds a colour
+  // outside them.
   const swatches = page.getByRole('radio');
-  await expect(swatches).toHaveCount(64);
+  expect([16, 17]).toContain(await swatches.count());
 
   // By position, not by value: these tests leave their writes behind, so the
   // currently-selected swatch differs between runs. Two positions and whichever
   // one is not already chosen is the change.
   const first = swatches.nth(0);
-  const other = swatches.nth(17);
+  const other = swatches.nth(5);
   const target = (await first.isChecked()) ? other : first;
 
   await target.check();
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByRole('status')).toContainText('Saved');
+  await expectAllSaved(page);
 
   await page.reload();
   await expect(target).toBeChecked();
+});
+
+/** Undo is a forward write (ADR-0051), so what it puts back survives a
+ * reload like any other edit. */
+test('Ctrl+Z takes a colour back, and the server keeps it', async ({
+  page,
+}) => {
+  await signIn(page);
+  if (!(await openADayDetails(page))) {
+    test.skip();
+    return;
+  }
+
+  const swatches = page.getByRole('radio');
+  const first = swatches.nth(0);
+  const other = swatches.nth(5);
+  const [original, target] = (await first.isChecked())
+    ? [first, other]
+    : [other, first];
+  await original.check();
+  await expectAllSaved(page);
+
+  await target.check();
+  await expectAllSaved(page);
+  await page.keyboard.press('Control+z');
+  await expect(original).toBeChecked();
+  await expectAllSaved(page);
+
+  await page.reload();
+  await expect(original).toBeChecked();
 });
 
 test('the details section has no axe violations', async ({ page }) => {

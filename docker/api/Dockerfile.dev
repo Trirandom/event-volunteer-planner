@@ -26,6 +26,20 @@ ARG RUST_IMAGE=rust:1.98.1-bookworm@sha256:9a73a5088750b4c95158ab26629c854c3d6fc
 
 FROM ${RUST_IMAGE} AS dev
 
+# The base image has the pinned compiler but not the components
+# rust-toolchain.toml asks for (rustfmt, clippy, llvm-tools-preview). Left
+# out, rustup fetches them into each new container's writable layer on its
+# first cargo call: every `docker compose run --rm` — `just check`, `just
+# test`, a fresh worktree's `migrate` — downloads them again, and a stalled
+# download hangs the command with nothing on screen. Installed here they are
+# fetched once per image build.
+#
+# Read from the toolchain file itself (rustup with no arguments installs what
+# it pins), so the component list has one home, and bumping the file is a
+# changed COPY input that rebuilds this layer instead of a stale image.
+COPY rust-toolchain.toml /tmp/toolchain/
+RUN cd /tmp/toolchain && rustup toolchain install && rm -rf /tmp/toolchain
+
 # `watchexec`, not `cargo-watch`. cargo-watch's last release is October 2024 and
 # its own README directs people here; a supply-chain policy that pins digests
 # (docs/12 §8) should not also depend on an abandoned build tool. The command

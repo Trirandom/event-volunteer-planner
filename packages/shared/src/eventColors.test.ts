@@ -23,6 +23,57 @@ function rgbOf(hex: string) {
   return rgb;
 }
 
+/**
+ * OKLab (Ottosson 2020), whose Euclidean distance tracks how different two
+ * colours look far better than any distance in sRGB. Here rather than in the
+ * library because only the gate needs it: nothing at runtime compares colours.
+ */
+function oklabOf(hex: string): readonly [number, number, number] {
+  const { r, g, b } = rgbOf(hex);
+  const linear = (value: number) => {
+    const c = value / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const [lr, lg, lb] = [linear(r), linear(g), linear(b)];
+  const l = Math.cbrt(
+    0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb,
+  );
+  const m = Math.cbrt(
+    0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb,
+  );
+  const s = Math.cbrt(
+    0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb,
+  );
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+
+function oklabDistance(a: string, b: string): number {
+  const [l1, a1, b1] = oklabOf(a);
+  const [l2, a2, b2] = oklabOf(b);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+}
+
+/** Every pair among the first `count` indices that is closer than `floor`,
+ * as a readable list, so a failure names the colours rather than a number. */
+function pairsCloserThan(count: number, floor: number): string[] {
+  const close: string[] = [];
+  for (let i = 0; i < count; i += 1) {
+    for (let j = 0; j < i; j += 1) {
+      const distance = oklabDistance(eventColor(i), eventColor(j));
+      if (distance < floor) {
+        close.push(
+          `${String(j)} ${eventColor(j)} / ${String(i)} ${eventColor(i)}: ${distance.toFixed(3)}`,
+        );
+      }
+    }
+  }
+  return close;
+}
+
 describe('the event colour palette', () => {
   it('has exactly as many entries as the column admits', () => {
     expect(eventColors).toHaveLength(eventColorCount);
@@ -80,6 +131,29 @@ describe('the event colour palette', () => {
   });
 });
 
+/**
+ * ADR-0050. At one luminance, only hue and chroma tell colours apart, so a
+ * palette can pass every contrast test and still offer two pinks nobody can
+ * tell apart (indices 0 and 5 used to be 0.047 apart). A JND in OKLab is about
+ * 0.02, so these floors are four to ten of them.
+ */
+describe('the offered colours, told apart', () => {
+  it('keeps every offered pair visibly different', () => {
+    expect(pairsCloserThan(eventColorChoiceCount, 0.09)).toEqual([]);
+  });
+
+  /** A festival's days are handed the lowest free index, so the first few
+   * are the colours most boards are drawn in. */
+  it('keeps the first four, a short festival, far apart', () => {
+    expect(pairsCloserThan(4, 0.2)).toEqual([]);
+  });
+
+  /** In one row, so the offer reads as one set rather than a grid to scan. */
+  it('offers sixteen', () => {
+    expect(eventColorChoiceCount).toBe(16);
+  });
+});
+
 describe('what a picker is offered', () => {
   /**
    * The two numbers are allowed to differ, in one direction. Offering more
@@ -90,7 +164,7 @@ describe('what a picker is offered', () => {
     expect(eventColorChoiceCount).toBeLessThanOrEqual(eventColorCount);
   });
 
-  it('offers the vivid half, in palette order', () => {
+  it('offers the first indices, in palette order', () => {
     expect(eventColorChoices(0)).toEqual(
       Array.from({ length: eventColorChoiceCount }, (_unused, i) => i),
     );
@@ -105,11 +179,11 @@ describe('what a picker is offered', () => {
   /**
    * The case this function exists for. An event created before the choice was
    * narrowed — or coloured by the server, which still allocates out of the
-   * whole palette — must find its own colour in the grid, or saving anything
+   * whole palette — must find its own colour in the row, or saving anything
    * else about it would quietly move it to whichever swatch got ticked
    * instead.
    */
-  it('keeps a stored muted colour choosable, at the end', () => {
+  it('keeps a stored unoffered colour choosable, at the end', () => {
     const choices = eventColorChoices(40);
     expect(choices).toHaveLength(eventColorChoiceCount + 1);
     expect(choices.at(-1)).toBe(40);

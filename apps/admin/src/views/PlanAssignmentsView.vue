@@ -1344,7 +1344,10 @@ function onBoardWheel(event: WheelEvent): void {
             class="evp-lane"
             :style="{
               width: `${String(laneWidth)}px`,
-              height: laneHeight(row),
+              // A floor, not a height: the row is as tall as its gutter
+              // when a zone's posts make that the taller of the two, and
+              // the lane's hatching has to reach the row's bottom edge.
+              minHeight: laneHeight(row),
             }"
           >
             <!-- Time that is on the board but in no day. -->

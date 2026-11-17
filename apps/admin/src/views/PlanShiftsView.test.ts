@@ -1303,13 +1303,16 @@ describe('PlanShiftsView — overlapping days on one mission row', () => {
     expect(tops[1]).toContain('top: 3.75rem');
   });
 
+  /** At least as deep: a zone listing its posts in the gutter is taller
+   * still, and a fixed height left the lane — and its hatching — stopping
+   * short of the row's bottom edge. */
   it('makes the row as deep as the bars it has to hold', async () => {
     const wrapper = await mountView('/org-1/festivals/festival-1/shifts');
 
     const lanes = wrapper.findAll('.evp-lane');
     // Bar carries both days; Entrée carries one.
-    expect(lanes[0]?.attributes('style')).toContain('height: 6rem');
-    expect(lanes[1]?.attributes('style')).toContain('height: 3rem');
+    expect(lanes[0]?.attributes('style')).toContain('min-height: 6rem');
+    expect(lanes[1]?.attributes('style')).toContain('min-height: 3rem');
   });
 });
 

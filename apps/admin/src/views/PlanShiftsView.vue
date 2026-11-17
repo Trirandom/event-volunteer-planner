@@ -1666,7 +1666,10 @@ function runLabel(row: MissionRow, subject: Run): string {
             class="evp-lane"
             :style="{
               width: `${String(laneWidth)}px`,
-              height: laneHeight(row),
+              // A floor, not a height: the row is as tall as its gutter
+              // when a zone's posts make that the taller of the two, and
+              // the lane's hatching has to reach the row's bottom edge.
+              minHeight: laneHeight(row),
             }"
             @pointerdown="onLanePointerDown($event, row)"
             @pointermove="onLanePointerMove"
@@ -2267,9 +2270,9 @@ kbd {
 }
 
 .evp-lane {
-  /* Height is set inline: a mission run by two days at once is two bars deep
-     (`lanes.ts`), and the fallback here is the one-bar case. */
-  height: 3rem;
+  /* The floor is set inline: a mission run by two days at once is two bars
+     deep (`lanes.ts`), and the fallback here is the one-bar case. */
+  min-height: 3rem;
   position: relative;
   /* A press on the lane draws a new series, and a drag that started on it must
      not be interrupted by the browser selecting the row's text. */

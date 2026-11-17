@@ -50,6 +50,9 @@ export const assignmentSchema = v.object({
   shift_id: v.pipe(v.string(), v.minLength(1)),
   participation_id: v.pipe(v.string(), v.minLength(1)),
   volunteer_id: v.pipe(v.string(), v.minLength(1)),
+  /** The post of the shift's zone this volunteer holds, or `null` for the
+   * zone itself (ADR-0052). */
+  post_id: v.nullable(v.pipe(v.string(), v.minLength(1))),
   /** The shift's own hours, copied onto the row so the database can refuse a
    * double-booking without a join (docs/03 §3.6). */
   period: periodSchema,
@@ -144,7 +147,12 @@ export type AssignResult =
 export async function createAssignment(
   orgId: string,
   eventId: string,
-  input: { readonly shiftId: string; readonly participationId: string },
+  input: {
+    readonly shiftId: string;
+    readonly participationId: string;
+    /** The post of the shift's zone the seat is for; `null` for the zone. */
+    readonly postId: string | null;
+  },
 ): Promise<AssignResult> {
   const result = await requestVersioned(
     {
@@ -153,6 +161,7 @@ export async function createAssignment(
       body: {
         shift_id: input.shiftId,
         participation_id: input.participationId,
+        post_id: input.postId,
       },
     },
     writtenSchema,

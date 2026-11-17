@@ -171,6 +171,7 @@ rules and are deliberately not counted among the six:
 | --- | --- |
 | A shift's time range is well-formed, non-empty and at most 24 hours | `CHECK (NOT isempty(period) AND lower(period) IS NOT NULL AND upper(period) IS NOT NULL)` plus a length `CHECK` |
 | An assignment's period matches its shift | Denormalised `period` column, kept in sync by trigger — required because exclusion constraints cannot join |
+| Shifts live on zones, and an assignment's post is a post of its shift's zone ([ADR-0052](adr/0052-posts-are-roles-within-their-zones-shifts.md)) | Constraint triggers `shift_on_post` and `assignment_post_outside_zone`, the latter in both directions: tagging the placement, and moving the shift |
 | A participation's availability windows never overlap each other | Exclusion constraint per participation, across both kinds: "available 10:00–14:00" and "unavailable 12:00–16:00" is a contradiction, not a preference |
 | Roster versions are unique per event | `UNIQUE (event_id, version)` |
 | At most one availability question, and one consent per purpose, per form version | Partial unique indexes ([ADR-0025](adr/0025-two-consents-processing-and-pool-retention.md)) |

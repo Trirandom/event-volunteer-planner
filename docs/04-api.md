@@ -458,6 +458,12 @@ DELETE /api/v1/orgs/{org}/events/{event}/shifts/{id}   (refuses if assigned, unl
 PUT    /api/v1/orgs/{org}/events/{event}/shifts/{id}/requirements  { [{skill_id, min_count}] }
 ```
 
+A shift's `location_id` is a zone. A post works its zone's shifts and has none
+of its own ([ADR-0052](adr/0052-posts-are-roles-within-their-zones-shifts.md)),
+so a create, a move or a generation run aimed at a post is a `422` saying so.
+So is moving a shift to another zone while volunteers on it hold posts of its
+current one.
+
 ### Shift patterns
 
 How a working window is cut into slots. Organisation-scoped and reused across
@@ -605,7 +611,7 @@ is always clear which is which; `GET` on this endpoint returns that provenance
 ```
 GET    /api/v1/orgs/{org}/events/{event}/assignments    ?shift=&volunteer=&from=&to=
 POST   /api/v1/orgs/{org}/events/{event}/assignments
-       { shift_id, participation_id, acknowledge_warnings?: string[] }
+       { shift_id, participation_id, post_id?: uuid, acknowledge_warnings?: string[] }
 PATCH  /api/v1/orgs/{org}/events/{event}/assignments/{id}
        { shift_id }                                     (If-Match — this is a move)
 DELETE /api/v1/orgs/{org}/events/{event}/assignments/{id}  (If-Match — cancels, does not erase)
@@ -625,6 +631,13 @@ POST   /api/v1/orgs/{org}/events/{event}/days/{date}/copy
 POST   /api/v1/orgs/{org}/events/{event}/assignments/replace
        { from_participation_id, to_participation_id, scope }   → same shape
 ```
+
+`post_id` names the post of the shift's zone the volunteer holds — the bar
+manager on the bar's shift ([ADR-0052](adr/0052-posts-are-roles-within-their-zones-shifts.md)).
+Omitted or `null`, they work the zone itself. Every assignment in a response
+carries `post_id`, `null` when there is none. A post of another zone is a
+`422`. The zone's `min_volunteers`/`max_volunteers` count the post's people
+too: they are the zone's people.
 
 The bulk actions are **per-item**: each pair is evaluated on its own, the ones
 that clash are reported with their `violations`, and the rest are created

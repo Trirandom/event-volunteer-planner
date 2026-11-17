@@ -99,9 +99,14 @@ function festivalDetail(): festivalsApi.FestivalDetail {
   };
 }
 
-function zone(eventId: string, name: string): locationsApi.Zone {
+/** Each day's bar: a zone, because shifts live on zones (ADR-0052). */
+function zone(
+  eventId: string,
+  name: string,
+  posts: locationsApi.Post[] = [],
+): locationsApi.Zone {
   return {
-    id: `zone-${eventId}`,
+    id: `${eventId}-bar`,
     event_id: eventId,
     parent_id: null,
     kind: 'zone',
@@ -110,19 +115,21 @@ function zone(eventId: string, name: string): locationsApi.Zone {
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     version: 1,
-    posts: [
-      {
-        id: `${eventId}-bar`,
-        event_id: eventId,
-        parent_id: `zone-${eventId}`,
-        kind: 'post',
-        name: 'Bar',
-        sort_order: 0,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
-        version: 1,
-      },
-    ],
+    posts,
+  };
+}
+
+function post(eventId: string, id: string, name: string): locationsApi.Post {
+  return {
+    id,
+    event_id: eventId,
+    parent_id: `${eventId}-bar`,
+    kind: 'post',
+    name,
+    sort_order: 0,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    version: 1,
   };
 }
 
@@ -161,8 +168,8 @@ function person(
 }
 
 const TREES: Readonly<Record<string, readonly locationsApi.Zone[]>> = {
-  'open-air': [zone('open-air', 'Site')],
-  dub: [zone('dub', 'Club')],
+  'open-air': [zone('open-air', 'Bar')],
+  dub: [zone('dub', 'Bar')],
 };
 
 const SHIFTS: Readonly<Record<string, readonly shiftsApi.Shift[]>> = {
@@ -203,6 +210,7 @@ function assignment(
     shift_id: 's1',
     participation_id: 'p-camille',
     volunteer_id: 'volunteer-p-camille',
+    post_id: null,
     period: { start: '2026-08-01T10:00:00Z', end: '2026-08-01T12:00:00Z' },
     status: 'draft',
     assigned_at: '2026-08-01T09:00:00Z',
@@ -365,14 +373,9 @@ describe('PlanAssignmentsView — the grid', () => {
   /** The count and the dropdowns follow the mission's `min_volunteers`, not
    * the `required_count = 1` every freshly cut shift carries. */
   it('staffs each slot against its mission’s own minimum', async () => {
-    const [site] = TREES['open-air'] ?? [];
-    const [bar] = site?.posts ?? [];
-    if (site === undefined || bar === undefined) {
-      throw new Error('fixture missing');
-    }
     vi.spyOn(locations, 'fetchLocations').mockResolvedValue({
       ok: true,
-      value: [{ ...site, posts: [{ ...bar, min_volunteers: 4 }] }],
+      value: [{ ...zone('open-air', 'Bar'), min_volunteers: 4 }],
     });
     vi.spyOn(shifts, 'fetchShifts').mockResolvedValue({
       ok: true,
@@ -512,6 +515,53 @@ describe('PlanAssignmentsView — writing', () => {
     expect(create).toHaveBeenCalledWith('org-1', 'open-air', {
       shiftId: 's1',
       participationId: 'p-camille',
+      postId: null,
+    });
+  });
+
+  /** The bar manager works the bar's shift (ADR-0052): their seat is in the
+   * bar's slot, on the line the row header names "Bar manager", and sends
+   * that post with the placement. */
+  it('rosters somebody into the post a seat is for', async () => {
+    vi.spyOn(locations, 'fetchLocations').mockResolvedValue({
+      ok: true,
+      value: [
+        {
+          ...zone('open-air', 'Bar', [
+            {
+              ...post('open-air', 'oa-manager', 'Bar manager'),
+              min_volunteers: 1,
+              max_volunteers: 1,
+            },
+          ]),
+          min_volunteers: 2,
+        },
+      ],
+    });
+    const create = vi.spyOn(assignments, 'createAssignment').mockResolvedValue({
+      ok: true,
+      assignment: assignment({ post_id: 'oa-manager' }),
+      operationId: 'op-1',
+    });
+
+    const wrapper = await mountView('/org-1/events/open-air/assignments');
+    const band = wrapper.find('.evp-row .evp-post-band');
+    expect(band.text()).toBe('Bar manager');
+    // The header's line and the seat's are the same one: the first below
+    // the slot's label strip.
+    expect(band.attributes('style')).toContain('top: 1rem');
+    expect(
+      wrapper
+        .find('.evp-slot')
+        .findAll('.evp-seat')
+        .map((seat) => seat.attributes('style')),
+    ).toEqual(['grid-row: 2;', 'grid-row: 3;']);
+    await chooseByText(wrapper, 0, 'Camille');
+
+    expect(create).toHaveBeenCalledWith('org-1', 'open-air', {
+      shiftId: 's1',
+      participationId: 'p-camille',
+      postId: 'oa-manager',
     });
   });
 
@@ -548,6 +598,7 @@ describe('PlanAssignmentsView — writing', () => {
     expect(create).toHaveBeenCalledWith('org-1', 'open-air', {
       shiftId: 's1',
       participationId: 'p-aurel',
+      postId: null,
     });
   });
 

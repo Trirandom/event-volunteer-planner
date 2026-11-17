@@ -63,6 +63,10 @@ pub struct AssignmentResponse {
     pub shift_id: String,
     pub participation_id: String,
     pub volunteer_id: String,
+    /// The post of the shift's zone this volunteer holds, or `null` for the
+    /// zone itself (ADR-0052). Always present, so a client never has to tell
+    /// a missing key from a null one.
+    pub post_id: Option<String>,
     /// The shift's period, copied onto the row so the database can refuse a
     /// double-booking without a join (docs/03 §3.6). Returned because a client
     /// holding a roster and a shift list still has to draw one before the
@@ -82,6 +86,7 @@ fn render(assignment: evp_db::assignments::Assignment) -> AssignmentResponse {
         shift_id: assignment.shift_id.to_string(),
         participation_id: assignment.participation_id.to_string(),
         volunteer_id: assignment.volunteer_id.to_string(),
+        post_id: assignment.post_id.map(|id| id.to_string()),
         period: render_period(assignment.period_start, assignment.period_end),
         status: assignment.status,
         assigned_at: assignment.assigned_at.to_string(),
@@ -93,6 +98,10 @@ fn render(assignment: evp_db::assignments::Assignment) -> AssignmentResponse {
 pub struct CreateAssignmentRequest {
     pub shift_id: String,
     pub participation_id: String,
+    /// A post of the shift's zone the volunteer will hold (ADR-0052).
+    /// Omitted or `null`: they work the zone itself.
+    #[serde(default)]
+    pub post_id: Option<String>,
     /// Soft-constraint codes the coordinator has accepted (ADR-0007, docs/04).
     /// Accepted and stored now so that an override is recorded from the first
     /// day; nothing computes a warning to acknowledge yet, so an empty list is
@@ -151,6 +160,13 @@ fn map_write_error(error: evp_db::DbError) -> ApiError {
                     .to_owned(),
             )
         }
+        Some("23514") if error.constraint().as_deref() == Some("assignment_post_outside_zone") => {
+            ApiError::ValidationFailed(
+                "post_id must name a post of the shift's zone. A post works its zone's shifts, so \
+                 pick one of that zone's posts, or leave post_id out."
+                    .to_owned(),
+            )
+        }
         Some("23503")
             if error.constraint().as_deref()
                 == Some("assignments_participation_is_this_edition") =>
@@ -159,6 +175,13 @@ fn map_write_error(error: evp_db::DbError) -> ApiError {
                 "That volunteer signed up for a different day of this festival. Enrol them on \
                  this one first."
                     .to_owned(),
+            )
+        }
+        Some("23503")
+            if error.constraint().as_deref() == Some("assignments_post_id_org_id_fkey") =>
+        {
+            ApiError::ValidationFailed(
+                "post_id must name a post of the shift's zone in this organisation.".to_owned(),
             )
         }
         Some("23503") => ApiError::ValidationFailed(
@@ -234,6 +257,11 @@ async fn create_assignment(
 
     let shift_id = parse_uuid("shift_id", &request.shift_id)?;
     let participation_id = parse_uuid("participation_id", &request.participation_id)?;
+    let post_id = request
+        .post_id
+        .as_deref()
+        .map(|value| parse_uuid("post_id", value))
+        .transpose()?;
     check_shift(&mut org, path.event, shift_id).await?;
 
     let written = evp_db::assignments::create(
@@ -244,6 +272,7 @@ async fn create_assignment(
         &evp_db::assignments::NewAssignment {
             shift_id,
             participation_id,
+            post_id,
             acknowledged_warnings: request.acknowledge_warnings,
         },
     )

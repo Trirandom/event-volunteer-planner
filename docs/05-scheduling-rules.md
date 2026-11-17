@@ -62,6 +62,8 @@ cannot tell which mechanism caught it.
 
 Supporting constraints exist alongside these — a shift's period is non-empty
 and at most 24 hours, an assignment's period is trigger-synced from its shift,
+shifts live on zones and an assignment's post belongs to its shift's zone
+([ADR-0052](adr/0052-posts-are-roles-within-their-zones-shifts.md)),
 availability windows cannot self-overlap, roster versions are unique per
 event — but they are structural hygiene rather than scheduling rules, and they
 are not part of the six.

@@ -22,6 +22,7 @@ import {
   rosterRows,
   rowCoverage,
   slotState,
+  type Seat,
 } from './roster';
 
 const HOUR = 3_600_000;
@@ -68,12 +69,13 @@ function run(shifts: readonly BarShift[], overrides: Partial<Run> = {}): Run {
     shifts,
     cutsMs: [],
     proposed: false,
+    posts: [],
     ...overrides,
   };
 }
 
 function missionRow(runs: readonly Run[]): MissionRow {
-  return { key: 'bar', name: 'Bar', runs, alsoAtDays: 0 };
+  return { key: 'bar', name: 'Bar', runs, alsoAtDays: 0, posts: [] };
 }
 
 function assignment(overrides: Partial<Assignment> = {}): Assignment {
@@ -83,6 +85,7 @@ function assignment(overrides: Partial<Assignment> = {}): Assignment {
     shift_id: 'shift-1',
     participation_id: 'participation-1',
     volunteer_id: 'volunteer-1',
+    post_id: null,
     period: { start: iso(EVENING), end: iso(EVENING + 2 * HOUR) },
     status: 'draft',
     assigned_at: iso(EVENING),
@@ -326,6 +329,206 @@ describe('rosterRows', () => {
   });
 });
 
+/**
+ * A post is a role within its zone's shift (ADR-0052): the bar manager works
+ * the bar's hours and is one of the bar's people. So the zone's slot carries
+ * the post's seats, and the zone's own min/max is the whole bar, posts
+ * included.
+ */
+describe('rosterRows with posts', () => {
+  const MANAGER = { id: 'manager-post', name: 'Bar manager' };
+  const CASHIER = { id: 'cashier-post', name: 'Caisse' };
+
+  function placed(
+    index: number,
+    postId: string | null,
+    name = `Person ${String(index)}`,
+  ): { assignment: Assignment; person: Participation } {
+    return {
+      assignment: assignment({
+        id: `assignment-${String(index)}`,
+        participation_id: `participation-${String(index)}`,
+        volunteer_id: `volunteer-${String(index)}`,
+        post_id: postId,
+      }),
+      person: person({
+        id: `participation-${String(index)}`,
+        volunteer_id: `volunteer-${String(index)}`,
+        display_name: name,
+      }),
+    };
+  }
+
+  function slotWith(
+    people: readonly { assignment: Assignment; person: Participation }[],
+    bounds: ReadonlyMap<string, { min: number | null; max: number | null }>,
+    posts: readonly { id: string; name: string }[] = [MANAGER, CASHIER],
+  ) {
+    const [row] = rosterRows(
+      [missionRow([run([barShift({ requiredCount: 1 })], { posts })])],
+      people.map((entry) => entry.assignment),
+      new Map([['saturday', people.map((entry) => entry.person)]]),
+      bounds,
+    );
+    return row?.slots[0];
+  }
+
+  function layout(slot: ReturnType<typeof slotWith>) {
+    return slot?.seats.map((seat) => ({
+      post: seat.postName,
+      holder: seat.holder?.name ?? null,
+      extra: seat.extra,
+    }));
+  }
+
+  it('carves each post’s minimum out of the zone’s, posts first', () => {
+    const slot = slotWith(
+      [],
+      new Map([
+        ['bar-post', { min: 4, max: 8 }],
+        [MANAGER.id, { min: 1, max: 1 }],
+        [CASHIER.id, { min: 1, max: 2 }],
+      ]),
+    );
+
+    expect(layout(slot)).toStrictEqual([
+      { post: 'Bar manager', holder: null, extra: false },
+      { post: 'Caisse', holder: null, extra: false },
+      { post: null, holder: null, extra: false },
+      { post: null, holder: null, extra: false },
+    ]);
+    expect(slot?.requiredCount).toBe(4);
+    expect(slot?.maxCount).toBe(8);
+  });
+
+  it('counts the bar manager as one of the bar’s volunteers', () => {
+    const slot = slotWith(
+      [placed(0, MANAGER.id, 'Alex'), placed(1, null, 'Sam')],
+      new Map([
+        ['bar-post', { min: 2, max: 3 }],
+        [MANAGER.id, { min: 1, max: 1 }],
+      ]),
+      [MANAGER],
+    );
+
+    expect(layout(slot)).toStrictEqual([
+      { post: 'Bar manager', holder: 'Alex', extra: false },
+      { post: null, holder: 'Sam', extra: false },
+      { post: null, holder: null, extra: true },
+    ]);
+    expect(slot?.filled).toBe(2);
+    expect(slot === undefined ? null : slotState(slot)).toBe('full');
+  });
+
+  /** A second cashier is a second bar volunteer: the zone needs one fewer
+   * role-less hand, not one more. */
+  it('lets a post staffed past its own minimum fill the zone’s floor', () => {
+    const slot = slotWith(
+      [placed(0, CASHIER.id, 'Alex'), placed(1, CASHIER.id, 'Lou')],
+      new Map([
+        ['bar-post', { min: 3, max: null }],
+        [CASHIER.id, { min: 1, max: 2 }],
+      ]),
+      [CASHIER],
+    );
+
+    expect(layout(slot)).toStrictEqual([
+      { post: 'Caisse', holder: 'Alex', extra: false },
+      { post: 'Caisse', holder: 'Lou', extra: true },
+      { post: null, holder: null, extra: false },
+    ]);
+    expect(slot?.requiredCount).toBe(3);
+  });
+
+  it('offers no seat past the zone’s ceiling, posts included', () => {
+    const slot = slotWith(
+      [placed(0, MANAGER.id), placed(1, null)],
+      new Map([
+        ['bar-post', { min: 1, max: 2 }],
+        [MANAGER.id, { min: 1, max: 1 }],
+      ]),
+      [MANAGER, { id: 'runner-post', name: 'Runner' }],
+    );
+
+    expect(layout(slot)?.filter((seat) => seat.holder === null)).toStrictEqual(
+      [],
+    );
+  });
+
+  it('offers no spare on a post at its own ceiling', () => {
+    const slot = slotWith(
+      [placed(0, MANAGER.id)],
+      new Map([
+        ['bar-post', { min: 1, max: null }],
+        [MANAGER.id, { min: 1, max: 1 }],
+      ]),
+      [MANAGER],
+    );
+
+    expect(layout(slot)).toStrictEqual([
+      { post: 'Bar manager', holder: 'Person 0', extra: false },
+      { post: null, holder: null, extra: true },
+    ]);
+  });
+
+  /** A post nobody has given a floor to is still a role somebody can be
+   * put in: one spare seat says so, and it is not a hole. */
+  it('offers one spare seat on a post with no bounds', () => {
+    const slot = slotWith([], new Map([['bar-post', { min: 1, max: null }]]), [
+      MANAGER,
+    ]);
+
+    expect(layout(slot)).toStrictEqual([
+      { post: 'Bar manager', holder: null, extra: true },
+      { post: null, holder: null, extra: false },
+    ]);
+  });
+
+  /** Four people behind the bar and nobody running it is still short. */
+  it('calls a slot short while a post’s required seat is empty', () => {
+    const slot = slotWith(
+      [placed(0, null), placed(1, null)],
+      new Map([
+        ['bar-post', { min: 2, max: null }],
+        [MANAGER.id, { min: 1, max: 1 }],
+      ]),
+      [MANAGER],
+    );
+
+    expect(slot === undefined ? null : slotState(slot)).toBe('short');
+  });
+
+  /** A post deleted since the roster was read leaves its holder on the
+   * zone's shift (`ON DELETE SET NULL`), and the board says the same. */
+  it('seats the holder of a post it does not know as the zone’s', () => {
+    const slot = slotWith(
+      [placed(0, 'gone-post', 'Alex')],
+      new Map([['bar-post', { min: 1, max: 1 }]]),
+      [],
+    );
+
+    expect(layout(slot)).toStrictEqual([
+      { post: null, holder: 'Alex', extra: false },
+    ]);
+  });
+
+  it('keys a post seat by its post, so focus survives a re-render', () => {
+    const slot = slotWith(
+      [],
+      new Map([
+        ['bar-post', { min: 2, max: null }],
+        [MANAGER.id, { min: 1, max: 1 }],
+      ]),
+      [MANAGER],
+    );
+
+    expect(slot?.seats.map((seat) => [seat.key, seat.postId])).toStrictEqual([
+      ['shift-1:manager-post:0', 'manager-post'],
+      ['shift-1:zone:0', null],
+    ]);
+  });
+});
+
 describe('slotState', () => {
   function stateOf(requiredCount: number, placed: number): string {
     const assignments = Array.from({ length: placed }, (_unused, index) =>
@@ -557,6 +760,176 @@ describe('candidatesFor', () => {
     expect(ranked.map((candidate) => candidate.name)).toStrictEqual([
       'Perret Amélie',
       'Zwickel Pauline',
+    ]);
+  });
+});
+
+/**
+ * A zone's row lines each post's seats up across its slots, so the row
+ * header can name the post once, level with them, the way the spreadsheet's
+ * merged cells did (ADR-0052).
+ */
+describe('rosterRows post bands', () => {
+  const MANAGER = { id: 'manager-post', name: 'Bar manager' };
+  const CASHIER = { id: 'cashier-post', name: 'Caisse' };
+  const BOUNDS = new Map([
+    ['bar-post', { min: 3, max: null }],
+    [MANAGER.id, { min: 1, max: 1 }],
+    [CASHIER.id, { min: 1, max: 2 }],
+  ]);
+
+  function onCashier(index: number, name: string) {
+    return {
+      assignment: assignment({
+        id: `assignment-${String(index)}`,
+        participation_id: `participation-${String(index)}`,
+        volunteer_id: `volunteer-${String(index)}`,
+        post_id: CASHIER.id,
+      }),
+      person: person({
+        id: `participation-${String(index)}`,
+        volunteer_id: `volunteer-${String(index)}`,
+        display_name: name,
+      }),
+    };
+  }
+
+  function lines(slot: { readonly seats: readonly Seat[] } | undefined) {
+    return slot?.seats.map((seat) => [seat.postName, seat.line]);
+  }
+
+  it('gives a post the same lines in every slot of a lane', () => {
+    const people = [onCashier(0, 'Alex'), onCashier(1, 'Lou')];
+    const row = {
+      ...missionRow([
+        run(
+          [
+            barShift(),
+            barShift({
+              id: 'shift-2',
+              startMs: EVENING + 2 * HOUR,
+              endMs: EVENING + 4 * HOUR,
+            }),
+          ],
+          { posts: [MANAGER, CASHIER] },
+        ),
+      ]),
+      posts: [
+        { key: 'bar manager', name: 'Bar manager' },
+        { key: 'caisse', name: 'Caisse' },
+      ],
+    };
+
+    const [roster] = rosterRows(
+      [row],
+      people.map((entry) => entry.assignment),
+      new Map([['saturday', people.map((entry) => entry.person)]]),
+      BOUNDS,
+    );
+
+    // Two cashiers on the first slot make the Caisse band two lines tall,
+    // and the second slot's role-less seat waits below it rather than
+    // rising into the cashiers' line.
+    expect(lines(roster?.slots[0])).toStrictEqual([
+      ['Bar manager', 0],
+      ['Caisse', 1],
+      ['Caisse', 2],
+      [null, 3],
+    ]);
+    expect(lines(roster?.slots[1])).toStrictEqual([
+      ['Bar manager', 0],
+      ['Caisse', 1],
+      [null, 3],
+    ]);
+    expect(roster?.lanes).toStrictEqual([
+      {
+        row: 0,
+        seatOffset: 0,
+        height: 4,
+        posts: [
+          { key: 'bar manager', name: 'Bar manager', start: 0, size: 1 },
+          { key: 'caisse', name: 'Caisse', start: 1, size: 2 },
+        ],
+      },
+    ]);
+    expect(roster?.seatRows).toBe(4);
+  });
+
+  /** Sunday's bar has no manager: its seats leave the manager's line empty
+   * rather than slide up under a header that names somebody else. */
+  it('leaves a post’s lines empty on a day without the post', () => {
+    const row = {
+      ...missionRow([
+        run([barShift()], { posts: [MANAGER] }),
+        run(
+          [
+            barShift({
+              id: 'shift-2',
+              startMs: EVENING + 24 * HOUR,
+              endMs: EVENING + 26 * HOUR,
+            }),
+          ],
+          { key: 'bar:1', eventId: 'sunday', posts: [] },
+        ),
+      ]),
+      posts: [{ key: 'bar manager', name: 'Bar manager' }],
+    };
+
+    const [roster] = rosterRows([row], [], NOBODY, BOUNDS);
+
+    expect(lines(roster?.slots[1])?.[0]).toStrictEqual([null, 1]);
+  });
+
+  /** A post spelt differently on another day is the same line: the row
+   * folded them by name, and the header shows one. */
+  it('folds a post by name across the days', () => {
+    const row = {
+      ...missionRow([
+        run([barShift()], { posts: [MANAGER] }),
+        run(
+          [
+            barShift({
+              id: 'shift-2',
+              startMs: EVENING + 24 * HOUR,
+              endMs: EVENING + 26 * HOUR,
+            }),
+          ],
+          {
+            key: 'bar:1',
+            eventId: 'sunday',
+            posts: [{ id: 'other-manager', name: ' bar MANAGER' }],
+          },
+        ),
+      ]),
+      posts: [{ key: 'bar manager', name: 'Bar manager' }],
+    };
+
+    const [roster] = rosterRows([row], [], NOBODY, BOUNDS);
+
+    expect(lines(roster?.slots[1])?.[0]).toStrictEqual([' bar MANAGER', 0]);
+    expect(roster?.lanes[0]?.posts).toHaveLength(1);
+  });
+
+  it('starts each lane’s bands below the lanes above it', () => {
+    const row = {
+      ...missionRow([
+        run([barShift()], { posts: [MANAGER] }),
+        run([barShift({ id: 'shift-2' })], {
+          key: 'bar:1',
+          eventId: 'sunday',
+          posts: [MANAGER],
+        }),
+      ]),
+      posts: [{ key: 'bar manager', name: 'Bar manager' }],
+    };
+
+    const [roster] = rosterRows([row], [], NOBODY, BOUNDS);
+
+    expect(
+      roster?.lanes.map((lane) => [lane.row, lane.seatOffset, lane.height]),
+    ).toStrictEqual([
+      [0, 0, 3],
+      [1, 3, 3],
     ]);
   });
 });

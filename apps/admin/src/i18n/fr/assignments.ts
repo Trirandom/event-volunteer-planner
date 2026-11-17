@@ -57,6 +57,8 @@ export default {
       'aussi {count, plural, one {# autre jour} other {# autres jours}}',
     /** Per mission: places filled / places required. */
     missionCount: '{filled, number}/{required, number} en place',
+    /** The row header's list of the zone's posts, each level with its seats. */
+    postsLabel: 'Postes de {mission}',
   },
   seat: {
     /** The empty choice on a filled seat: picking it takes the person off. */
@@ -71,6 +73,10 @@ export default {
      * `timezone` an IANA zone name. */
     label:
       '{mission}, {event}, {hours} ({timezone}), bénévole {position, number} sur {total, number}',
+    /** Screen-reader name of a seat held for one of the zone’s posts
+     * (ADR-0052). `position`/`total` count that post’s seats only. */
+    postLabel:
+      '{mission}, {post}, {event}, {hours} ({timezone}), place {position, number} sur {total, number}',
     /** Tooltip on a filled seat. */
     dragHint: 'Glisser pour déplacer {name}, Ctrl/Alt + glisser pour copier',
     /** A dropdown option: the volunteer’s name, then what they declared for

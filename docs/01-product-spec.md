@@ -259,16 +259,20 @@ Acceptance criteria are written so that they are testable.
 
 **S7 — As a coordinator, I lay out locations and shifts.**
 - Locations nest one level: zone → post.
-- A shift belongs to one location, has a time range and a required headcount.
+- A shift belongs to one zone, has a time range and a required headcount. A
+  post is a role within its zone's shifts, not a schedule of its own: the bar
+  manager works the bar's hours, is placed in the bar's slot, and counts as
+  one of the bar's volunteers
+  ([ADR-0052](adr/0052-posts-are-roles-within-their-zones-shifts.md)).
 - Shifts can be created in bulk ("every day 08:00–12:00 from the 4th to the
-  7th, at these 5 posts").
+  7th, at these 5 zones").
 
 **S7b — As a coordinator, I decide how each mission is cut into slots.**
 - Two hours is the default, because that is what most missions run on. I change
   it once for the event rather than per shift.
 - A mission whose day is not shaped like that gets its own division. *Artiste*
   is two 45-minute slots, then 90 minutes, then two more of 45 — I describe that
-  once, name it, and attach it to the post.
+  once, name it, and attach it to the mission.
 - A division can include dead time — a changeover, a sound check, a meal — which
   consumes the window and produces no shift.
 - I name a division and reuse it next year and at the next event. Duplicating an

@@ -187,6 +187,19 @@ fn map_write_error(error: evp_db::DbError) -> ApiError {
             Some("shifts_period_valid") => {
                 ApiError::ValidationFailed("The shift's period is empty or unbounded.".to_owned())
             }
+            // ADR-0052: a post is a role within its zone's shifts. Named here
+            // rather than left to the catch-all below, whose sentence about
+            // `max_count` would send a coordinator looking at the wrong field.
+            Some("shift_on_post") => ApiError::ValidationFailed(
+                "A post works its zone's shifts and has none of its own. Put the shift on the \
+                 zone, and staff the post through its assignments."
+                    .to_owned(),
+            ),
+            Some("assignment_post_outside_zone") => ApiError::ValidationFailed(
+                "Volunteers on this shift hold posts of its zone, so it cannot move to another \
+                 zone. Clear their posts first, or move them to another shift."
+                    .to_owned(),
+            ),
             _ => ApiError::ValidationFailed(
                 "max_count must be at least required_count, and required_count cannot be \
                  negative."

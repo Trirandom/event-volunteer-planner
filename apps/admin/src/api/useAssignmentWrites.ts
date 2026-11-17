@@ -38,6 +38,8 @@ export type RosterOp =
       readonly eventId: string;
       readonly shiftId: string;
       readonly participationId: string;
+      /** The post of the shift's zone the seat is for; `null` for the zone. */
+      readonly postId: string | null;
     }
   /** Take this placement off, naming the version it was read at. */
   | {
@@ -67,6 +69,7 @@ export async function applyRosterOps(
         ? await createAssignment(orgId, op.eventId, {
             shiftId: op.shiftId,
             participationId: op.participationId,
+            postId: op.postId,
           })
         : await cancelAssignment(
             orgId,

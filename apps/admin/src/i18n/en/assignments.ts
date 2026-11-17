@@ -42,6 +42,7 @@ export default {
       'Hide the {length} with no day on them again, from {start} to {end}',
     alsoAtDays: 'also {count, plural, one {# other day} other {# other days}}',
     missionCount: '{filled, number}/{required, number} placed',
+    postsLabel: 'Posts of {mission}',
   },
   seat: {
     remove: '— remove —',
@@ -50,6 +51,8 @@ export default {
     saving: '{name} — saving…',
     label:
       '{mission}, {event}, {hours} ({timezone}), volunteer {position, number} of {total, number}',
+    postLabel:
+      '{mission}, {post}, {event}, {hours} ({timezone}), place {position, number} of {total, number}',
     dragHint: 'Drag to move {name}, Ctrl/Alt-drag to copy',
     candidate:
       '{name} — {state, select, available {free} partial {free for part of it} unknown {no answer} unavailable {said no} busy {already working} other {not coming}}',

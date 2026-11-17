@@ -48,6 +48,7 @@ function bar(
     shifts: [barShift(key, startMs, endMs)],
     cutsMs: [],
     proposed: false,
+    posts: [],
   };
 }
 

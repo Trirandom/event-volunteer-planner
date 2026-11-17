@@ -41,6 +41,10 @@ pub struct Assignment {
     /// guarantees it (migration `…180000`), which is what lets the exclusion
     /// constraint key off this column instead of a join.
     pub volunteer_id: Uuid,
+    /// The post of the shift's zone this volunteer holds, or `None` for the
+    /// zone itself (ADR-0052). The `assignment_post_outside_zone` trigger is
+    /// what keeps it inside the zone.
+    pub post_id: Option<Uuid>,
     pub period_start: Timestamp,
     pub period_end: Timestamp,
     /// `draft`, `published` or `cancelled`.
@@ -57,6 +61,7 @@ fn decode(row: &sqlx::postgres::PgRow) -> Result<Assignment, DbError> {
         shift_id: row.try_get("shift_id").map_err(DbError::Query)?,
         participation_id: row.try_get("participation_id").map_err(DbError::Query)?,
         volunteer_id: row.try_get("volunteer_id").map_err(DbError::Query)?,
+        post_id: row.try_get("post_id").map_err(DbError::Query)?,
         period_start: row
             .try_get::<jiff_sqlx::Timestamp, _>("period_start")
             .map_err(DbError::Query)?
@@ -91,7 +96,7 @@ pub async fn list(
     event_id: Uuid,
 ) -> Result<Vec<Assignment>, DbError> {
     let rows = sqlx::query(
-        "SELECT id, org_id, event_id, shift_id, participation_id, volunteer_id, \
+        "SELECT id, org_id, event_id, shift_id, participation_id, volunteer_id, post_id, \
                 lower(period) AS period_start, upper(period) AS period_end, \
                 status::text AS status, assigned_at, version \
            FROM assignments \
@@ -116,7 +121,7 @@ pub async fn get(
     id: Uuid,
 ) -> Result<Option<Assignment>, DbError> {
     let row = sqlx::query(
-        "SELECT id, org_id, event_id, shift_id, participation_id, volunteer_id, \
+        "SELECT id, org_id, event_id, shift_id, participation_id, volunteer_id, post_id, \
                 lower(period) AS period_start, upper(period) AS period_end, \
                 status::text AS status, assigned_at, version \
            FROM assignments WHERE org_id = $1 AND event_id = $2 AND id = $3",
@@ -134,6 +139,9 @@ pub async fn get(
 pub struct NewAssignment {
     pub shift_id: Uuid,
     pub participation_id: Uuid,
+    /// The post of the shift's zone the volunteer will hold, or `None` for
+    /// the zone itself.
+    pub post_id: Option<Uuid>,
     /// Soft-constraint codes the coordinator accepted (ADR-0007). Stored as
     /// given: an override is only auditable if what was overridden is on the
     /// row.
@@ -163,7 +171,8 @@ pub struct NewAssignment {
 ///
 /// [`DbError::Query`] on `23P01` (this volunteer already works something that
 /// overlaps), `23505` (already on this shift), `23503` (no such shift, or a
-/// participation for another edition) and the `withdrawn_participant` check.
+/// participation for another edition), the `withdrawn_participant` check and
+/// `assignment_post_outside_zone` (`23514`, a post of another zone).
 pub async fn create(
     conn: &mut PgConnection,
     org_id: Uuid,
@@ -173,14 +182,14 @@ pub async fn create(
 ) -> Result<Option<(Assignment, OperationId)>, DbError> {
     let row = sqlx::query(
         "INSERT INTO assignments \
-           (id, org_id, event_id, shift_id, participation_id, volunteer_id, period, \
+           (id, org_id, event_id, shift_id, participation_id, volunteer_id, post_id, period, \
             assigned_by, acknowledged_warnings) \
-         SELECT $1, $2, $3, $4, p.id, p.volunteer_id, \
+         SELECT $1, $2, $3, $4, p.id, p.volunteer_id, $8, \
                 (SELECT s.period FROM shifts s WHERE s.id = $4 AND s.org_id = $2), \
                 $6, $7 \
            FROM participations p \
           WHERE p.id = $5 AND p.org_id = $2 \
-         RETURNING id, org_id, event_id, shift_id, participation_id, volunteer_id, \
+         RETURNING id, org_id, event_id, shift_id, participation_id, volunteer_id, post_id, \
                    lower(period) AS period_start, upper(period) AS period_end, \
                    status::text AS status, assigned_at, version",
     )
@@ -191,6 +200,7 @@ pub async fn create(
     .bind(input.participation_id)
     .bind(actor_id)
     .bind(&input.acknowledged_warnings)
+    .bind(input.post_id)
     .fetch_optional(&mut *conn)
     .await
     .map_err(DbError::Query)?;
@@ -209,6 +219,7 @@ pub async fn create(
         serde_json::json!({
             "shift_id": assignment.shift_id,
             "volunteer_id": assignment.volunteer_id,
+            "post_id": assignment.post_id,
         }),
         serde_json::json!({
             "command": "cancel_assignment",
@@ -292,6 +303,7 @@ pub async fn cancel(
             "command": "create_assignment",
             "shift_id": before.shift_id,
             "participation_id": before.participation_id,
+            "post_id": before.post_id,
         }),
         &[before.id],
     )

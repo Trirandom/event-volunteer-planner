@@ -88,11 +88,16 @@ function festivalDetail(): festivalsApi.FestivalDetail {
   };
 }
 
-function post(id: string, eventId: string, name: string): locationsApi.Post {
+function post(
+  id: string,
+  eventId: string,
+  zoneId: string,
+  name: string,
+): locationsApi.Post {
   return {
     id,
     event_id: eventId,
-    parent_id: `zone-${eventId}`,
+    parent_id: zoneId,
     kind: 'post',
     name,
     sort_order: 0,
@@ -102,13 +107,15 @@ function post(id: string, eventId: string, name: string): locationsApi.Post {
   };
 }
 
+/** A mission is a zone; its posts are roles within its shifts (ADR-0052). */
 function zone(
+  id: string,
   eventId: string,
   name: string,
-  posts: locationsApi.Post[],
+  posts: locationsApi.Post[] = [],
 ): locationsApi.Zone {
   return {
-    id: `zone-${eventId}`,
+    id,
     event_id: eventId,
     parent_id: null,
     kind: 'zone',
@@ -143,13 +150,13 @@ function shift(
 /** Both days run a bar; only the Open Air has an entrance. */
 const TREES: Readonly<Record<string, readonly locationsApi.Zone[]>> = {
   'open-air': [
-    zone('open-air', 'Site', [
-      post('oa-bar', 'open-air', 'Bar'),
-      post('oa-door', 'open-air', 'Entrée'),
-      post('oa-tech', 'open-air', 'Technique'),
+    zone('oa-bar', 'open-air', 'Bar', [
+      post('oa-manager', 'open-air', 'oa-bar', 'Bar manager'),
     ]),
+    zone('oa-door', 'open-air', 'Entrée'),
+    zone('oa-tech', 'open-air', 'Technique'),
   ],
-  dub: [zone('dub', 'Club', [post('dub-bar', 'dub', 'Bar')])],
+  dub: [zone('dub-bar', 'dub', 'Bar')],
 };
 
 const SHIFTS: Readonly<Record<string, readonly shiftsApi.Shift[]>> = {
@@ -264,6 +271,20 @@ afterEach(() => {
 });
 
 describe('PlanShiftsView — the board', () => {
+  /** A post works its zone's bars (ADR-0052): it is named under the zone,
+   * and has no row of its own. */
+  it('names a zone’s posts under it rather than giving them rows', async () => {
+    const wrapper = await mountView('/org-1/festivals/festival-1/shifts');
+
+    const rows = wrapper.findAll('.evp-row');
+    const names = rows.map((row) => row.find('.evp-mission-name').text());
+    expect(names.some((name) => name.startsWith('Bar manager'))).toBe(false);
+    const bar = rows.find((row) =>
+      row.find('.evp-mission-name').text().startsWith('Bar'),
+    );
+    expect(bar?.find('.evp-posts').text()).toContain('Bar manager');
+  });
+
   it('draws one row per mission', async () => {
     const wrapper = await mountView('/org-1/festivals/festival-1/shifts');
 
@@ -1244,7 +1265,7 @@ describe('PlanShiftsView — overlapping days on one mission row', () => {
         ok: true,
         value:
           eventId === 'after'
-            ? [zone('after', 'Club', [post('after-bar', 'after', 'Bar')])]
+            ? [zone('after-bar', 'after', 'Bar')]
             : (TREES[eventId] ?? []),
       }),
     );
@@ -1282,13 +1303,16 @@ describe('PlanShiftsView — overlapping days on one mission row', () => {
     expect(tops[1]).toContain('top: 3.75rem');
   });
 
+  /** At least as deep: a zone listing its posts in the gutter is taller
+   * still, and a fixed height left the lane — and its hatching — stopping
+   * short of the row's bottom edge. */
   it('makes the row as deep as the bars it has to hold', async () => {
     const wrapper = await mountView('/org-1/festivals/festival-1/shifts');
 
     const lanes = wrapper.findAll('.evp-lane');
     // Bar carries both days; Entrée carries one.
-    expect(lanes[0]?.attributes('style')).toContain('height: 6rem');
-    expect(lanes[1]?.attributes('style')).toContain('height: 3rem');
+    expect(lanes[0]?.attributes('style')).toContain('min-height: 6rem');
+    expect(lanes[1]?.attributes('style')).toContain('min-height: 3rem');
   });
 });
 

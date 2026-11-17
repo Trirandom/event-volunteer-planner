@@ -56,3 +56,4 @@ one — never an edit. See [ADR-0001](0001-record-architecture-decisions.md).
 | [0049](0049-missions-autosave-with-editor-undo.md) | Missions save themselves, and their undo is the page's | Accepted (amends 0048, 0024, 14 §4; amended by 0051) |
 | [0050](0050-sixteen-offered-event-colours-chosen-for-distance.md) | A coordinator is offered sixteen event colours, chosen to be told apart | Accepted |
 | [0051](0051-event-details-autosave-with-editor-undo.md) | Event details save themselves, and their undo is the page's | Accepted (amends 0049, 14 §4) |
+| [0052](0052-posts-are-roles-within-their-zones-shifts.md) | A post is a role within its zone's shifts, not a schedule of its own | Accepted |

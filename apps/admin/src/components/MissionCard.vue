@@ -6,7 +6,7 @@
  * it should exist.
  *
  * A component per mission rather than one form over a map keyed by mission id,
- * for the reason `EventDetailsForm.vue` gives: a festival has a dozen of these
+ * for the reason `EventCard.vue` gives: a festival has a dozen of these
  * on screen at once, and a coordinator writing the bar's briefing while the
  * entrance's edit is still unsaved needs a dozen independent drafts and a
  * dozen independent error lines. One form would make that one shared dirty

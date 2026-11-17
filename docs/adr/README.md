@@ -53,4 +53,6 @@ one — never an edit. See [ADR-0001](0001-record-architecture-decisions.md).
 | [0046](0046-email-template-edited-as-rich-text-stored-as-html.md) | The schedule email is edited as rich text, and still stored as HTML | Accepted (amends 02 §2) |
 | [0047](0047-flat-visual-language-in-shared-primitives.md) | The interface is flat, and its rules live in one shared stylesheet | Accepted |
 | [0048](0048-form-draft-autosaves-with-editor-undo.md) | A form draft saves itself, and its undo is the editor's | Accepted (amends 0024, 14 §4, 09 §2; amended by 0049) |
-| [0049](0049-missions-autosave-with-editor-undo.md) | Missions save themselves, and their undo is the page's | Accepted (amends 0048, 0024, 14 §4) |
+| [0049](0049-missions-autosave-with-editor-undo.md) | Missions save themselves, and their undo is the page's | Accepted (amends 0048, 0024, 14 §4; amended by 0051) |
+| [0050](0050-sixteen-offered-event-colours-chosen-for-distance.md) | A coordinator is offered sixteen event colours, chosen to be told apart | Accepted |
+| [0051](0051-event-details-autosave-with-editor-undo.md) | Event details save themselves, and their undo is the page's | Accepted (amends 0049, 14 §4) |

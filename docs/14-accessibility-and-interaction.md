@@ -177,8 +177,12 @@ edited, and its Ctrl/Cmd+Z replays this page's own steps as new forward writes
 through the same endpoints. Field edits, ticking a day, and unticking a day
 that held nothing can be undone. A day removed with its shifts and a deleted
 mission cannot, and both say so first
-([ADR-0049](adr/0049-missions-autosave-with-editor-undo.md)). Both exceptions
-give way to the operations stack once `…/operations/{id}/undo` exists.
+([ADR-0049](adr/0049-missions-autosave-with-editor-undo.md)). The **event
+details** page works the same way for an event's hours, doors and colour.
+Creating and deleting an event stay outside its history
+([ADR-0051](adr/0051-event-details-autosave-with-editor-undo.md)). These
+exceptions give way to the operations stack once `…/operations/{id}/undo`
+exists.
 
 ### Command palette
 

@@ -323,6 +323,28 @@ describe('PlanDetailsView — the list', () => {
     ).toBe('true');
   });
 
+  it('opens a row from anywhere on its line, not only its name', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+
+    await wrapper.findAll('.evp-summary')[1]?.trigger('click');
+
+    expect(
+      wrapper.findAll('.evp-event-toggle')[1]?.attributes('aria-expanded'),
+    ).toBe('true');
+    expect(wrapper.findAll('input[type="datetime-local"]')).toHaveLength(4);
+  });
+
+  /** The bin asks its own question; it must not also fold the row. */
+  it('leaves the row as it is when its delete button is pressed', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+
+    await wrapper.findAll('.evp-icon-button--danger')[0]?.trigger('click');
+
+    expect(
+      wrapper.findAll('.evp-event-toggle')[0]?.attributes('aria-expanded'),
+    ).toBe('false');
+  });
+
   /** The closed row says what the open one would: hours, and doors. */
   it('summarises each day on its closed row', async () => {
     const { wrapper } = await mountView('/org-1/festivals/festival-1/details');

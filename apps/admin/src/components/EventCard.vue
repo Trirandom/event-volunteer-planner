@@ -43,6 +43,7 @@ import {
   type DraftProblem,
   type EventDraft,
 } from '../plan/eventDraft';
+import { togglesRow } from '../plan/rowToggle';
 import { useAutosave } from '../plan/useAutosave';
 import {
   injectEventEditing,
@@ -73,6 +74,13 @@ const emit = defineEmits<{
 /** Whether the fields are on screen. A model because the page decides the
  * default: open when it shows one day, closed when it shows a festival. */
 const expanded = defineModel<boolean>('expanded', { default: false });
+
+/** The whole closed line opens the row, not only its name (`rowToggle.ts`). */
+function onRowClick(event: MouseEvent): void {
+  if (togglesRow(event)) {
+    expanded.value = !expanded.value;
+  }
+}
 
 const draft = ref<EventDraft>(draftOf(props.event));
 /** Compared against the stored row rather than tracked as a boolean an input
@@ -300,7 +308,8 @@ const fieldId = (name: string): string => `evp-${props.event.id}-${name}`;
     :class="{ 'evp-event--open': expanded }"
     :aria-labelledby="fieldId('heading')"
   >
-    <div class="evp-event-row">
+    <!-- eslint-disable-next-line vuejs-accessibility/click-events-have-key-events, vuejs-accessibility/no-static-element-interactions -- a wider pointer target only; the keyboard and screen-reader path is the name's own disclosure button, with `aria-expanded`, and making the line focusable too would put a second stop on every row -->
+    <div class="evp-event-row" @click="onRowClick">
       <h3 :id="fieldId('heading')" class="evp-event-heading">
         <!-- The name is the disclosure, as on a mission row: the biggest
              target on the line, inside the heading so the outline keeps it. -->
@@ -512,6 +521,8 @@ const fieldId = (name: string): string => `evp-${props.event.id}-${name}`;
    lists read as the same kind of thing. */
 .evp-event-row {
   align-items: center;
+  /* The whole line is a pointer target (`onRowClick`). */
+  cursor: pointer;
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem 0.75rem;

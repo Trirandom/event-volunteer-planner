@@ -1386,3 +1386,29 @@ describe('PlanMissionsView — saving as it goes, and undo', () => {
     ).not.toHaveProperty('disabled');
   });
 });
+
+describe('PlanMissionsView — the row as a target', () => {
+  it('opens a row from anywhere on its line, not only its name', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    await wrapper.find('.evp-mission .evp-summary').trigger('click');
+
+    expect(
+      wrapper.find('.evp-mission-toggle').attributes('aria-expanded'),
+    ).toBe('true');
+    expect(wrapper.find('.evp-mission form').exists()).toBe(true);
+  });
+
+  /** The bin asks its own question; it must not also fold the row. */
+  it('leaves the row as it is when its delete button is pressed', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    await wrapper
+      .find('.evp-mission .evp-icon-button--danger')
+      .trigger('click');
+
+    expect(
+      wrapper.find('.evp-mission-toggle').attributes('aria-expanded'),
+    ).toBe('false');
+  });
+});

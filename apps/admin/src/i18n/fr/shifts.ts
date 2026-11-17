@@ -70,6 +70,9 @@ export default {
     alsoAtDays:
       'aussi {count, plural, one {# autre jour} other {# autres jours}}',
     cutLengthLabel: 'Durée des créneaux pour {mission}, en minutes',
+    /** Names the list of a zone's posts under its name: they work the
+     * zone's bars, so they have none of their own (ADR-0052). */
+    postsLabel: 'Postes de {mission}',
   },
   run: {
     /** What a bar is called for screen readers; `start` and `end` are clock

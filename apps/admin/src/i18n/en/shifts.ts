@@ -53,6 +53,7 @@ export default {
   row: {
     alsoAtDays: 'also {count, plural, one {# other day} other {# other days}}',
     cutLengthLabel: 'Slot length for {mission}, in minutes',
+    postsLabel: 'Posts of {mission}',
   },
   run: {
     label: '{mission}, {day}, {start} to {end}',

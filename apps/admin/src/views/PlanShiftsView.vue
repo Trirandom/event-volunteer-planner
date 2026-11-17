@@ -1616,6 +1616,18 @@ function runLabel(row: MissionRow, subject: Run): string {
                 {{ t('shifts.row.alsoAtDays', { count: row.alsoAtDays }) }}
               </span>
             </span>
+            <!-- A zone's posts work its bars (ADR-0052): named here, under
+                 the zone, rather than given a row whose bars would only be a
+                 copy of these. -->
+            <ul
+              v-if="row.posts.length > 0"
+              class="evp-posts"
+              :aria-label="t('shifts.row.postsLabel', { mission: row.name })"
+            >
+              <li v-for="post in row.posts" :key="post.key">
+                {{ post.name }}
+              </li>
+            </ul>
             <!-- The length, here; the cutting, on the bars. This input is a
                  property of the *mission* — "Bar runs in 90-minute slots" is
                  true of Bar, not of Saturday — and it decides what every
@@ -2198,6 +2210,20 @@ kbd {
   display: block;
   font-size: 0.6875rem;
   font-weight: 400;
+}
+
+.evp-posts {
+  color: var(--evp-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  list-style: none;
+  margin: 0;
+  overflow-wrap: break-word;
+  padding: 0 0 0 0.5rem;
+}
+
+.evp-posts li::before {
+  content: '· ';
 }
 
 .evp-mission-name {

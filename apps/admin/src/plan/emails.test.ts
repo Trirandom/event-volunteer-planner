@@ -49,11 +49,14 @@ function slot(
     index,
     holder: {
       assignmentId: `a-${shiftId}-${holder.volunteer_id}`,
+      postId: null,
       participationId: holder.id,
       volunteerId: holder.volunteer_id,
       name: holder.display_name,
       version: 0,
     },
+    postId: null,
+    postName: null,
     extra: false,
   }));
   return {
@@ -73,6 +76,8 @@ function slot(
         key: `${shiftId}:empty`,
         index: seats.length,
         holder: null,
+        postId: null,
+        postName: null,
         extra: true,
       },
     ],

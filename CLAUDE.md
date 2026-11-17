@@ -25,7 +25,9 @@ out of order, driven by the first real festival, Soundclash 26):
   the one-click worked example (`evp_db::catalog::create_example`); the
   zone/post location tree ("missions") with form flags (ADR-0041),
   one line per mission, a checkbox per day a zone runs on, saved as it is
-  edited with page-level Ctrl+Z (ADR-0049); shift
+  edited with page-level Ctrl+Z (ADR-0049); posts as roles within their
+  zone's shifts — shifts live on zones, an assignment's `post_id` names the
+  role, and both boards draw a zone's posts on its row (ADR-0052); shift
   patterns, `shifts/generate` and the shift board; participations, availability
   windows, assignments with the exclusion constraints (create/cancel; each
   mutation writes an `operations` row); per-org OVH SMS settings (ADR-0034);

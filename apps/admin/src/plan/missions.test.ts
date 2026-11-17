@@ -88,16 +88,18 @@ function shift(
 }
 
 /** Two days of one festival that each run a bar, which is the whole point:
- * the schema stores two rows, a coordinator means one mission. */
+ * the schema stores two rows, a coordinator means one mission. Each bar has a
+ * bar manager, and the club's also has a till: posts are roles within their
+ * zone's shifts (ADR-0052), so every shift is on a zone. */
 function twoDayFestival(): readonly MissionSource[] {
   return [
     {
       event: event('open-air', 'Open Air'),
       zones: [
-        zone('z1', 'open-air', 'Site', [
-          post('p1', 'open-air', 'z1', 'Bar'),
-          post('p2', 'open-air', 'z1', 'Entrée'),
+        zone('p1', 'open-air', 'Bar', [
+          post('m1', 'open-air', 'p1', 'Bar manager'),
         ]),
+        zone('p2', 'open-air', 'Entrée'),
       ],
       shifts: [
         shift(
@@ -126,7 +128,12 @@ function twoDayFestival(): readonly MissionSource[] {
     },
     {
       event: event('dub', 'Dub & 2step'),
-      zones: [zone('z2', 'dub', 'Club', [post('p3', 'dub', 'z2', 'Bar')])],
+      zones: [
+        zone('p3', 'dub', 'Bar', [
+          post('c1', 'dub', 'p3', 'Caisse'),
+          post('m2', 'dub', 'p3', ' bar MANAGER'),
+        ]),
+      ],
       shifts: [
         shift(
           's4',
@@ -158,12 +165,12 @@ describe('buildMissionBoard', () => {
     const board = buildMissionBoard([
       {
         event: event('a', 'Day A'),
-        zones: [zone('z1', 'a', 'Site', [post('p1', 'a', 'z1', 'Bar')])],
+        zones: [zone('p1', 'a', 'Bar')],
         shifts: [],
       },
       {
         event: event('b', 'Day B'),
-        zones: [zone('z2', 'b', 'Site', [post('p2', 'b', 'z2', ' bar ')])],
+        zones: [zone('p2', 'b', ' bar ')],
         shifts: [],
       },
     ]);
@@ -195,7 +202,7 @@ describe('buildMissionBoard', () => {
     const board = buildMissionBoard([
       {
         event: event('a', 'Day A'),
-        zones: [zone('z1', 'a', 'Site', [post('p1', 'a', 'z1', 'Bar')])],
+        zones: [zone('p1', 'a', 'Bar')],
         shifts: [
           {
             ...shift(
@@ -220,7 +227,7 @@ describe('buildMissionBoard', () => {
     const board = buildMissionBoard([
       {
         event: { ...event('a', 'Day A'), timezone: 'Indian/Reunion' },
-        zones: [zone('z1', 'a', 'Site', [post('p1', 'a', 'z1', 'Bar')])],
+        zones: [zone('p1', 'a', 'Bar')],
         shifts: [
           shift(
             's1',
@@ -242,7 +249,7 @@ describe('buildMissionBoard', () => {
     const board = buildMissionBoard([
       {
         event: event('a', 'Day A'),
-        zones: [zone('z1', 'a', 'Site', [post('p1', 'a', 'z1', 'Bar')])],
+        zones: [zone('p1', 'a', 'Bar')],
         shifts: [
           shift(
             'late',
@@ -269,11 +276,11 @@ describe('buildMissionBoard', () => {
     ).toEqual(['early', 'late']);
   });
 
-  it('counts a post with no shifts as a mission that is not staffed yet', () => {
+  it('counts a zone with no shifts as a mission that is not staffed yet', () => {
     const board = buildMissionBoard([
       {
         event: event('a', 'Day A'),
-        zones: [zone('z1', 'a', 'Site', [post('p1', 'a', 'z1', 'Prévention')])],
+        zones: [zone('z1', 'a', 'Prévention')],
         shifts: [],
       },
     ]);
@@ -284,22 +291,55 @@ describe('buildMissionBoard', () => {
     expect(board.missions[0]?.shiftCount).toBe(0);
   });
 
-  it('treats a zone with posts as a container, not a mission of its own', () => {
+  /** A post works its zone's hours (ADR-0052): it is named on the zone's
+   * mission, never a mission of its own. */
+  it('makes a zone with posts the mission, and its posts roles within it', () => {
     const board = buildMissionBoard(twoDayFestival());
 
-    expect(board.missions.map((mission) => mission.name)).not.toContain('Site');
+    expect(board.missions.map((mission) => mission.name)).toEqual([
+      'Bar',
+      'Entrée',
+    ]);
   });
 
-  it('treats a zone with no posts as a mission, because shifts can land on it', () => {
+  it('folds the posts of a zone by name across the days that run it', () => {
+    const board = buildMissionBoard(twoDayFestival());
+
+    const bar = board.missions.find((mission) => mission.name === 'Bar');
+    expect(bar?.posts).toStrictEqual([
+      { key: 'bar manager', name: 'Bar manager' },
+      { key: 'caisse', name: 'Caisse' },
+    ]);
+  });
+
+  it('gives each day’s occurrence its own posts, for the seats of that day', () => {
+    const board = buildMissionBoard(twoDayFestival());
+
+    const bar = board.missions.find((mission) => mission.name === 'Bar');
+    expect(
+      bar?.occurrences.map((occurrence) => occurrence.posts),
+    ).toStrictEqual([
+      [{ id: 'm1', name: 'Bar manager' }],
+      [
+        { id: 'c1', name: 'Caisse' },
+        { id: 'm2', name: ' bar MANAGER' },
+      ],
+    ]);
+  });
+
+  /** The migration folds every post shift onto its zone, and the schema
+   * refuses new ones. A board read in the middle of that still draws the
+   * shift, on the zone it belongs to, rather than losing it. */
+  it('draws a shift still filed on a post on that post’s zone', () => {
     const board = buildMissionBoard([
       {
         event: event('a', 'Day A'),
-        zones: [zone('z1', 'a', 'Molo')],
+        zones: [zone('z1', 'a', 'Bar', [post('m1', 'a', 'z1', 'Bar manager')])],
         shifts: [
           shift(
             's1',
             'a',
-            'z1',
+            'm1',
             '2026-08-01T10:00:00Z',
             '2026-08-01T12:00:00Z',
           ),
@@ -307,15 +347,10 @@ describe('buildMissionBoard', () => {
       },
     ]);
 
-    expect(board.missions.map((mission) => mission.name)).toEqual(['Molo']);
-    expect(board.missions[0]?.occurrences[0]?.zoneName).toBeNull();
-  });
-
-  it('records the zone a post sits in', () => {
-    const board = buildMissionBoard(twoDayFestival());
-
-    const bar = board.missions.find((mission) => mission.name === 'Bar');
-    expect(bar?.occurrences[0]?.zoneName).toBe('Site');
+    expect(board.missions.map((mission) => mission.name)).toEqual(['Bar']);
+    expect(
+      board.missions[0]?.occurrences[0]?.shifts.map((line) => line.id),
+    ).toEqual(['s1']);
   });
 
   it('surfaces a shift whose location is missing rather than dropping it', () => {
@@ -355,6 +390,18 @@ describe('narrowToEvent', () => {
     expect(bar?.alsoAtDays).toBe(1);
     expect(bar?.shiftCount).toBe(1);
     expect(bar?.requiredTotal).toBe(4);
+  });
+
+  it('names only the posts the selected day has', () => {
+    const narrowed = narrowToEvent(
+      buildMissionBoard(twoDayFestival()),
+      'open-air',
+    );
+
+    const bar = narrowed.missions.find((mission) => mission.name === 'Bar');
+    expect(bar?.posts).toStrictEqual([
+      { key: 'bar manager', name: 'Bar manager' },
+    ]);
   });
 
   it('drops a mission the selected day does not run at all', () => {

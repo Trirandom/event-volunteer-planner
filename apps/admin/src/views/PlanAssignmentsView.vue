@@ -320,6 +320,23 @@ function slotCount(slot: Slot): string {
 /** What a seat says to a screen reader. The mission, the day, the hours and
  * the zone they are worked in — never the viewer's. */
 function seatLabel(row: RosterRow, slot: Slot, seat: Seat): string {
+  const where = {
+    mission: row.name,
+    event: slot.eventName,
+    hours: slotHours(slot),
+    timezone: slot.timezone,
+    position: seat.index + 1,
+  };
+  // A post's seats are counted among the post's own, not the slot's: "bar
+  // manager 1 of 1" is the sentence, and "volunteer 1 of 5" would not say
+  // which of the five is the one running the bar.
+  if (seat.postId !== null) {
+    return t('assignments.seat.postLabel', {
+      ...where,
+      post: seat.postName ?? '',
+      total: slot.seats.filter((other) => other.postId === seat.postId).length,
+    });
+  }
   return t('assignments.seat.label', {
     mission: row.name,
     event: slot.eventName,
@@ -621,6 +638,7 @@ async function changeSeat(
       eventId: slot.eventId,
       shiftId: slot.shiftId,
       participationId: chosen,
+      postId: seat.postId,
     });
   }
 
@@ -943,6 +961,7 @@ async function onSeatDrop(
     eventId: slot.eventId,
     shiftId: slot.shiftId,
     participationId: origin.participationId,
+    postId: seat.postId,
   });
 
   settling.value = {
@@ -1378,7 +1397,7 @@ function onBoardWheel(event: WheelEvent): void {
                       ? t('assignments.seat.dragHint', {
                           name: seat.holder.name,
                         })
-                      : undefined
+                      : (seat.postName ?? undefined)
                   "
                   @click="onTriggerClick($event, slot, seat)"
                   @keydown="onTriggerKeydown($event, slot, seat)"
@@ -1387,6 +1406,15 @@ function onBoardWheel(event: WheelEvent): void {
                   <span class="evp-visually-hidden">
                     {{ seatLabel(row, slot, seat) }}
                   </span>
+                  <!-- Which role this seat is for, ahead of who holds it: the
+                       post's seats sit in the zone's slot (ADR-0052), and
+                       only this tag tells them from the zone's own. -->
+                  <span
+                    v-if="seat.postName !== null"
+                    class="evp-seat-post"
+                    aria-hidden="true"
+                    >{{ seat.postName }}</span
+                  >
                   <span class="evp-seat-select-text">{{
                     seatTriggerLabel(seat)
                   }}</span>
@@ -1848,10 +1876,27 @@ h2 {
      the slot beside it — the full name is in the listbox and in the label a
      screen reader reads. */
   width: 100%;
+  /* A row, so a post's seat can carry its role ahead of the name. */
+  align-items: center;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.evp-seat-post {
+  color: var(--evp-text-muted);
+  flex: 0 1 auto;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .evp-seat-select-text {
   display: block;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

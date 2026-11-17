@@ -27,6 +27,7 @@ import { Temporal } from '@evp/shared/time';
 import type { Event } from '../api/events';
 import type { Zone } from '../api/locations';
 import type { Shift } from '../api/shifts';
+import type { RowPost, RunPost } from '../board/runs';
 
 /** One event's worth of what the server stores against it. */
 export interface MissionSource {
@@ -62,8 +63,9 @@ export interface MissionOccurrence {
   readonly eventId: string;
   readonly eventName: string;
   readonly locationId: string;
-  /** The zone the post sits in, or `null` when the mission is a zone itself. */
-  readonly zoneName: string | null;
+  /** This day's posts of the zone: the roles its shifts can be staffed in
+   * (ADR-0052), and the ids an assignment's `post_id` names. */
+  readonly posts: readonly RunPost[];
   readonly shifts: readonly MissionShift[];
   readonly requiredTotal: number;
 }
@@ -82,6 +84,9 @@ export interface Mission {
    * decision and not a Saturday one.
    */
   readonly alsoAtDays: number;
+  /** The zone's posts, folded by name across the occurrences, in the order
+   * they are first met. */
+  readonly posts: readonly RowPost[];
 }
 
 export interface MissionBoard {
@@ -95,14 +100,24 @@ export interface MissionBoard {
   readonly unplacedShifts: readonly MissionShift[];
 }
 
-/** A location a shift can be put on, flattened out of the zone/post tree. */
-interface LocationEntry {
-  readonly id: string;
-  readonly name: string;
-  readonly zoneName: string | null;
-  /** A zone that has posts is a container. It is not a mission of its own
-   * unless a shift lands on it directly, which the schema permits. */
-  readonly isContainer: boolean;
+/**
+ * Which zone each location's shifts are drawn on: a zone's own, and each of
+ * its posts' too.
+ *
+ * Shifts live on zones (ADR-0052), and the schema refuses a new one on a
+ * post. A shift still filed on a post is one the board read before the
+ * migration that folds them ran, and it belongs to its zone's row rather
+ * than to a row of its own or to nowhere.
+ */
+function zoneOfLocation(zones: readonly Zone[]): Map<string, Zone> {
+  const index = new Map<string, Zone>();
+  for (const zone of zones) {
+    index.set(zone.id, zone);
+    for (const post of zone.posts) {
+      index.set(post.id, zone);
+    }
+  }
+  return index;
 }
 
 interface MissionDraft {
@@ -122,25 +137,24 @@ function startsAt(period: { readonly start: string }): number {
   return Temporal.Instant.from(period.start).epochMilliseconds;
 }
 
-function indexLocations(zones: readonly Zone[]): Map<string, LocationEntry> {
-  const index = new Map<string, LocationEntry>();
-  for (const zone of zones) {
-    index.set(zone.id, {
-      id: zone.id,
-      name: zone.name,
-      zoneName: null,
-      isContainer: zone.posts.length > 0,
-    });
-    for (const post of zone.posts) {
-      index.set(post.id, {
-        id: post.id,
-        name: post.name,
-        zoneName: zone.name,
-        isContainer: false,
-      });
+/**
+ * The posts of every occurrence, folded by name in the order they are first
+ * met: the festival's first day decides where "Caisse" sits under "Bar", and
+ * a later day only appends what it adds.
+ */
+function foldPosts(
+  occurrences: readonly { readonly posts: readonly RunPost[] }[],
+): readonly RowPost[] {
+  const folded = new Map<string, RowPost>();
+  for (const occurrence of occurrences) {
+    for (const post of occurrence.posts) {
+      const key = normalise(post.name);
+      if (!folded.has(key)) {
+        folded.set(key, { key, name: post.name });
+      }
     }
   }
-  return index;
+  return [...folded.values()];
 }
 
 /** What a mission's own row says about how many people it takes — the
@@ -206,12 +220,12 @@ export function buildMissionBoard(
   const unplacedShifts: MissionShift[] = [];
 
   for (const source of sources) {
-    const locations = indexLocations(source.zones);
-    const byLocation = new Map<string, MissionShift[]>();
+    const zoneOf = zoneOfLocation(source.zones);
+    const byZone = new Map<string, MissionShift[]>();
 
     for (const shift of source.shifts) {
-      const entry = locations.get(shift.location_id);
-      if (entry === undefined) {
+      const zone = zoneOf.get(shift.location_id);
+      if (zone === undefined) {
         // The id itself is the only name there is when the tree is missing;
         // a coordinator who sees it can at least say which shift is meant.
         unplacedShifts.push(
@@ -220,32 +234,28 @@ export function buildMissionBoard(
         continue;
       }
 
-      const line = missionShift(shift, source.event, shift.title ?? entry.name);
-      const existing = byLocation.get(entry.id);
+      const line = missionShift(shift, source.event, shift.title ?? zone.name);
+      const existing = byZone.get(zone.id);
       if (existing === undefined) {
-        byLocation.set(entry.id, [line]);
+        byZone.set(zone.id, [line]);
       } else {
         existing.push(line);
       }
     }
 
-    for (const entry of locations.values()) {
-      const shifts = byLocation.get(entry.id) ?? [];
-      if (entry.isContainer && shifts.length === 0) {
-        continue;
-      }
-
-      const key = normalise(entry.name);
+    for (const zone of source.zones) {
+      const shifts = byZone.get(zone.id) ?? [];
+      const key = normalise(zone.name);
       const draft = drafts.get(key) ?? {
         key,
-        name: entry.name,
+        name: zone.name,
         occurrences: [],
       };
       draft.occurrences.push({
         eventId: source.event.id,
         eventName: source.event.name,
-        locationId: entry.id,
-        zoneName: entry.zoneName,
+        locationId: zone.id,
+        posts: zone.posts.map((post) => ({ id: post.id, name: post.name })),
         shifts: [...shifts].sort(
           (a, b) => startsAt(a.period) - startsAt(b.period),
         ),
@@ -269,6 +279,7 @@ export function buildMissionBoard(
         0,
       ),
       alsoAtDays: 0,
+      posts: foldPosts(draft.occurrences),
     }))
     // Compared on the normalised key rather than through `localeCompare`,
     // which reads the host's default locale when none is passed — the sort a
@@ -319,6 +330,7 @@ export function narrowToEvent(
           0,
         ),
         alsoAtDays: elsewhere.size,
+        posts: foldPosts(here),
       },
     ];
   });

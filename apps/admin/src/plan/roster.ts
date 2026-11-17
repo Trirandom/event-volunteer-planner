@@ -50,6 +50,8 @@ function msOf(iso: string): number {
 /** One volunteer in one seat. */
 export interface SeatHolder {
   readonly assignmentId: string;
+  /** The post they hold, as the roster stores it. */
+  readonly postId: string | null;
   readonly participationId: string;
   readonly volunteerId: string;
   /** The roster label as stored, or the volunteer's id when the roster for
@@ -67,6 +69,10 @@ export interface Seat {
   readonly key: string;
   readonly index: number;
   readonly holder: SeatHolder | null;
+  /** The post of the zone this seat is for, or `null` for the zone's own
+   * (role-less) seats. What an assignment made from it sends as `post_id`. */
+  readonly postId: string | null;
+  readonly postName: string | null;
   /**
    * This seat is beyond what the slot requires.
    *
@@ -88,6 +94,8 @@ export interface Slot {
   readonly color: number;
   readonly startMs: number;
   readonly endMs: number;
+  /** How many people the slot needs, posts included: the zone's floor, or
+   * its posts' floors together where those ask for more. */
   readonly requiredCount: number;
   readonly maxCount: number | null;
   readonly seats: readonly Seat[];
@@ -121,32 +129,51 @@ export function slotState(slot: Slot): SlotState {
   if (slot.filled === 0 && slot.requiredCount > 0) {
     return 'empty';
   }
-  if (slot.filled < slot.requiredCount) {
+  // Four people behind the bar and nobody running it is short, whatever the
+  // head count says: a post's required seat is a hole of its own.
+  const postHole = slot.seats.some(
+    (seat) => seat.postId !== null && !seat.extra && seat.holder === null,
+  );
+  if (slot.filled < slot.requiredCount || postHole) {
     return 'short';
   }
   return slot.filled > slot.requiredCount ? 'over' : 'full';
 }
 
+/** A post as one slot sees it: its id and name for the seat, its own
+ * bounds for how many seats it gets. */
+export interface SlotPost {
+  readonly id: string;
+  readonly name: string;
+  readonly min: number | null;
+  readonly max: number | null;
+}
+
 /**
- * Whether a slot may take one more name.
+ * How many seats one group of a slot shows: the zone's role-less seats, or
+ * one post's.
  *
- * `max_count` is the post's ceiling and `null` means there is none — six
+ * `max` is the group's own ceiling and `null` means there is none — six
  * people on a bar that asked for four is a real Saturday, and the schema
- * permits it. A slot at its ceiling offers no empty seat, because offering one
- * would be offering a click the database refuses.
+ * permits it. `zoneFull` is the slot's ceiling, which every group shares: a
+ * post's people are the zone's people (ADR-0052), so a cashier takes the
+ * last place at the bar as surely as a role-less volunteer does. A group at
+ * either ceiling offers no empty seat, because offering one would be
+ * offering a click past what the coordinator said the mission may hold.
  */
 function roomFor(
   filled: number,
-  requiredCount: number,
-  maxCount: number | null,
+  required: number,
+  max: number | null,
+  zoneFull: boolean,
 ): number {
   // No spare seat while a required one is still empty: an "add somebody
   // (extra)" beside a hole invites filling the extra first, and a slot that
   // reads 3/4 with a spare on offer looks optional when it is short.
-  if (filled < requiredCount) {
-    return requiredCount;
+  if (filled < required) {
+    return required;
   }
-  if (maxCount !== null && filled >= maxCount) {
+  if (zoneFull || (max !== null && filled >= max)) {
     return filled;
   }
   // One spare seat past the requirement, never more: the page is a grid, and
@@ -155,22 +182,78 @@ function roomFor(
   return filled + 1;
 }
 
-function seatsOf(
+function seatGroup(
+  shiftId: string,
+  post: { readonly id: string; readonly name: string } | null,
+  holders: readonly SeatHolder[],
+  required: number,
+  total: number,
+): readonly Seat[] {
+  return Array.from({ length: total }, (_unused, index): Seat => ({
+    key: `${shiftId}:${post?.id ?? 'zone'}:${String(index)}`,
+    index,
+    holder: holders[index] ?? null,
+    postId: post?.id ?? null,
+    postName: post?.name ?? null,
+    extra: index >= required,
+  }));
+}
+
+/**
+ * Lays out one slot's seats: each post's first, in the zone's order, then
+ * the zone's own.
+ *
+ * The zone's bounds are the whole zone (ADR-0052). Each post holds
+ * `max(its floor, its people)` of the zone's floor, and the role-less seats
+ * are what is left of it, so a second cashier is one fewer bar hand needed
+ * rather than one more. A holder of a post this slot does not know sits in
+ * the zone's seats: the post was deleted after the tree was read, and
+ * `ON DELETE SET NULL` has already put them there in the database.
+ */
+function layoutSeats(
   shiftId: string,
   holders: readonly SeatHolder[],
-  requiredCount: number,
-  maxCount: number | null,
-): readonly Seat[] {
-  const total = roomFor(holders.length, requiredCount, maxCount);
-  return Array.from({ length: total }, (_unused, index): Seat => {
-    const holder = holders[index] ?? null;
-    return {
-      key: `${shiftId}:${String(index)}`,
-      index,
-      holder,
-      extra: index >= requiredCount,
-    };
+  zone: { readonly min: number; readonly max: number | null },
+  posts: readonly SlotPost[],
+): { readonly seats: readonly Seat[]; readonly required: number } {
+  const known = new Set(posts.map((post) => post.id));
+  const onPost = (postId: string) =>
+    holders.filter((holder) => holder.postId === postId);
+  const own = holders.filter(
+    (holder) => holder.postId === null || !known.has(holder.postId),
+  );
+
+  const zoneFull = zone.max !== null && holders.length >= zone.max;
+  const postFloors = posts.reduce((total, post) => total + (post.min ?? 0), 0);
+  const postsTake = posts.reduce(
+    (total, post) => total + Math.max(post.min ?? 0, onPost(post.id).length),
+    0,
+  );
+  const ownRequired = Math.max(0, zone.min - postsTake);
+
+  const postSeats = posts.flatMap((post) => {
+    const theirs = onPost(post.id);
+    const required = post.min ?? 0;
+    return seatGroup(
+      shiftId,
+      post,
+      theirs,
+      required,
+      roomFor(theirs.length, required, post.max, zoneFull),
+    );
   });
+  const ownSeats = seatGroup(
+    shiftId,
+    null,
+    own,
+    ownRequired,
+    roomFor(own.length, ownRequired, null, zoneFull),
+  );
+
+  return {
+    seats: [...postSeats, ...ownSeats],
+    required: Math.max(zone.min, postFloors),
+  };
 }
 
 /** The display name for a placement, from the day's own roster. */
@@ -203,6 +286,7 @@ export function rosterRows(
     const holders = byShift.get(assignment.shift_id) ?? [];
     holders.push({
       assignmentId: assignment.id,
+      postId: assignment.post_id,
       participationId: assignment.participation_id,
       volunteerId: assignment.volunteer_id,
       name: nameOf(participants, assignment),
@@ -227,6 +311,21 @@ export function rosterRows(
         // needs four" is the coordinator's actual answer. The shift's count
         // is what is left when the mission has said nothing.
         const own = bounds.get(run.locationId);
+        const posts = run.posts.map((post): SlotPost => ({
+          id: post.id,
+          name: post.name,
+          min: bounds.get(post.id)?.min ?? null,
+          max: bounds.get(post.id)?.max ?? null,
+        }));
+        const layout = layoutSeats(
+          shift.id,
+          holders,
+          {
+            min: own?.min ?? shift.requiredCount,
+            max: own?.max ?? shift.maxCount,
+          },
+          posts,
+        );
         return {
           shiftId: shift.id,
           eventId: run.eventId,
@@ -235,9 +334,10 @@ export function rosterRows(
           color: run.color,
           startMs: shift.startMs,
           endMs: shift.endMs,
-          requiredCount: own?.min ?? shift.requiredCount,
+          requiredCount: layout.required,
           maxCount: own?.max ?? shift.maxCount,
-          holders,
+          seats: layout.seats,
+          filled: holders.length,
         };
       }),
     );
@@ -251,18 +351,6 @@ export function rosterRows(
       key: slot.shiftId,
     }));
 
-    const seatsPerSlot = new Map<string, number>();
-    for (const lane of packed.lanes) {
-      seatsPerSlot.set(
-        lane.item.shiftId,
-        roomFor(
-          lane.item.holders.length,
-          lane.item.requiredCount,
-          lane.item.maxCount,
-        ),
-      );
-    }
-
     // A lane row is as tall as its tallest slot, not as the row's tallest
     // anywhere: a mission with one eight-person night would otherwise be eight
     // seats tall on every other day of the festival.
@@ -273,7 +361,7 @@ export function rosterRows(
     for (const lane of packed.lanes) {
       laneHeights[lane.row] = Math.max(
         laneHeights[lane.row] ?? 1,
-        seatsPerSlot.get(lane.item.shiftId) ?? 1,
+        lane.item.seats.length,
       );
     }
     const laneOffsets = laneHeights.map((_height, index) =>
@@ -281,12 +369,6 @@ export function rosterRows(
     );
 
     const slots = packed.lanes.map(({ item, row }): Slot => {
-      const seats = seatsOf(
-        item.shiftId,
-        item.holders,
-        item.requiredCount,
-        item.maxCount,
-      );
       return {
         key: item.shiftId,
         shiftId: item.shiftId,
@@ -298,8 +380,8 @@ export function rosterRows(
         endMs: item.endMs,
         requiredCount: item.requiredCount,
         maxCount: item.maxCount,
-        seats,
-        filled: item.holders.length,
+        seats: item.seats,
+        filled: item.filled,
         laneRow: row,
         seatOffset: laneOffsets[row] ?? 0,
       };

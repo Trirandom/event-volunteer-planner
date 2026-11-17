@@ -64,6 +64,21 @@ export interface BarShift {
   readonly maxCount: number | null;
 }
 
+/** A post of the zone a run is at: a role within the zone's shifts, never a
+ * schedule of its own (ADR-0052). Per run because it is per *day*: Saturday's
+ * bar may have a cashier that Friday's does not. */
+export interface RunPost {
+  readonly id: string;
+  readonly name: string;
+}
+
+/** A post as the mission's row names it: folded by name across the days in
+ * view, the way the zone itself is. */
+export interface RowPost {
+  readonly key: string;
+  readonly name: string;
+}
+
 export interface Run {
   /**
    * Stable across a re-render so focus survives one.
@@ -119,6 +134,8 @@ export interface Run {
    * one.
    */
   readonly proposed: boolean;
+  /** The posts of this day's zone, in the order the zone lists them. */
+  readonly posts: readonly RunPost[];
 }
 
 export interface MissionRow {
@@ -135,6 +152,9 @@ export interface MissionRow {
    * see that four other days say the same word.
    */
   readonly alsoAtDays: number;
+  /** The zone's posts, named in the row's label: they work the row's bars,
+   * so they have no bars of their own. */
+  readonly posts: readonly RowPost[];
 }
 
 /** `Date.parse` is banned (docs/16 §4) and rightly: it accepts things that are
@@ -242,6 +262,7 @@ export function missionRows(
           shifts: [],
           cutsMs: [],
           proposed: true,
+          posts: occurrence.posts,
         });
         continue;
       }
@@ -264,6 +285,7 @@ export function missionRows(
           shifts: group,
           cutsMs: cutsOf(group),
           proposed: false,
+          posts: occurrence.posts,
         });
       });
     }
@@ -277,6 +299,7 @@ export function missionRows(
       name: mission.name,
       runs,
       alsoAtDays: mission.alsoAtDays,
+      posts: mission.posts,
     };
   });
 }

@@ -60,6 +60,7 @@ function run(shifts: readonly BarShift[], key = 'bar:0'): Run {
     endMs: shifts.reduce((latest, s) => Math.max(latest, s.endMs), startMs),
     shifts,
     cutsMs: shifts.slice(1).map((s) => s.startMs),
+    posts: [],
     proposed: false,
   };
 }

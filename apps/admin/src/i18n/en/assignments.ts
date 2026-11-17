@@ -50,6 +50,8 @@ export default {
     saving: '{name} — saving…',
     label:
       '{mission}, {event}, {hours} ({timezone}), volunteer {position, number} of {total, number}',
+    postLabel:
+      '{mission}, {post}, {event}, {hours} ({timezone}), place {position, number} of {total, number}',
     dragHint: 'Drag to move {name}, Ctrl/Alt-drag to copy',
     candidate:
       '{name} — {state, select, available {free} partial {free for part of it} unknown {no answer} unavailable {said no} busy {already working} other {not coming}}',

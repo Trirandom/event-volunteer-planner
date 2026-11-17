@@ -172,6 +172,14 @@ its Ctrl/Cmd+Z is the editor's own history of the draft, autosaved like any
 edit. Publishing is the domain action there
 ([ADR-0048](adr/0048-form-draft-autosaves-with-editor-undo.md)).
 
+A second, narrower one: the **missions page** saves each mission as it is
+edited, and its Ctrl/Cmd+Z replays this page's own steps as new forward writes
+through the same endpoints. Field edits, ticking a day, and unticking a day
+that held nothing can be undone. A day removed with its shifts and a deleted
+mission cannot, and both say so first
+([ADR-0049](adr/0049-missions-autosave-with-editor-undo.md)). Both exceptions
+give way to the operations stack once `…/operations/{id}/undo` exists.
+
 ### Command palette
 
 `Ctrl/Cmd+K`. Every action in the application is reachable and searchable from

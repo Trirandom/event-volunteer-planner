@@ -42,6 +42,7 @@ import { locationsQueryKey } from './useLocations';
 import { shiftsQueryKey } from './useShifts';
 import { t } from '../i18n';
 import type { DayRef, MissionPlacement } from '../plan/missionCatalog';
+import type { DayCopy } from '../plan/missionDays';
 
 /** One day the fan-out did not reach, and why. */
 export interface DayRefusal extends DayRef {
@@ -319,6 +320,74 @@ export function useDeleteMission(orgId: MaybeRefOrGetter<string>) {
       ),
     onSettled: async (_data, _error, placements) => {
       await reread(queryClient, toValue(orgId), placements, true);
+    },
+  });
+}
+
+export interface ZoneDayAddition {
+  readonly day: DayRef;
+  readonly copy: DayCopy;
+}
+
+/** How far a day's addition got: the zone row is all or nothing, its posts
+ * are independent items like every other fan-out here. */
+export type ZoneDayOutcome =
+  | { readonly zoneCreated: false; readonly rejection: LocationWriteRejection }
+  | { readonly zoneCreated: true; readonly posts: FanOutOutcome };
+
+/**
+ * Puts a zone on one more day (`missionDays.ts`'s `dayCopy`).
+ *
+ * Sequential where it has to be and no further: every post needs the new
+ * zone row's id as its `parent_id`, so the zone goes first and alone; the
+ * posts then go concurrently, and a refused one is named without undoing the
+ * zone, which is a correct day with one post fewer.
+ */
+export function useAddZoneDay(orgId: MaybeRefOrGetter<string>) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: ZoneDayAddition): Promise<ZoneDayOutcome> => {
+      const created = await createLocation(
+        toValue(orgId),
+        input.day.eventId,
+        input.copy.zone,
+      );
+      if (!created.ok) {
+        return { zoneCreated: false, rejection: created.rejection };
+      }
+      const parentId = created.location.id;
+      const posts = await fanOut(
+        input.copy.posts.map((post) => ({ ...input.day, post })),
+        async (target) =>
+          createLocation(toValue(orgId), target.eventId, {
+            ...target.post,
+            parentId,
+          }),
+      );
+      return { zoneCreated: true, posts };
+    },
+    onSettled: async (_data, _error, input) => {
+      await reread(queryClient, toValue(orgId), [input.day], false);
+    },
+  });
+}
+
+/** Takes a zone off one day: one `DELETE`, whose cascade is the day's posts
+ * and shifts. Whether to ask first is the caller's (`dayRemoval`). */
+export function useRemoveZoneDay(orgId: MaybeRefOrGetter<string>) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (placement: MissionPlacement) =>
+      deleteLocation(
+        toValue(orgId),
+        placement.eventId,
+        placement.locationId,
+        placement.version,
+      ),
+    onSettled: async (_data, _error, placement) => {
+      await reread(queryClient, toValue(orgId), [placement], true);
     },
   });
 }

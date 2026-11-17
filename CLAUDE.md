@@ -23,7 +23,9 @@ out of order, driven by the first real festival, Soundclash 26):
   rate limit, the bootstrap owner (`EVP_BOOTSTRAP_*`, read only while `users`
   is empty), `GET /api/v1/meta`, RLS; festivals and events (ADR-0032/0044) and
   the one-click worked example (`evp_db::catalog::create_example`); the
-  zone/post location tree ("missions") with form flags (ADR-0041); shift
+  zone/post location tree ("missions") with form flags (ADR-0041),
+  one line per mission, a checkbox per day a zone runs on, saved as it is
+  edited with page-level Ctrl+Z (ADR-0049); shift
   patterns, `shifts/generate` and the shift board; participations, availability
   windows, assignments with the exclusion constraints (create/cancel; each
   mutation writes an `operations` row); per-org OVH SMS settings (ADR-0034);

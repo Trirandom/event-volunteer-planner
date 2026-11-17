@@ -104,6 +104,7 @@ import {
 } from '../plan/draftHistory';
 import { builtinLabel, kindLabel, presetLabel } from '../plan/formLabels';
 import { useAutosave } from '../plan/useAutosave';
+import { undoKeyOf } from '../plan/undoKeys';
 import { useListDrag } from '../plan/useListDrag';
 import { useRouteParam } from '../router/params';
 
@@ -527,38 +528,13 @@ function redoEdit(): void {
   }
 }
 
-/** A field whose own text undo must win: Ctrl+Z while typing a label takes
- * back the last letters, as it does everywhere else (docs/14 §4). */
-function isTextEntry(target: EventTarget | null): boolean {
-  if (target instanceof HTMLTextAreaElement) {
-    return true;
-  }
-  if (target instanceof HTMLInputElement) {
-    return !['checkbox', 'radio', 'button', 'submit', 'reset'].includes(
-      target.type,
-    );
-  }
-  return target instanceof HTMLElement && target.isContentEditable;
-}
-
 function onUndoKey(event: KeyboardEvent): void {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey) {
-    return;
-  }
-  const key = event.key.toLowerCase();
-  const isUndo = key === 'z' && !event.shiftKey;
-  const isRedo =
-    (key === 'z' && event.shiftKey) || (key === 'y' && !event.shiftKey);
-  if (
-    (!isUndo && !isRedo) ||
-    !isDraft.value ||
-    confirmingLeave.value ||
-    isTextEntry(event.target)
-  ) {
+  const command = undoKeyOf(event);
+  if (command === null || !isDraft.value || confirmingLeave.value) {
     return;
   }
   event.preventDefault();
-  if (isUndo) {
+  if (command === 'undo') {
     undoEdit();
   } else {
     redoEdit();

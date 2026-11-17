@@ -12,6 +12,7 @@ import {
   volunteerBoundsLabel,
   missionExists,
   missionKey,
+  missionId,
   missionKind,
   type CatalogSource,
 } from './missionCatalog';
@@ -530,5 +531,31 @@ describe('groupByZone', () => {
     expect(grouped.zones.map((group) => group.zone.key)).toEqual(['backstage']);
     expect(grouped.zones[0]?.posts).toEqual([]);
     expect(grouped.orphans.map((mission) => mission.key)).toEqual(['site']);
+  });
+});
+
+describe('missionId', () => {
+  /** UUIDv7s sort by creation, so the earliest row is the one that was there
+   * first; neither a rename nor a later day moves it. */
+  it('is the earliest row, whatever the mission is called or which day comes first', () => {
+    const before = buildMissionCatalog([
+      {
+        event: event('event-2', 'Club night'),
+        zones: [zone('0190-a', 'event-2', 'Bar')],
+      },
+    ]).missions[0];
+    const after = buildMissionCatalog([
+      {
+        event: event('event-1', 'Open Air'),
+        zones: [zone('0190-b', 'event-1', 'Bar & grill')],
+      },
+      {
+        event: event('event-2', 'Club night'),
+        zones: [zone('0190-a', 'event-2', 'Bar & grill')],
+      },
+    ]).missions[0];
+
+    expect(before === undefined ? null : missionId(before)).toBe('0190-a');
+    expect(after === undefined ? null : missionId(after)).toBe('0190-a');
   });
 });

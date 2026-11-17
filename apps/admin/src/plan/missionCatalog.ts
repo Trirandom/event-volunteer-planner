@@ -320,6 +320,25 @@ export function missionExists(catalog: MissionCatalog, name: string): boolean {
 }
 
 /**
+ * What stays the same about a mission while it is edited: its earliest row.
+ *
+ * Not `key`, which is its name. With edits saved as they are typed, a rename
+ * lands mid-word, and anything keyed on the name (the row's `v-for`, whether
+ * it is open, its undo steps) would remount or lose track of it in the middle
+ * of the coordinator's sentence. Row ids are UUIDv7, so they sort by creation:
+ * the smallest is the one that has been there longest. A day added later
+ * cannot displace it. Only removing that very day can, and that is a rarer
+ * moment than a keystroke.
+ */
+export function missionId(mission: Mission): string {
+  return mission.placements.reduce(
+    (smallest, placement) =>
+      placement.locationId < smallest ? placement.locationId : smallest,
+    mission.placements[0]?.locationId ?? mission.key,
+  );
+}
+
+/**
  * Zone or post, for a mission that already folded every placement's own
  * `kind` away.
  *

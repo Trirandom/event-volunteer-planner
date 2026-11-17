@@ -12,7 +12,12 @@
  * both unit suites and be useless, so the claims tested here are about which
  * requests leave and what happens when some of them are refused.
  */
-import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
+import {
+  enableAutoUnmount,
+  flushPromises,
+  mount,
+  type VueWrapper,
+} from '@vue/test-utils';
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -23,6 +28,8 @@ import type * as festivalsApi from '../api/festivals';
 import * as festivals from '../api/festivals';
 import * as locations from '../api/locations';
 import * as sessionApi from '../api/session';
+import * as shifts from '../api/shifts';
+import { AUTOSAVE_DELAY_MS } from '../plan/useAutosave';
 import PlanMissionsView from './PlanMissionsView.vue';
 
 function session(): sessionApi.Session {
@@ -224,6 +231,52 @@ async function mountView(path: string) {
   return { wrapper, router };
 }
 
+/** Each day checkbox of the open zone, as its name and whether it is ticked. */
+function dayBoxes(wrapper: VueWrapper): [string, boolean][] {
+  return wrapper.findAll('.evp-day-toggle').map((label) => {
+    const box = label.find('input').element;
+    return [label.text(), box instanceof HTMLInputElement && box.checked];
+  });
+}
+
+function dayBox(wrapper: VueWrapper, name: string) {
+  const label = wrapper
+    .findAll('.evp-day-toggle')
+    .find((candidate) => candidate.text() === name);
+  if (label === undefined) {
+    throw new Error(`no day checkbox for ${name}`);
+  }
+  return label.find('input');
+}
+
+/** Flips the box and fires `change`, as a click does. */
+async function tickDay(wrapper: VueWrapper, name: string): Promise<void> {
+  const box = dayBox(wrapper, name);
+  const element = box.element;
+  await box.setValue(!(element instanceof HTMLInputElement && element.checked));
+  await flushPromises();
+}
+
+/** The closed zone row's day tags. */
+function rowDays(wrapper: VueWrapper): string[] {
+  return wrapper
+    .findAll('.evp-mission .evp-days .evp-day')
+    .map((day) => day.text());
+}
+
+function shift(id: string, eventId: string, locationId: string): shifts.Shift {
+  return {
+    id,
+    event_id: eventId,
+    location_id: locationId,
+    period: { start: '2026-08-02T18:00:00Z', end: '2026-08-02T22:00:00Z' },
+    required_count: 2,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    version: 1,
+  };
+}
+
 /** Every card starts collapsed; the form is behind its heading. */
 async function openCard(wrapper: VueWrapper, index = 0): Promise<void> {
   await wrapper.findAll('.evp-mission-toggle')[index]?.trigger('click');
@@ -259,26 +312,53 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// A view left mounted keeps its autosave timers and its window Ctrl+Z
+// listener, and would answer the next test's keys and spies.
+enableAutoUnmount(afterEach);
+
 describe('PlanMissionsView — the fold', () => {
-  it('shows one card for a mission that runs on two days, naming both', async () => {
+  it('shows one row for a mission that runs on two days, naming both', async () => {
     const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
 
     const cards = wrapper.findAll('.evp-mission');
     expect(cards).toHaveLength(1);
     expect(cards[0]?.find('h3').text()).toContain('Bar');
-    expect(cards[0]?.find('.evp-days').text()).toContain('Open Air');
-    expect(cards[0]?.find('.evp-days').text()).toContain('Dub & 2step');
+    expect(rowDays(wrapper)).toEqual(['Open Air', 'Dub & 2step']);
   });
 
-  it('shows only the selected day’s rows at event scope', async () => {
+  it('keeps the day checkboxes in the open row, ticked for the days it runs on', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    expect(wrapper.find('.evp-day-toggles').exists()).toBe(false);
+    await openCard(wrapper);
+
+    expect(dayBoxes(wrapper)).toEqual([
+      ['Open Air', true],
+      ['Dub & 2step', true],
+    ]);
+  });
+
+  it('offers no day toggles at event scope, and edits only the selected day’s row', async () => {
+    const patch = vi
+      .spyOn(locations, 'patchLocation')
+      .mockImplementation((_org, _event, id) =>
+        Promise.resolve({ ok: true, location: zone(id, 'dub', 'Bar') }),
+      );
     const { wrapper } = await mountView('/org-1/events/dub/missions');
 
-    const card = wrapper.find('.evp-mission');
-    expect(card.find('.evp-days').text()).toContain('Dub & 2step');
-    expect(card.find('.evp-days').text()).not.toContain('Open Air');
+    await openCard(wrapper);
+    expect(wrapper.find('.evp-day-toggles').exists()).toBe(false);
+    await wrapper.find('.evp-mission textarea').setValue('Serving.');
+    await wrapper.find('.evp-mission form').trigger('submit');
+    await flushPromises();
+
+    expect(patch).toHaveBeenCalledTimes(1);
+    expect(patch).toHaveBeenCalledWith('org-1', 'dub', 'loc-dub', 7, {
+      description: 'Serving.',
+    });
   });
 
-  it('names the days a mission is missing from', async () => {
+  it('leaves a day the zone skips off its row, and unticked once open', async () => {
     vi.spyOn(locations, 'fetchLocations').mockImplementation(
       (_orgId, eventId) =>
         Promise.resolve({
@@ -289,9 +369,12 @@ describe('PlanMissionsView — the fold', () => {
     );
     const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
 
-    expect(wrapper.find('.evp-mission .evp-hint').text()).toContain(
-      'Not declared on Dub & 2step',
-    );
+    expect(rowDays(wrapper)).toEqual(['Open Air']);
+    await openCard(wrapper);
+    expect(dayBoxes(wrapper)).toEqual([
+      ['Open Air', true],
+      ['Dub & 2step', false],
+    ]);
   });
 
   it('says so when there is nothing declared yet', async () => {
@@ -627,7 +710,8 @@ describe('PlanMissionsView — zone/post hierarchy', () => {
     const cards = wrapper.findAll('.evp-mission');
     expect(cards).toHaveLength(2);
     expect(cards[0]?.find('h3').text()).toContain('Bar');
-    expect(cards[0]?.find('.evp-tag--kind').text()).toBe('Zone');
+    // A zone is the default and carries no tag; a post is the exception.
+    expect(cards[0]?.find('.evp-tag--kind').exists()).toBe(false);
 
     const nested = wrapper.find('.evp-posts');
     expect(nested.exists()).toBe(true);
@@ -648,6 +732,9 @@ describe('PlanMissionsView — zone/post hierarchy', () => {
       );
 
     const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+    // Most zones never get a post, so the way to add one is behind the zone.
+    expect(wrapper.find('.evp-add-post').exists()).toBe(false);
+    await openCard(wrapper);
     await wrapper.find('.evp-add-post button').trigger('click');
     await wrapper
       .find('.evp-add-post #evp-new-post-loc-open-air-name')
@@ -753,10 +840,10 @@ describe('PlanMissionsView — condensed cards and volunteer bounds', () => {
     expect(card.find('.evp-summary').exists()).toBe(false);
   });
 
-  it('says a collapsed card is holding unsaved edits', async () => {
+  it('says a collapsed card is holding an edit it cannot save', async () => {
     const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
     await openCard(wrapper);
-    await wrapper.find('.evp-mission textarea').setValue('Serving.');
+    await wrapper.find('.evp-mission input[type="text"]').setValue('');
     await openCard(wrapper);
 
     expect(wrapper.find('.evp-tag--unsaved').exists()).toBe(true);
@@ -934,10 +1021,10 @@ describe('PlanMissionsView — how the volunteer form offers a mission', () => {
     expect(box.element.indeterminate).toBe(true);
     expect(wrapper.find('.evp-flag .evp-varies').text()).toContain('Open Air');
 
-    // Nothing picked yet: the save has nothing to send.
-    expect(
-      wrapper.find('.evp-mission form button[type="submit"]').attributes(),
-    ).toHaveProperty('disabled');
+    // Nothing picked yet: a save has nothing to send.
+    await wrapper.find('.evp-mission form').trigger('submit');
+    await flushPromises();
+    expect(patch).not.toHaveBeenCalled();
 
     await box.setValue(true);
     await wrapper.find('.evp-mission form').trigger('submit');
@@ -957,5 +1044,345 @@ describe('PlanMissionsView — how the volunteer form offers a mission', () => {
     const postCard = wrapper.findAll('.evp-mission')[1];
     expect(postCard?.find('form').exists()).toBe(true);
     expect(postCard?.find('input[type="checkbox"]').exists()).toBe(false);
+  });
+});
+
+describe('PlanMissionsView — a post’s days', () => {
+  it('shows no days on a post, which runs on its zone’s', async () => {
+    vi.spyOn(locations, 'fetchLocations').mockImplementation(
+      (_orgId, eventId) =>
+        Promise.resolve({
+          ok: true,
+          value:
+            eventId === 'open-air'
+              ? [
+                  zone('loc-open-air', 'open-air', 'Bar', {
+                    posts: [
+                      post('post-open-air', 'open-air', 'loc-open-air', 'Till'),
+                    ],
+                  }),
+                ]
+              : [zone('loc-dub', 'dub', 'Bar')],
+        }),
+    );
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    const postRow = wrapper.find('.evp-posts .evp-mission');
+    expect(postRow.find('.evp-days').exists()).toBe(false);
+    expect(postRow.find('.evp-hint').exists()).toBe(false);
+  });
+});
+
+describe('PlanMissionsView — the days a zone runs on', () => {
+  /** Bar on the open air only, with its till. */
+  function barOnOpenAirOnly(): void {
+    vi.spyOn(locations, 'fetchLocations').mockImplementation(
+      (_orgId, eventId) =>
+        Promise.resolve({
+          ok: true,
+          value:
+            eventId === 'open-air'
+              ? [
+                  zone('loc-open-air', 'open-air', 'Bar', {
+                    description: 'Serving.',
+                    adultsOnly: true,
+                    posts: [
+                      post('post-open-air', 'open-air', 'loc-open-air', 'Till'),
+                    ],
+                  }),
+                ]
+              : [],
+        }),
+    );
+  }
+
+  it('ticking a day creates the zone there, then its posts under the new row', async () => {
+    barOnOpenAirOnly();
+    const create = vi
+      .spyOn(locations, 'createLocation')
+      .mockImplementation((_org, eventId, input) =>
+        Promise.resolve({
+          ok: true,
+          location:
+            input.kind === 'zone'
+              ? zone('new-zone', eventId, input.name)
+              : post('new-post', eventId, 'new-zone', input.name),
+        }),
+      );
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    await openCard(wrapper);
+    await tickDay(wrapper, 'Dub & 2step');
+
+    expect(create).toHaveBeenNthCalledWith(1, 'org-1', 'dub', {
+      kind: 'zone',
+      name: 'Bar',
+      description: 'Serving.',
+      checkedByDefault: true,
+      adultsOnly: true,
+    });
+    expect(create).toHaveBeenNthCalledWith(2, 'org-1', 'dub', {
+      kind: 'post',
+      name: 'Till',
+      parentId: 'new-zone',
+    });
+  });
+
+  it('unticking a day that holds nothing else removes it at once, against its version', async () => {
+    vi.spyOn(shifts, 'fetchShifts').mockResolvedValue({ ok: true, value: [] });
+    const remove = vi
+      .spyOn(locations, 'deleteLocation')
+      .mockResolvedValue({ ok: true });
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    await openCard(wrapper);
+    await tickDay(wrapper, 'Dub & 2step');
+
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledWith('org-1', 'dub', 'loc-dub', 7);
+  });
+
+  it('asks before unticking a day with shifts, naming them, and cancelling sends nothing', async () => {
+    vi.spyOn(shifts, 'fetchShifts').mockResolvedValue({
+      ok: true,
+      value: [shift('s-1', 'dub', 'loc-dub'), shift('s-2', 'dub', 'loc-dub')],
+    });
+    const remove = vi.spyOn(locations, 'deleteLocation');
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    await openCard(wrapper);
+    await tickDay(wrapper, 'Dub & 2step');
+
+    const dialog = wrapper.find('.evp-day-confirm');
+    expect(dialog.attributes('open')).toBe('');
+    expect(dialog.text()).toContain('2 shifts already created');
+    expect(remove).not.toHaveBeenCalled();
+
+    await dialog.findAll('button')[0]?.trigger('click');
+    // The box goes back to what is stored, not to what was clicked.
+    expect(dayBoxes(wrapper)).toContainEqual(['Dub & 2step', true]);
+    expect(wrapper.find('.evp-day-confirm').exists()).toBe(false);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('removes the day once the coordinator confirms', async () => {
+    barZoneWithPost();
+    vi.spyOn(shifts, 'fetchShifts').mockResolvedValue({ ok: true, value: [] });
+    const remove = vi
+      .spyOn(locations, 'deleteLocation')
+      .mockResolvedValue({ ok: true });
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    await openCard(wrapper);
+    await tickDay(wrapper, 'Dub & 2step');
+    const dialog = wrapper.find('.evp-day-confirm');
+    expect(dialog.text()).toContain('the post Till');
+    await dialog.find('.evp-confirm-destroy').trigger('click');
+    await flushPromises();
+
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledWith('org-1', 'dub', 'loc-dub', 7);
+  });
+
+  it('will not untick a zone’s last day, and says why', async () => {
+    barOnOpenAirOnly();
+    const read = vi.spyOn(shifts, 'fetchShifts');
+    const remove = vi.spyOn(locations, 'deleteLocation');
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+
+    await openCard(wrapper);
+    expect(dayBox(wrapper, 'Open Air').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('.evp-day-toggles').text()).toContain(
+      'runs on at least one day',
+    );
+
+    expect(read).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+describe('PlanMissionsView — saving as it goes, and undo', () => {
+  function pressKeys(init: KeyboardEventInit): void {
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { bubbles: true, ...init }),
+    );
+  }
+
+  it('has no save button: an edit is sent once typing pauses', async () => {
+    const patch = vi
+      .spyOn(locations, 'patchLocation')
+      .mockImplementation((_org, _event, id) =>
+        Promise.resolve({ ok: true, location: zone(id, 'open-air', 'Bar') }),
+      );
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+    await openCard(wrapper);
+    expect(wrapper.find('.evp-mission button[type="submit"]').exists()).toBe(
+      false,
+    );
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      await wrapper.find('.evp-mission textarea').setValue('Serving.');
+      expect(patch).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(AUTOSAVE_DELAY_MS);
+    } finally {
+      vi.useRealTimers();
+    }
+    await flushPromises();
+
+    expect(patch).toHaveBeenCalledTimes(2);
+    expect(patch).toHaveBeenCalledWith('org-1', 'dub', 'loc-dub', 7, {
+      description: 'Serving.',
+    });
+  });
+
+  it('Ctrl+Z puts a field back, and that is saved like any edit', async () => {
+    let stored: string | undefined;
+    vi.spyOn(locations, 'fetchLocations').mockImplementation(
+      (_orgId, eventId) =>
+        Promise.resolve({
+          ok: true,
+          value: [
+            zone(`loc-${eventId}`, eventId, 'Bar', {
+              version: eventId === 'dub' ? 7 : 3,
+              ...(stored === undefined ? {} : { description: stored }),
+            }),
+          ],
+        }),
+    );
+    const patch = vi
+      .spyOn(locations, 'patchLocation')
+      .mockImplementation((_org, _event, id, _version, changes) => {
+        stored = changes.description ?? undefined;
+        return Promise.resolve({
+          ok: true,
+          location: zone(id, 'open-air', 'Bar'),
+        });
+      });
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+    await openCard(wrapper);
+    await wrapper.find('.evp-mission textarea').setValue('Serving.');
+    await wrapper.find('.evp-mission form').trigger('submit');
+    await flushPromises();
+    patch.mockClear();
+
+    pressKeys({ key: 'z', ctrlKey: true });
+    await flushPromises();
+    const textarea = wrapper.find('.evp-mission textarea').element;
+    expect(textarea instanceof HTMLTextAreaElement && textarea.value).toBe('');
+    expect(wrapper.find('[role="status"].evp-visually-hidden').text()).toBe(
+      'Change undone.',
+    );
+
+    await wrapper.find('.evp-mission form').trigger('submit');
+    await flushPromises();
+    expect(patch).toHaveBeenCalledWith('org-1', 'dub', 'loc-dub', 7, {
+      description: null,
+    });
+  });
+
+  /** A save lands mid-sentence. Re-seeding the field from the trimmed,
+   * stored value there would glue the next word to the last one. */
+  it('keeps what is being typed when its own save comes back trimmed', async () => {
+    let stored: string | undefined;
+    vi.spyOn(locations, 'fetchLocations').mockImplementation(
+      (_orgId, eventId) =>
+        Promise.resolve({
+          ok: true,
+          value: [
+            zone(`loc-${eventId}`, eventId, 'Bar', {
+              ...(stored === undefined ? {} : { description: stored }),
+            }),
+          ],
+        }),
+    );
+    vi.spyOn(locations, 'patchLocation').mockImplementation(
+      (_org, _event, id, _version, changes) => {
+        stored = changes.description ?? undefined;
+        return Promise.resolve({
+          ok: true,
+          location: zone(id, 'open-air', 'Bar'),
+        });
+      },
+    );
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+    await openCard(wrapper);
+    await wrapper.find('.evp-mission textarea').setValue('Serve ');
+    await wrapper.find('.evp-mission form').trigger('submit');
+    await flushPromises();
+
+    expect(stored).toBe('Serve');
+    const textarea = wrapper.find('.evp-mission textarea').element;
+    expect(textarea instanceof HTMLTextAreaElement && textarea.value).toBe(
+      'Serve ',
+    );
+  });
+
+  /** Bar on the open air, and on the dub night once it has been created. */
+  function barGainingDub(): void {
+    let dubHasBar = false;
+    vi.spyOn(locations, 'fetchLocations').mockImplementation(
+      (_orgId, eventId) =>
+        Promise.resolve({
+          ok: true,
+          value:
+            eventId === 'open-air'
+              ? [zone('loc-open-air', 'open-air', 'Bar', { version: 3 })]
+              : dubHasBar
+                ? [zone('loc-x-dub', 'dub', 'Bar', { version: 1 })]
+                : [],
+        }),
+    );
+    vi.spyOn(locations, 'createLocation').mockImplementation(
+      (_org, eventId, input) => {
+        dubHasBar = true;
+        return Promise.resolve({
+          ok: true,
+          location: zone('loc-x-dub', eventId, input.name),
+        });
+      },
+    );
+  }
+
+  it('undoing a ticked day removes it again', async () => {
+    barGainingDub();
+    vi.spyOn(shifts, 'fetchShifts').mockResolvedValue({ ok: true, value: [] });
+    const remove = vi
+      .spyOn(locations, 'deleteLocation')
+      .mockResolvedValue({ ok: true });
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+    await openCard(wrapper);
+    await tickDay(wrapper, 'Dub & 2step');
+
+    await wrapper
+      .find('[aria-keyshortcuts="Control+Z Meta+Z"]')
+      .trigger('click');
+    await flushPromises();
+
+    expect(remove).toHaveBeenCalledWith('org-1', 'dub', 'loc-x-dub', 1);
+  });
+
+  it('refuses to undo a ticked day once it has shifts, and says why', async () => {
+    barGainingDub();
+    vi.spyOn(shifts, 'fetchShifts').mockResolvedValue({
+      ok: true,
+      value: [shift('s-1', 'dub', 'loc-x-dub')],
+    });
+    const remove = vi.spyOn(locations, 'deleteLocation');
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/missions');
+    await openCard(wrapper);
+    await tickDay(wrapper, 'Dub & 2step');
+
+    pressKeys({ key: 'z', metaKey: true });
+    await flushPromises();
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(
+      wrapper.find('[role="status"].evp-visually-hidden').text(),
+    ).toContain('now has shifts on Dub & 2step');
+    // Still there to try again once the shifts are gone.
+    expect(
+      wrapper.find('[aria-keyshortcuts="Control+Z Meta+Z"]').attributes(),
+    ).not.toHaveProperty('disabled');
   });
 });

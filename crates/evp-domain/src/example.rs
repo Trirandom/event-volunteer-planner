@@ -29,11 +29,17 @@
 //! Pure data assembly: this module does no I/O and reaches no database.
 //! `evp-db` is what turns a [`FestivalFixture`] into rows.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use jiff::Timestamp;
 use rust_decimal::Decimal;
 use serde::Deserialize;
+use uuid::Uuid;
+
+use crate::form::{
+    Localized, MissionOption, MissionRow, QuestionDraft, QuestionKind, QuestionOption,
+    fold_missions, seed_draft,
+};
 
 /// The dump. Replaced wholesale by `just dump-example`; edit it by hand only
 /// for a quick experiment, since the next dump overwrites it.
@@ -123,9 +129,11 @@ pub struct ShiftFixture {
 
 /// One volunteer of the pool, with the one submission that produced them.
 ///
-/// `first_name`/`last_name` are carried as dumped: `None` for a volunteer
-/// who came off a single-name-field form, never split out of
-/// `display_name` (ADR-0012).
+/// `display_name` is verbatim, and `first_name`/`last_name` are the parts the
+/// form asked for. The example's volunteers first came off a legacy sheet
+/// with a single name column; their parts were split by hand, each row
+/// confirmed by a coordinator — the one way ADR-0012 allows parts onto an
+/// imported row. Nothing here or in the loader derives them.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VolunteerFixture {
@@ -149,23 +157,19 @@ pub struct VolunteerFixture {
     /// When the form was answered, if the source said.
     #[serde(default)]
     pub submitted_at: Option<Timestamp>,
-    /// Verbatim, in the order the form asked them. Becomes
-    /// `submission_payloads.raw` and, from there, the API's `answers[]`
-    /// (docs/03 §3.10: raw is "exactly what arrived").
+    /// What they answered the example [`form`], keyed by [`answer_key`]
+    /// rather than by question id: ids are minted on every load, so the
+    /// loader resolves each key to the question it has just inserted and
+    /// stores the payload the public form would have (docs/08 §9). Values are
+    /// as the wire carries them — an option's value, not its label.
+    /// Availability is not here: it is the participations' windows.
     #[serde(default)]
-    pub answers: Vec<Answer>,
+    pub answers: BTreeMap<String, serde_json::Value>,
     /// One entry per event this volunteer said anything about. Empty for a
     /// volunteer who answered the form but ticked no availability at all —
     /// a real and different case from declaring "not available" (09 §3).
     #[serde(default)]
     pub participations: Vec<ParticipationFixture>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Answer {
-    pub question: String,
-    pub value: serde_json::Value,
 }
 
 /// One volunteer's standing in one event.
@@ -315,8 +319,9 @@ pub fn build() -> Result<FestivalFixture, ExampleError> {
     for event in &dump.events {
         check_event(event)?;
     }
+    let questions = questions_for(&dump.events);
     for volunteer in &dump.volunteers {
-        check_volunteer(volunteer, &dump.events)?;
+        check_volunteer(volunteer, &dump.events, &questions)?;
     }
 
     Ok(FestivalFixture {
@@ -361,12 +366,189 @@ fn check_event(event: &EventFixture) -> Result<(), ExampleError> {
     Ok(())
 }
 
+/// The [`VolunteerFixture::answers`] key of the missions question.
+pub const MISSIONS: &str = "missions";
+/// The two questions the example form adds to the seed: the admin app's
+/// `experience` and `driving_licence` presets (`apps/admin/src/plan/formDraft.ts`,
+/// `PRESET_TEMPLATES`). Worded identically, because the builder recognises a
+/// preset by its wording and would otherwise offer it again; that file is
+/// their source, and these follow it.
+pub const EXPERIENCE: &str = "Quel est ton niveau d’expérience en bénévolat ?";
+pub const LICENCE: &str = "As-tu le permis de conduire (B) ?";
+
+/// The question an answer of the dump belongs to, as a key that survives a
+/// reload: the column it fills, `missions`, `consent:<purpose>`, or — for a
+/// custom question, which has none of those — its French wording. `None` for
+/// what takes no answer in the `answers` map (a section; availability, which
+/// the payload carries apart).
+///
+/// The same mapping is written in SQL in `docker/db/dump-example.sql`, which
+/// goes from a stored payload back to these keys; the two must agree.
+#[must_use]
+pub fn answer_key(question: &QuestionDraft) -> Option<String> {
+    if let Some(target) = question.target_path {
+        return Some(target.as_str().to_owned());
+    }
+    match question.kind {
+        QuestionKind::Section | QuestionKind::Availability => None,
+        QuestionKind::Missions => Some(MISSIONS.to_owned()),
+        QuestionKind::Consent => question
+            .consent_purpose
+            .map(|purpose| format!("consent:{}", purpose.as_str())),
+        QuestionKind::ShortText
+        | QuestionKind::LongText
+        | QuestionKind::Email
+        | QuestionKind::Phone
+        | QuestionKind::Date
+        | QuestionKind::SingleChoice
+        | QuestionKind::MultiChoice
+        | QuestionKind::Boolean => Some(question.label.fr.clone()),
+    }
+}
+
+/// The example's form: what `POST …/forms` seeds for a festival, plus the
+/// experience and licence presets right after the missions — the two things
+/// the legacy sheet asked that the seed does not.
+#[must_use]
+pub fn form(missions: &[MissionOption], organization_name: &str) -> Vec<QuestionDraft> {
+    seed_draft(true, missions, organization_name)
+        .into_iter()
+        .flat_map(|question| {
+            let presets = if question.kind == QuestionKind::Missions {
+                presets()
+            } else {
+                Vec::new()
+            };
+            std::iter::once(question).chain(presets)
+        })
+        .collect()
+}
+
+fn presets() -> Vec<QuestionDraft> {
+    let both = |fr: &str, en: &str| Localized {
+        fr: fr.to_owned(),
+        en: Some(en.to_owned()),
+    };
+    let custom = |kind, label, options| QuestionDraft {
+        kind,
+        target_path: None,
+        consent_purpose: None,
+        label,
+        help_text: None,
+        options,
+        is_required: false,
+        is_sensitive: false,
+    };
+    // Values as the builder derives them from the French label (`slugify`),
+    // so the stored options look like ones a coordinator added.
+    let choice = |value: &str, fr: &str, en: &str| QuestionOption {
+        value: value.to_owned(),
+        label: both(fr, en),
+        skill_id: None,
+        checked_by_default: false,
+        adults_only: false,
+    };
+    vec![
+        custom(
+            QuestionKind::SingleChoice,
+            both(EXPERIENCE, "How experienced are you as a volunteer?"),
+            Some(vec![
+                choice(
+                    "c-est-ma-premiere-fois",
+                    "C’est ma première fois",
+                    "This is my first time",
+                ),
+                choice(
+                    "j-ai-deja-ete-benevole-quelques-fois",
+                    "J’ai déjà été bénévole quelques fois",
+                    "I have volunteered a few times",
+                ),
+                choice(
+                    "j-ai-de-la-bouteille",
+                    "J’ai de la bouteille",
+                    "I am an old hand",
+                ),
+                choice(
+                    "je-peux-encadrer-une-equipe-de-benevoles",
+                    "Je peux encadrer une équipe de bénévoles",
+                    "I can lead a team of volunteers",
+                ),
+            ]),
+        ),
+        custom(
+            QuestionKind::Boolean,
+            both(LICENCE, "Do you have a driving licence (B)?"),
+            None,
+        ),
+    ]
+}
+
+/// [`form`] as the dump's own locations would fold into missions — enough to
+/// check answers against, before any of it has an id. The flags do not
+/// matter for that, and the organisation's name only words the commitment.
+fn questions_for(events: &[EventFixture]) -> Vec<QuestionDraft> {
+    let rows: Vec<MissionRow> = events
+        .iter()
+        .flat_map(|event| &event.locations)
+        .map(|location| MissionRow {
+            event_id: Uuid::nil(),
+            name: location.name.clone(),
+            checked_by_default: false,
+            adults_only: false,
+        })
+        .collect();
+    form(&fold_missions(&rows), "")
+}
+
+/// Every answer belongs to a question of the example form, and a choice is
+/// one of that question's options — what the public route would have
+/// refused, refused here before it is stored as though it had arrived.
+fn check_answers(
+    volunteer: &VolunteerFixture,
+    questions: &[QuestionDraft],
+) -> Result<(), ExampleError> {
+    for (key, value) in &volunteer.answers {
+        let Some(question) = questions
+            .iter()
+            .find(|question| answer_key(question).as_deref() == Some(key.as_str()))
+        else {
+            return Err(ExampleError::DanglingReference(format!(
+                "{} answers {key:?}, which the example form does not ask",
+                volunteer.display_name
+            )));
+        };
+        let Some(options) = &question.options else {
+            continue;
+        };
+        let chosen: Vec<&str> = match value {
+            serde_json::Value::String(one) => vec![one.as_str()],
+            serde_json::Value::Array(many) => {
+                many.iter().filter_map(serde_json::Value::as_str).collect()
+            }
+            _ => Vec::new(),
+        };
+        if let Some(unknown) = chosen
+            .iter()
+            .find(|chosen| !options.iter().any(|option| option.value == **chosen))
+        {
+            return Err(ExampleError::DanglingReference(format!(
+                "{} answers {unknown:?} to {key:?}, which is not one of its options",
+                volunteer.display_name
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Every participation names an event of this festival, at most once, and
-/// every assignment a shift of that event.
+/// every assignment a shift of that event; every answer, a question of the
+/// form.
 fn check_volunteer(
     volunteer: &VolunteerFixture,
     events: &[EventFixture],
+    questions: &[QuestionDraft],
 ) -> Result<(), ExampleError> {
+    check_answers(volunteer, questions)?;
     let mut seen = HashSet::with_capacity(volunteer.participations.len());
     for participation in &volunteer.participations {
         let Some(event) = events
@@ -402,9 +584,20 @@ fn check_volunteer(
 #[cfg(test)]
 mod tests {
     use super::{
-        EventFixture, ExampleError, FestivalFixture, VolunteerFixture, build, check_event,
-        check_volunteer,
+        EXPERIENCE, EventFixture, ExampleError, FestivalFixture, LICENCE, MISSIONS,
+        VolunteerFixture, answer_key, build, check_event, check_volunteer, form, questions_for,
     };
+    use crate::form::{MissionOption, QuestionDraft, QuestionKind};
+
+    fn mission(value: &str) -> MissionOption {
+        MissionOption {
+            value: value.to_owned(),
+            label: value.to_owned(),
+            event_ids: Vec::new(),
+            checked_by_default: false,
+            adults_only: false,
+        }
+    }
 
     fn festival() -> FestivalFixture {
         build().expect("example.json parses and every reference in it resolves")
@@ -570,6 +763,122 @@ mod tests {
     }
 
     #[test]
+    fn every_question_but_section_and_availability_has_an_answer_key() {
+        // Availability has its own place in the payload; a section takes no
+        // answer. Everything else must be addressable from the dump, and by
+        // a key no other question of the form shares.
+        let questions = form(&[], "zest radio");
+        let mut keys: Vec<String> = questions.iter().filter_map(answer_key).collect();
+        let answerable = questions
+            .iter()
+            .filter(|question| {
+                !matches!(
+                    question.kind,
+                    QuestionKind::Section | QuestionKind::Availability
+                )
+            })
+            .count();
+        assert_eq!(keys.len(), answerable, "{keys:?}");
+        keys.sort_unstable();
+        keys.dedup();
+        assert_eq!(keys.len(), answerable, "two questions share a key");
+    }
+
+    #[test]
+    fn answer_keys_are_stable_across_organisations_and_scopes() {
+        // The commitment's wording names the organisation and the missions
+        // come from the zones; a key that moved with either would make the
+        // dump of one org unloadable into another.
+        let keys = |questions: Vec<QuestionDraft>| -> Vec<String> {
+            questions.iter().filter_map(answer_key).collect()
+        };
+        assert_eq!(
+            keys(form(&[], "zest radio")),
+            keys(form(&[mission("bar")], "Autre asso"))
+        );
+        assert!(keys(form(&[], "x")).contains(&"volunteer.first_name".to_owned()));
+        assert!(keys(form(&[], "x")).contains(&"consent:commitment".to_owned()));
+        assert!(keys(form(&[], "x")).contains(&MISSIONS.to_owned()));
+    }
+
+    #[test]
+    fn the_example_form_asks_the_experience_and_licence_presets_after_the_missions() {
+        let after_missions: Vec<QuestionKind> = form(&[], "x")
+            .iter()
+            .map(|question| question.kind)
+            .skip_while(|kind| *kind != QuestionKind::Missions)
+            .skip(1)
+            .take(2)
+            .collect();
+        assert_eq!(
+            after_missions,
+            [QuestionKind::SingleChoice, QuestionKind::Boolean]
+        );
+    }
+
+    fn volunteer(answers: &str) -> VolunteerFixture {
+        serde_json::from_str(&format!(
+            r#"{{ "display_name": "Jo", "answers": {answers} }}"#
+        ))
+        .expect("the volunteer itself is well-formed")
+    }
+
+    fn bar_night() -> Vec<EventFixture> {
+        vec![night(r#"[{ "name": "Bar" }]"#, "[]")]
+    }
+
+    #[test]
+    fn answers_to_the_example_form_are_accepted() {
+        let events = bar_night();
+        let accepted = volunteer(&format!(
+            r#"{{ "volunteer.first_name": "Jo", "missions": ["bar"],
+                 "{EXPERIENCE}": "j-ai-de-la-bouteille", "{LICENCE}": true,
+                 "consent:processing": true }}"#
+        ));
+        let checked = check_volunteer(&accepted, &events, &questions_for(&events));
+        assert!(checked.is_ok(), "{checked:?}");
+    }
+
+    #[test]
+    fn an_answer_the_example_form_cannot_have_given_is_refused() {
+        let events = bar_night();
+        for answers in [
+            // A legacy sheet's column, which no question of the form asks.
+            r#"{ "Postes préférés lors des événements": "Bar" }"#.to_owned(),
+            // A mission no location of the festival offers.
+            r#"{ "missions": ["bar", "light"] }"#.to_owned(),
+            // A choice that is not one of the question's options.
+            format!(r#"{{ "{EXPERIENCE}": "J'ai de la bouteille" }}"#),
+        ] {
+            assert!(
+                matches!(
+                    check_volunteer(&volunteer(&answers), &events, &questions_for(&events)),
+                    Err(ExampleError::DanglingReference(_))
+                ),
+                "{answers} was accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn every_example_volunteer_gave_the_first_name_the_form_requires() {
+        // Without it a submission does not map (`evp_intake`'s NoFirstName),
+        // which is why the legacy single-name rows were split by hand.
+        for volunteer in &festival().volunteers {
+            let given = volunteer
+                .answers
+                .get("volunteer.first_name")
+                .and_then(serde_json::Value::as_str);
+            assert!(
+                given.is_some_and(|name| !name.trim().is_empty()),
+                "{} has no first name answer",
+                volunteer.display_name
+            );
+            assert_eq!(given, volunteer.first_name.as_deref());
+        }
+    }
+
+    #[test]
     fn a_volunteer_in_an_unknown_event_or_shift_is_refused() {
         let events = vec![night(
             r#"[{ "name": "Bar" }]"#,
@@ -587,7 +896,7 @@ mod tests {
             .expect("the volunteer itself is well-formed");
             assert!(
                 matches!(
-                    check_volunteer(&volunteer, &events),
+                    check_volunteer(&volunteer, &events, &questions_for(&events)),
                     Err(ExampleError::DanglingReference(_))
                 ),
                 "{participations} was accepted"

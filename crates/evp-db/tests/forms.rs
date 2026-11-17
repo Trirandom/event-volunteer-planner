@@ -1376,7 +1376,7 @@ async fn an_unscoped_seed_has_no_availability_or_missions() {
 }
 
 #[tokio::test]
-async fn the_worked_example_brings_a_publishable_festival_form() {
+async fn the_worked_example_brings_a_published_but_closed_festival_form() {
     let pool = pool().await;
     let mut tx = pool.begin().await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
@@ -1388,12 +1388,13 @@ async fn the_worked_example_brings_a_publishable_festival_form() {
     let listed = forms::list(&mut tx, org_id, Some(festival.id), None)
         .await
         .expect("list");
-    assert_eq!(listed.len(), 1, "one draft form for the festival");
+    assert_eq!(listed.len(), 1, "one form for the festival");
     let form = &listed[0];
-    assert!(
-        form.live_version_id.is_none(),
-        "left for the coordinator to publish"
-    );
+    // Live, so the example's submissions pin a frozen version; closed, so
+    // the slug (unique across orgs) is not claimed by every org that loads
+    // the example, and the public link is the coordinator's to open.
+    assert!(form.live_version_id.is_some(), "the version they answered");
+    assert!(!form.public_open, "opening it is the coordinator's call");
 
     let version = forms::get_version(&mut tx, org_id, form.id, VersionRef::Number(1))
         .await

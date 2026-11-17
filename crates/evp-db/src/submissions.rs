@@ -5,17 +5,11 @@
 //! provenance trail that explains where they came from (docs/03 §3.3, §3.5,
 //! §3.10).
 //!
-//! [`create_example_volunteers`] is this module's only writer for now: it is
-//! what `evp_db::catalog::create_example` calls after it has built the
-//! festival's events, so that the worked example arrives with the volunteers
-//! who applied to it, the same way it already arrives with locations and
-//! shifts. It writes exactly the rows a real CSV import would have left
-//! behind — one `intake_sources` row, one `submission_batches` row, and per
-//! volunteer a `volunteers` row, a `submissions` row, a `submission_payloads`
-//! row, and per event they answered anything about, a `participations` row
-//! and its `availability_windows` — without going through the column-mapping
-//! pipeline those tables exist to support, because nothing in this vertical
-//! slice builds that pipeline yet (see the migration's own doc comment).
+//! [`create_example_volunteers`] is what `evp_db::catalog::create_example`
+//! calls after it has built the festival's events and form, so that the
+//! worked example arrives with the volunteers who applied to it, the same
+//! way it already arrives with locations and shifts. It writes the rows a
+//! reconciled submission through the first-party form leaves behind.
 //!
 //! [`list`] is the read side: `GET …/festivals/{festival}/submissions`.
 //! Scoped by `org_id` rather than by festival — see its doc comment for why.
@@ -144,8 +138,10 @@ pub async fn list(conn: &mut PgConnection, org_id: Uuid) -> Result<Vec<Submissio
 
 /// The answers one submission's payload holds, as a coordinator reads them.
 ///
-/// Two payload shapes. An imported row (the worked example) stores a plain
-/// array of `{question, value}` pairs: an object's key order is not part of
+/// Two payload shapes. An imported row stores a plain array of
+/// `{question, value}` pairs — so did the worked example until it became
+/// answers to its own form, and databases that loaded it then still hold
+/// them: an object's key order is not part of
 /// JSON's data model, and the array is what keeps the order the legacy form
 /// asked them in. A first-party form stores `{answers: {question id: value},
 /// …}`, keyed by id — and the version it pinned (`questions`) supplies both
@@ -296,19 +292,24 @@ async fn availability_for(
 
 /// Persists every volunteer of the worked example fixture, on the caller's
 /// already-open transaction — called from `catalog::create_example` after
-/// the festival's events exist, so a volunteer's participations can resolve
-/// `event_slug` to a real `event_id`.
+/// the festival's events and its form exist, so a volunteer's participations
+/// can resolve `event_slug` to a real `event_id` and their answers can pin
+/// the form's live version.
 ///
-/// Writes one shared `intake_sources` row (kind `csv_upload`, matching the
-/// real Google Sheet this fixture is transcribed from) and one
-/// `submission_batches` row for the whole load, then per
-/// [`evp_domain::example::VolunteerFixture`]: a `volunteers` row, a
-/// `submissions` row already `applied` (the fixture bypasses reconciliation
-/// entirely — there is no candidate to disambiguate, `match_kind = 'new'`),
-/// its `submission_payloads` row, and per
+/// Writes the rows a submission through `/f/{slug}` leaves once reconciled
+/// (`evp_db::public_forms::record_submission`, then `evp_db::intake`): the
+/// form's `internal_form` source, and per
+/// [`evp_domain::example::VolunteerFixture`] a batch of one, a `volunteers`
+/// row, a `submissions` row already `applied` as `new` (the fixture is the
+/// pool, so there is nobody to match against), and its payload in the shape
+/// the public route stores; then per
 /// [`evp_domain::example::ParticipationFixture`] a `participations` row, one
-/// `availability_windows` row per declared range and one `assignments` row
-/// per shift they were given.
+/// `availability_windows` row per range and one `assignments` row per shift.
+///
+/// The ladder itself is not run: the fixture says who each volunteer is,
+/// verbatim `display_name` included, where reconciliation would derive one
+/// from the parts (ADR-0012), and it carries coordinator-declared windows
+/// and assignments no submission could.
 ///
 /// Every id created is pushed onto `entity_ids`, so the operation this is
 /// called from (`festival.create_example`) scopes its undo over the
@@ -321,63 +322,31 @@ async fn availability_for(
 /// nothing committed.
 pub(crate) async fn create_example_volunteers(
     conn: &mut PgConnection,
-    org_id: Uuid,
-    actor_id: Uuid,
+    load: ExampleLoad<'_>,
     fixture: &evp_domain::example::FestivalFixture,
-    events: &HashMap<String, ExampleEvent>,
     entity_ids: &mut Vec<Uuid>,
 ) -> Result<(), DbError> {
     if fixture.volunteers.is_empty() {
         return Ok(());
     }
 
-    // One file name for both rows: the batch records which upload it was, and
-    // the source records where uploads of this shape come from. Two
-    // independently formatted copies of one string is how those drift.
-    let file_name = format!("form Bénévole {} - réponses.csv", fixture.name);
-
     let source_id = Uuid::now_v7();
     sqlx::query(
-        "INSERT INTO intake_sources (id, org_id, kind, name, created_by) \
-         VALUES ($1, $2, 'csv_upload', $3, $4)",
+        "INSERT INTO intake_sources (id, org_id, kind, name, form_id, created_by) \
+         VALUES ($1, $2, 'internal_form', $3, $4, $5)",
     )
     .bind(source_id)
-    .bind(org_id)
-    .bind(&file_name)
-    .bind(actor_id)
+    .bind(load.org_id)
+    .bind(format!("Formulaire /f/{}", load.form.slug))
+    .bind(load.form.form_id)
+    .bind(load.actor_id)
     .execute(&mut *conn)
     .await
     .map_err(DbError::Query)?;
     entity_ids.push(source_id);
 
-    let batch_id = Uuid::now_v7();
-    let row_count = i32::try_from(fixture.volunteers.len()).unwrap_or(i32::MAX);
-    sqlx::query(
-        "INSERT INTO submission_batches \
-           (id, org_id, source_id, trigger, file_name, row_count, outcome, created_by) \
-         VALUES ($1, $2, $3, 'upload', $4, $5, 'accepted', $6)",
-    )
-    .bind(batch_id)
-    .bind(org_id)
-    .bind(source_id)
-    .bind(&file_name)
-    .bind(row_count)
-    .bind(actor_id)
-    .execute(&mut *conn)
-    .await
-    .map_err(DbError::Query)?;
-    entity_ids.push(batch_id);
-
-    let load = ExampleLoad {
-        org_id,
-        actor_id,
-        source_id,
-        batch_id,
-        events,
-    };
-
-    for (index, volunteer) in fixture.volunteers.iter().enumerate() {
-        insert_example_volunteer(conn, &load, index, volunteer, entity_ids).await?;
+    for volunteer in &fixture.volunteers {
+        insert_example_volunteer(conn, &load, source_id, volunteer, entity_ids).await?;
     }
 
     Ok(())
@@ -391,56 +360,42 @@ pub(crate) struct ExampleEvent {
     pub(crate) shift_ids: Vec<Uuid>,
 }
 
-/// The ids and the lookup every volunteer of one example load shares.
-///
-/// Bundled rather than passed one by one so that
-/// [`insert_example_volunteer`] stays under the argument limit *and* so that
-/// its signature says what it is: everything here is fixed for the whole
-/// load, and only the volunteer varies.
-struct ExampleLoad<'a> {
-    org_id: Uuid,
+/// What every volunteer of one example load shares: fixed for the whole
+/// load, so that only the volunteer varies from call to call.
+pub(crate) struct ExampleLoad<'a> {
+    pub(crate) org_id: Uuid,
     /// Who clicked the button: `declared_by` of a coordinator-typed window
     /// and `assigned_by` of every assignment, since the dump's own
     /// coordinators are not users of the org being loaded into.
-    actor_id: Uuid,
-    source_id: Uuid,
-    batch_id: Uuid,
+    pub(crate) actor_id: Uuid,
+    pub(crate) form: &'a crate::forms::ExampleForm,
     /// Event slug → the event, built by the caller from the events it has
     /// just inserted.
-    events: &'a HashMap<String, ExampleEvent>,
+    pub(crate) events: &'a HashMap<String, ExampleEvent>,
 }
 
-/// One volunteer: the pool row, the submission that produced it, its raw
+/// One volunteer: the pool row, the submission that produced it, its
 /// payload, and a participation with its windows per event they answered for.
-///
-/// Split out of [`create_example_volunteers`] so that function reads as what
-/// it is — one source, one batch, then each volunteer — rather than as a
-/// hundred lines in which the shared setup and the per-row work are only
-/// distinguishable by indentation.
 ///
 /// # Errors
 ///
-/// [`DbError::Query`] if any statement fails.
+/// [`DbError::Query`] if any statement fails; [`DbError::Fixture`] if an
+/// answer names no question of the form.
 async fn insert_example_volunteer(
     conn: &mut PgConnection,
     load: &ExampleLoad<'_>,
-    index: usize,
+    source_id: Uuid,
     volunteer: &evp_domain::example::VolunteerFixture,
     entity_ids: &mut Vec<Uuid>,
 ) -> Result<(), DbError> {
-    let ExampleLoad {
-        org_id,
-        source_id,
-        batch_id,
-        ..
-    } = *load;
+    let org_id = load.org_id;
 
     let volunteer_id = Uuid::now_v7();
     sqlx::query(
         "INSERT INTO volunteers \
            (id, org_id, display_name, first_name, last_name, email, phone, tshirt_size, \
-            dietary, notes, is_core_team) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+            dietary, notes, is_core_team, locale) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'fr')",
     )
     .bind(volunteer_id)
     .bind(org_id)
@@ -458,44 +413,49 @@ async fn insert_example_volunteer(
     .map_err(DbError::Query)?;
     entity_ids.push(volunteer_id);
 
+    let batch_id = Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO submission_batches \
+           (id, org_id, source_id, trigger, row_count, outcome, stats, applied_at) \
+         VALUES ($1, $2, $3, 'form', 1, 'accepted', '{\"created\": 1}', statement_timestamp())",
+    )
+    .bind(batch_id)
+    .bind(org_id)
+    .bind(source_id)
+    .execute(&mut *conn)
+    .await
+    .map_err(DbError::Query)?;
+    entity_ids.push(batch_id);
+
+    let (raw, raw_keys) = example_payload(load, volunteer)?;
     let submission_id = Uuid::now_v7();
-    let raw_keys: Vec<String> = volunteer
-        .answers
-        .iter()
-        .map(|answer| answer.question.clone())
-        .collect();
     // `applied_at` falls back to the load itself when the dump had no
     // submission time: an applied submission must say when it was applied,
     // and "when this example was loaded" is the honest answer.
     sqlx::query(
         "INSERT INTO submissions \
                (id, org_id, source_id, batch_id, external_id, raw_keys, submitted_at, \
-                state, volunteer_id, match_kind, applied_at) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 'applied', $8, 'new', \
-                     coalesce($7, statement_timestamp()))",
+                state, volunteer_id, match_kind, applied_at, form_version_id, locale) \
+             VALUES ($1, $2, $3, $4, $1::text, $5, $6, 'applied', $7, 'new', \
+                     coalesce($6, statement_timestamp()), $8, 'fr')",
     )
     .bind(submission_id)
     .bind(org_id)
     .bind(source_id)
     .bind(batch_id)
-    .bind(format!("row-{index}"))
     .bind(&raw_keys)
     .bind(volunteer.submitted_at.map(jiff_sqlx::ToSqlx::to_sqlx))
     .bind(volunteer_id)
+    .bind(load.form.version_id)
     .execute(&mut *conn)
     .await
     .map_err(DbError::Query)?;
     entity_ids.push(submission_id);
 
-    let raw: Vec<serde_json::Value> = volunteer
-        .answers
-        .iter()
-        .map(|answer| serde_json::json!({ "question": answer.question, "value": answer.value }))
-        .collect();
     sqlx::query("INSERT INTO submission_payloads (submission_id, org_id, raw) VALUES ($1, $2, $3)")
         .bind(submission_id)
         .bind(org_id)
-        .bind(serde_json::Value::Array(raw))
+        .bind(raw)
         .execute(&mut *conn)
         .await
         .map_err(DbError::Query)?;
@@ -513,6 +473,68 @@ async fn insert_example_volunteer(
     }
 
     Ok(())
+}
+
+/// The payload `evp_api::public_form` would have stored for this volunteer
+/// — `{form_version_id, locale, answers: {question id: value}, availability}`
+/// — and the question ids it answered (`submissions.raw_keys`).
+///
+/// The availability is the windows the volunteer gave themselves; one a
+/// coordinator declared was never part of what they sent.
+fn example_payload(
+    load: &ExampleLoad<'_>,
+    volunteer: &evp_domain::example::VolunteerFixture,
+) -> Result<(serde_json::Value, Vec<String>), DbError> {
+    let mut answers = serde_json::Map::with_capacity(volunteer.answers.len());
+    for (key, value) in &volunteer.answers {
+        let question = load
+            .form
+            .questions
+            .iter()
+            .find(|question| {
+                evp_domain::example::answer_key(&question.draft).as_deref() == Some(key.as_str())
+            })
+            .ok_or_else(|| {
+                crate::catalog::dangling(format!(
+                    "{} answers {key:?}, which the example form does not ask",
+                    volunteer.display_name
+                ))
+            })?;
+        answers.insert(question.id.to_string(), value.clone());
+    }
+
+    let mut availability = Vec::new();
+    for participation in &volunteer.participations {
+        let event = load.events.get(&participation.event_slug).ok_or_else(|| {
+            crate::catalog::dangling(format!(
+                "{} participates in unknown event {}",
+                volunteer.display_name, participation.event_slug
+            ))
+        })?;
+        availability.extend(
+            participation
+                .windows
+                .iter()
+                .filter(|window| !window.declared)
+                .map(|window| {
+                    serde_json::json!({
+                        "event_id": event.id,
+                        "kind": window.kind.as_str(),
+                        "start": window.period.0.to_string(),
+                        "end": window.period.1.to_string(),
+                    })
+                }),
+        );
+    }
+
+    let raw_keys = answers.keys().cloned().collect();
+    let raw = serde_json::json!({
+        "form_version_id": load.form.version_id,
+        "locale": "fr",
+        "answers": answers,
+        "availability": availability,
+    });
+    Ok((raw, raw_keys))
 }
 
 /// One participation of one example volunteer: the row, its windows, and its

@@ -937,16 +937,20 @@ pub async fn create_example(
         );
     }
 
-    // A draft form covering the whole festival, so the Formulaire page has
-    // something to show and to publish.
-    entity_ids.extend(crate::forms::create_example(conn, org_id, &festival).await?);
+    // The form the example's volunteers answered, so their submissions read
+    // back exactly as ones sent through `/f/{slug}` do.
+    let form = crate::forms::create_example(conn, org_id, actor_id, &festival).await?;
+    entity_ids.extend([form.form_id, form.version_id]);
 
     crate::submissions::create_example_volunteers(
         conn,
-        org_id,
-        actor_id,
+        crate::submissions::ExampleLoad {
+            org_id,
+            actor_id,
+            form: &form,
+            events: &events,
+        },
         fixture,
-        &events,
         &mut entity_ids,
     )
     .await?;

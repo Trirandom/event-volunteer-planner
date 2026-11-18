@@ -703,6 +703,33 @@ mod tests {
     }
 
     #[test]
+    fn no_zone_runs_two_overlapping_shifts() {
+        // The schema allows it, but the assignation board lays overlapping
+        // shifts out in a second lane, which names every post again — the
+        // example would show its bar manager twice. A post with a timing of
+        // its own predates ADR-0052; folding one onto its zone is what
+        // produces this.
+        for event in &festival().events {
+            let mut periods: Vec<(usize, jiff::Timestamp, jiff::Timestamp)> = event
+                .shifts
+                .iter()
+                .map(|shift| (shift.location, shift.period.0, shift.period.1))
+                .collect();
+            periods.sort_unstable();
+            for pair in periods.windows(2) {
+                let (zone, _, end) = pair[0];
+                let (next_zone, next_start, _) = pair[1];
+                assert!(
+                    zone != next_zone || next_start >= end,
+                    "{} of {} runs two overlapping shifts",
+                    event.locations[zone].name,
+                    event.slug
+                );
+            }
+        }
+    }
+
+    #[test]
     fn slot_lengths_are_deliberately_uneven() {
         // "document uneven slot length": the source sheet never used one
         // uniform width, and code assuming it did must fail on the example.

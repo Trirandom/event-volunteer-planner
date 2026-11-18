@@ -26,8 +26,10 @@ async fn example_festival(router: &Router, org_id: Uuid, owner: &str) -> (String
         .send(router)
         .await;
     assert_eq!(loaded.status, StatusCode::CREATED, "{:?}", loaded.body);
-    let id = loaded.body["festival"]["id"]
-        .as_str()
+    let id = loaded
+        .body
+        .pointer("/festival/id")
+        .and_then(serde_json::Value::as_str)
         .expect("the created festival has an id")
         .to_owned();
     let read = Call::new("GET", format!("/api/v1/orgs/{org_id}/festivals/{id}"))

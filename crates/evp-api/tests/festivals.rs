@@ -52,13 +52,23 @@ async fn only_an_owner_may_read_the_cost_of_deleting_a_festival_or_delete_it() {
             .signed_in_as(&cookie)
             .send(&router)
             .await;
-        assert_eq!(read.status, StatusCode::FORBIDDEN, "{role}: {:?}", read.body);
+        assert_eq!(
+            read.status,
+            StatusCode::FORBIDDEN,
+            "{role}: {:?}",
+            read.body
+        );
         let delete = Call::new("DELETE", &festival)
             .signed_in_as(&cookie)
             .if_match(&etag)
             .send(&router)
             .await;
-        assert_eq!(delete.status, StatusCode::FORBIDDEN, "{role}: {:?}", delete.body);
+        assert_eq!(
+            delete.status,
+            StatusCode::FORBIDDEN,
+            "{role}: {:?}",
+            delete.body
+        );
     }
 
     let read = Call::new("GET", &deletion)
@@ -114,7 +124,11 @@ async fn deleting_a_festival_needs_if_match_and_leaves_its_events_standalone() {
         .send(&router)
         .await;
     assert_eq!(deleted.status, StatusCode::OK, "{:?}", deleted.body);
-    assert!(deleted.body["operation_id"].is_string(), "{:?}", deleted.body);
+    assert!(
+        deleted.body["operation_id"].is_string(),
+        "{:?}",
+        deleted.body
+    );
     assert_eq!(deleted.body["events_ungrouped"], 6, "{:?}", deleted.body);
     assert_eq!(deleted.body["forms_deleted"], 1, "{:?}", deleted.body);
     assert!(deleted.body["submissions_deleted"].is_number());
@@ -136,9 +150,9 @@ async fn deleting_a_festival_needs_if_match_and_leaves_its_events_standalone() {
         .unwrap_or_default();
     assert_eq!(listed.len(), 6, "every event stays: {:?}", events.body);
     assert!(
-        listed
-            .iter()
-            .all(|event| event.get("festival_id").is_none_or(serde_json::Value::is_null)),
+        listed.iter().all(|event| event
+            .get("festival_id")
+            .is_none_or(serde_json::Value::is_null)),
         "each is standalone now: {listed:?}"
     );
 }

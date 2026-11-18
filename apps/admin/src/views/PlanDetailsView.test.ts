@@ -602,3 +602,118 @@ describe('adding a day from the details section', () => {
     expect(body?.name).toBe('Solo 2');
   });
 });
+
+describe('deleting the festival (ADR-0053)', () => {
+  beforeEach(() => {
+    vi.spyOn(festivals, 'fetchFestivalDeletion').mockResolvedValue({
+      ok: true,
+      value: { events: 2, forms: 1, submissions: 27 },
+    });
+  });
+
+  /** The dialog whose name field asks for the festival's name. */
+  function festivalDialog(
+    wrapper: Awaited<ReturnType<typeof mountView>>['wrapper'],
+  ) {
+    const dialog = wrapper
+      .findAll('dialog')
+      .find((candidate) =>
+        candidate.find('.evp-festival-delete-name').exists(),
+      );
+    if (dialog === undefined) {
+      throw new Error('the festival delete dialog is not open');
+    }
+    return dialog;
+  }
+
+  async function openIt() {
+    const mounted = await mountView('/org-1/festivals/festival-1/details');
+    await mounted.wrapper.find('.evp-festival-delete-button').trigger('click');
+    await flushPromises();
+    return mounted;
+  }
+
+  it('is offered to an owner on the festival as a whole', async () => {
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+
+    expect(wrapper.find('.evp-festival-delete-button').exists()).toBe(true);
+  });
+
+  /** Narrowed to one day the button would read as deleting that day. */
+  it('is not offered when the page is narrowed to one day', async () => {
+    const { wrapper } = await mountView('/org-1/events/dub/details');
+
+    expect(wrapper.find('.evp-festival-delete-button').exists()).toBe(false);
+  });
+
+  it('is not offered to a coordinator, whose only answer would be 403', async () => {
+    vi.spyOn(sessionApi, 'fetchSession').mockResolvedValue(
+      session('coordinator'),
+    );
+    const { wrapper } = await mountView('/org-1/festivals/festival-1/details');
+
+    expect(wrapper.find('.evp-festival-delete-button').exists()).toBe(false);
+  });
+
+  it('counts the cost when it opens, and says the events stay', async () => {
+    const { wrapper } = await openIt();
+
+    expect(festivals.fetchFestivalDeletion).toHaveBeenCalledWith(
+      'org-1',
+      'festival-1',
+      expect.anything(),
+    );
+    const text = festivalDialog(wrapper).text();
+    expect(text).toContain('27');
+    // Two events kept, and told to delete them one by one: the one sentence
+    // whose content is fixed whatever the counts.
+    expect(festivalDialog(wrapper).findAll('strong')).toHaveLength(1);
+  });
+
+  it('holds the delete until the festival’s name is typed back', async () => {
+    const { wrapper } = await openIt();
+    const dialog = festivalDialog(wrapper);
+    const confirm = dialog.find<HTMLButtonElement>('.evp-confirm-destroy');
+
+    expect(confirm.element.disabled).toBe(true);
+    await dialog.find('input').setValue('Soundclash');
+    expect(confirm.element.disabled).toBe(true);
+    await dialog.find('input').setValue(' Soundclash 26 ');
+    expect(confirm.element.disabled).toBe(false);
+  });
+
+  it('deletes with the version it rendered, then goes to the events list', async () => {
+    const remove = vi.spyOn(festivals, 'deleteFestival').mockResolvedValue({
+      ok: true,
+      operationId: 'op-1',
+      eventsUngrouped: 2,
+    });
+    const { wrapper, router } = await openIt();
+    const dialog = festivalDialog(wrapper);
+
+    await dialog.find('input').setValue('Soundclash 26');
+    await dialog.find('.evp-confirm-destroy').trigger('click');
+    await flushPromises();
+
+    expect(remove).toHaveBeenCalledWith('org-1', 'festival-1', 1);
+    expect(router.currentRoute.value.path).toBe('/org-1/events');
+  });
+
+  it('stays open and says why when the delete is refused', async () => {
+    vi.spyOn(festivals, 'deleteFestival').mockResolvedValue({
+      ok: false,
+      rejection: { reason: 'conflict', detail: 'stale' },
+    });
+    const { wrapper, router } = await openIt();
+    const dialog = festivalDialog(wrapper);
+
+    await dialog.find('input').setValue('Soundclash 26');
+    await dialog.find('.evp-confirm-destroy').trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe(
+      '/org-1/festivals/festival-1/details',
+    );
+    expect(festivalDialog(wrapper).find('[role="alert"]').exists()).toBe(true);
+  });
+});

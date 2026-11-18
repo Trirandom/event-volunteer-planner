@@ -17,7 +17,9 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 import {
   createFestival,
+  deleteFestival,
   fetchFestival,
+  fetchFestivalDeletion,
   fetchFestivals,
   loadExampleFestival,
   type CreateFestivalInput,
@@ -106,6 +108,62 @@ export function useLoadExampleFestival(orgId: MaybeRefOrGetter<string>) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: festivalsQueryKey(toValue(orgId)),
+      });
+    },
+  });
+}
+
+/**
+ * `GET /festivals/{festival}/deletion`: what deleting it would cost.
+ *
+ * Gated on `enabled` because it is owner-only and only worth asking once
+ * the confirmation opens. `staleTime: 0` keeps the count from an earlier
+ * opening from standing in for one a new submission has since changed.
+ */
+export function useFestivalDeletion(
+  orgId: MaybeRefOrGetter<string>,
+  festivalId: MaybeRefOrGetter<string>,
+  options: { readonly enabled: MaybeRefOrGetter<boolean> },
+) {
+  return useQuery({
+    queryKey: computed(() => [
+      ...festivalQueryKey(toValue(orgId), toValue(festivalId)),
+      'deletion',
+    ]),
+    queryFn: async ({ signal }) =>
+      fetchFestivalDeletion(toValue(orgId), toValue(festivalId), signal),
+    enabled: computed(() => toValue(options.enabled)),
+    staleTime: 0,
+  });
+}
+
+/**
+ * `DELETE /festivals/{festival}` (ADR-0053).
+ *
+ * The festival's own entries are removed rather than invalidated: refetching
+ * them would only fetch a 404. Everything else under the org is
+ * invalidated, because the delete reaches well past the festival — its
+ * events are regrouped, its forms and their submissions are gone, and so is
+ * availability read off them. Naming each of those caches here would be a
+ * list that silently goes stale the day another one is added.
+ */
+export function useDeleteFestival(orgId: MaybeRefOrGetter<string>) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      readonly festivalId: string;
+      readonly version: number;
+    }) => deleteFestival(toValue(orgId), input.festivalId, input.version),
+    onSuccess: async (result, input) => {
+      if (!result.ok) {
+        return;
+      }
+      queryClient.removeQueries({
+        queryKey: festivalQueryKey(toValue(orgId), input.festivalId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['orgs', toValue(orgId)],
       });
     },
   });

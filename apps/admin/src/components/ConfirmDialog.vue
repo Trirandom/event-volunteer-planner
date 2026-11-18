@@ -51,8 +51,12 @@ const props = withDefaults(
      * a literal default here would be frozen in whichever language it was
      * written in. */
     readonly cancelLabel?: string | undefined;
+    /** Holds the destructive button until the caller's own condition is met
+     * — a name typed back, say — for a question whose answer cannot be
+     * taken back. Cancel stays available whatever this says. */
+    readonly confirmDisabled?: boolean;
   }>(),
-  { error: null, cancelLabel: undefined },
+  { error: null, cancelLabel: undefined, confirmDisabled: false },
 );
 
 const cancelLabel = computed(
@@ -153,7 +157,7 @@ onBeforeUnmount(() => {
         <button
           type="button"
           class="evp-button evp-confirm-destroy"
-          :disabled="busy"
+          :disabled="busy || confirmDisabled"
           @click="emit('confirm')"
         >
           {{ busy ? busyLabel : confirmLabel }}

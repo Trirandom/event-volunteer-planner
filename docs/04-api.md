@@ -364,8 +364,20 @@ GET    /api/v1/orgs/{org}/festivals                    ?status=
 POST   /api/v1/orgs/{org}/festivals
        { name, slug, timezone, period: {start, end} }
 GET    /api/v1/orgs/{org}/festivals/{festival}                    → Festival, with `events: [Event]` inlined
+DELETE /api/v1/orgs/{org}/festivals/{festival}                    (owner; If-Match) → { operation_id, events_ungrouped, forms_deleted, submissions_deleted }
+GET    /api/v1/orgs/{org}/festivals/{festival}/deletion           (owner) → { events, forms, submissions }: what the DELETE would touch
 POST   /api/v1/orgs/{org}/festivals/example                       → loads the worked example (below); 409 if the org already has any festival
 ```
+
+**Deleting a festival** ([ADR-0053](adr/0053-deleting-a-festival-ungroups-its-events-and-deletes-its-forms.md))
+ungroups its events and deletes its forms. The events stay, standalone,
+with everything under them. Each is deleted afterwards through its own
+`DELETE …/events/{event}`, one at a time. The festival's forms go with
+their versions, intake sources, submissions and payloads, and so do the
+availability windows read off those submissions; volunteers and
+coordinator-declared windows stay. The admin reads `…/deletion` first and
+has the owner type the festival's name. The operation is recorded
+`undoable = false` when forms or submissions went.
 
 `POST /festivals` and `POST /events` both respond `201` with the resource
 under a named key (`{ "festival": Festival, "operation_id" }` /

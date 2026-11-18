@@ -30,9 +30,9 @@
           "parent": null,
           "sort_order": 0,
           "colour": null,
-          "description": null,
+          "description": "Servir des boissons aux festivalier·ères",
           "address": null,
-          "exact_address": null,
+          "exact_address": "8 rue du ban de la roche",
           "latitude": null,
           "longitude": null,
           "min_volunteers": 4,
@@ -50,19 +50,6 @@
           "longitude": null,
           "min_volunteers": 8,
           "max_volunteers": 20
-        },
-        {
-          "name": "Entrée",
-          "parent": null,
-          "sort_order": 2,
-          "colour": null,
-          "description": null,
-          "address": null,
-          "exact_address": null,
-          "latitude": null,
-          "longitude": null,
-          "min_volunteers": 2,
-          "max_volunteers": 6
         },
         {
           "name": "Prévention VHSS",
@@ -91,19 +78,6 @@
           "max_volunteers": 6
         },
         {
-          "name": "Vestiaire",
-          "parent": null,
-          "sort_order": 7,
-          "colour": null,
-          "description": null,
-          "address": null,
-          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
-          "latitude": null,
-          "longitude": null,
-          "min_volunteers": 2,
-          "max_volunteers": 3
-        },
-        {
           "name": "Démontage",
           "parent": null,
           "sort_order": 9,
@@ -115,6 +89,19 @@
           "longitude": null,
           "min_volunteers": 8,
           "max_volunteers": 20
+        },
+        {
+          "name": "Responsable bar",
+          "parent": 0,
+          "sort_order": 0,
+          "colour": null,
+          "description": "S'assurer que le bar n'est pas sous staffé et changer les fûts",
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 1,
+          "max_volunteers": 1
         }
       ],
       "shifts": [
@@ -185,7 +172,7 @@
           "notes": null
         },
         {
-          "location": 3,
+          "location": 2,
           "period": [
             "2026-09-05T14:00:00+02:00",
             "2026-09-05T16:00:00+02:00"
@@ -196,7 +183,7 @@
           "notes": null
         },
         {
-          "location": 3,
+          "location": 2,
           "period": [
             "2026-09-05T16:00:00+02:00",
             "2026-09-05T18:00:00+02:00"
@@ -207,7 +194,7 @@
           "notes": null
         },
         {
-          "location": 3,
+          "location": 2,
           "period": [
             "2026-09-05T18:00:00+02:00",
             "2026-09-05T20:00:00+02:00"
@@ -218,7 +205,7 @@
           "notes": null
         },
         {
-          "location": 3,
+          "location": 2,
           "period": [
             "2026-09-05T20:00:00+02:00",
             "2026-09-05T22:00:00+02:00"
@@ -229,7 +216,7 @@
           "notes": null
         },
         {
-          "location": 4,
+          "location": 3,
           "period": [
             "2026-09-05T10:00:00+02:00",
             "2026-09-05T14:00:00+02:00"
@@ -240,7 +227,7 @@
           "notes": null
         },
         {
-          "location": 6,
+          "location": 4,
           "period": [
             "2026-09-05T22:00:00+02:00",
             "2026-09-06T01:00:00+02:00"
@@ -269,19 +256,6 @@
       "availability_step_minutes": 30,
       "locations": [
         {
-          "name": "Démontage",
-          "parent": null,
-          "sort_order": 0,
-          "colour": null,
-          "description": "aider au démontage",
-          "address": null,
-          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
-          "latitude": null,
-          "longitude": null,
-          "min_volunteers": 8,
-          "max_volunteers": 20
-        },
-        {
           "name": "Montage",
           "parent": null,
           "sort_order": 0,
@@ -297,7 +271,7 @@
       ],
       "shifts": [
         {
-          "location": 1,
+          "location": 0,
           "period": [
             "2026-09-10T13:00:00+02:00",
             "2026-09-10T20:00:00+02:00"
@@ -330,13 +304,26 @@
           "parent": null,
           "sort_order": 0,
           "colour": null,
+          "description": "Servir des boissons aux festivalier·ères",
+          "address": null,
+          "exact_address": "8 rue du ban de la roche",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 4,
+          "max_volunteers": 8
+        },
+        {
+          "name": "Mapping vidéo",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
           "description": null,
           "address": null,
           "exact_address": null,
           "latitude": null,
           "longitude": null,
-          "min_volunteers": 4,
-          "max_volunteers": 8
+          "min_volunteers": null,
+          "max_volunteers": null
         },
         {
           "name": "Montage",
@@ -415,6 +402,19 @@
           "longitude": null,
           "min_volunteers": 8,
           "max_volunteers": 20
+        },
+        {
+          "name": "Responsable bar",
+          "parent": 0,
+          "sort_order": 0,
+          "colour": null,
+          "description": "S'assurer que le bar n'est pas sous staffé et changer les fûts",
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 1,
+          "max_volunteers": 1
         }
       ],
       "shifts": [
@@ -496,7 +496,7 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-11T20:00:00+02:00",
             "2026-09-11T22:00:00+02:00"
@@ -507,7 +507,7 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-11T22:00:00+02:00",
             "2026-09-12T00:00:00+02:00"
@@ -518,7 +518,7 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-12T00:00:00+02:00",
             "2026-09-12T02:00:00+02:00"
@@ -529,7 +529,7 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-12T02:00:00+02:00",
             "2026-09-12T04:00:00+02:00"
@@ -540,10 +540,43 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-12T04:00:00+02:00",
-            "2026-09-12T05:00:00+02:00"
+            "2026-09-12T06:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 1,
+          "period": [
+            "2026-09-12T06:00:00+02:00",
+            "2026-09-12T08:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-11T13:00:00+02:00",
+            "2026-09-11T16:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-11T16:00:00+02:00",
+            "2026-09-11T20:00:00+02:00"
           ],
           "title": null,
           "required_count": 1,
@@ -607,6 +640,61 @@
         },
         {
           "location": 4,
+          "period": [
+            "2026-09-11T20:00:00+02:00",
+            "2026-09-11T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-11T22:00:00+02:00",
+            "2026-09-12T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-12T00:00:00+02:00",
+            "2026-09-12T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-12T02:00:00+02:00",
+            "2026-09-12T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 4,
+          "period": [
+            "2026-09-12T04:00:00+02:00",
+            "2026-09-12T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 5,
           "period": [
             "2026-09-11T13:00:00+02:00",
             "2026-09-11T20:00:00+02:00"
@@ -617,7 +705,7 @@
           "notes": null
         },
         {
-          "location": 4,
+          "location": 5,
           "period": [
             "2026-09-11T20:00:00+02:00",
             "2026-09-11T22:00:00+02:00"
@@ -628,7 +716,7 @@
           "notes": null
         },
         {
-          "location": 4,
+          "location": 5,
           "period": [
             "2026-09-11T22:00:00+02:00",
             "2026-09-12T00:00:00+02:00"
@@ -639,7 +727,7 @@
           "notes": null
         },
         {
-          "location": 4,
+          "location": 5,
           "period": [
             "2026-09-12T00:00:00+02:00",
             "2026-09-12T02:00:00+02:00"
@@ -650,7 +738,7 @@
           "notes": null
         },
         {
-          "location": 4,
+          "location": 5,
           "period": [
             "2026-09-12T02:00:00+02:00",
             "2026-09-12T04:00:00+02:00"
@@ -661,7 +749,7 @@
           "notes": null
         },
         {
-          "location": 4,
+          "location": 5,
           "period": [
             "2026-09-12T04:00:00+02:00",
             "2026-09-12T05:00:00+02:00"
@@ -672,7 +760,7 @@
           "notes": null
         },
         {
-          "location": 4,
+          "location": 5,
           "period": [
             "2026-09-12T05:00:00+02:00",
             "2026-09-12T08:00:00+02:00"
@@ -683,7 +771,7 @@
           "notes": null
         },
         {
-          "location": 5,
+          "location": 6,
           "period": [
             "2026-09-11T20:00:00+02:00",
             "2026-09-11T22:00:00+02:00"
@@ -694,7 +782,7 @@
           "notes": null
         },
         {
-          "location": 5,
+          "location": 6,
           "period": [
             "2026-09-11T22:00:00+02:00",
             "2026-09-12T00:00:00+02:00"
@@ -705,7 +793,7 @@
           "notes": null
         },
         {
-          "location": 5,
+          "location": 6,
           "period": [
             "2026-09-12T00:00:00+02:00",
             "2026-09-12T02:00:00+02:00"
@@ -716,7 +804,7 @@
           "notes": null
         },
         {
-          "location": 5,
+          "location": 6,
           "period": [
             "2026-09-12T02:00:00+02:00",
             "2026-09-12T04:00:00+02:00"
@@ -727,7 +815,7 @@
           "notes": null
         },
         {
-          "location": 5,
+          "location": 6,
           "period": [
             "2026-09-12T04:00:00+02:00",
             "2026-09-12T05:00:00+02:00"
@@ -738,7 +826,7 @@
           "notes": null
         },
         {
-          "location": 6,
+          "location": 7,
           "period": [
             "2026-09-12T05:00:00+02:00",
             "2026-09-12T08:00:00+02:00"
@@ -771,13 +859,26 @@
           "parent": null,
           "sort_order": 0,
           "colour": null,
+          "description": "Servir des boissons aux festivalier·ères",
+          "address": null,
+          "exact_address": "8 rue du ban de la roche",
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 4,
+          "max_volunteers": 8
+        },
+        {
+          "name": "Mapping vidéo",
+          "parent": null,
+          "sort_order": 0,
+          "colour": null,
           "description": null,
           "address": null,
           "exact_address": null,
           "latitude": null,
           "longitude": null,
-          "min_volunteers": 4,
-          "max_volunteers": 8
+          "min_volunteers": null,
+          "max_volunteers": null
         },
         {
           "name": "Montage",
@@ -856,6 +957,19 @@
           "longitude": null,
           "min_volunteers": 8,
           "max_volunteers": 20
+        },
+        {
+          "name": "Responsable bar",
+          "parent": 0,
+          "sort_order": 0,
+          "colour": null,
+          "description": "S'assurer que le bar n'est pas sous staffé et changer les fûts",
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 1,
+          "max_volunteers": 1
         }
       ],
       "shifts": [
@@ -937,7 +1051,7 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-12T20:00:00+02:00",
             "2026-09-12T22:00:00+02:00"
@@ -948,7 +1062,7 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-12T22:00:00+02:00",
             "2026-09-13T00:00:00+02:00"
@@ -959,7 +1073,7 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-13T00:00:00+02:00",
             "2026-09-13T02:00:00+02:00"
@@ -970,7 +1084,7 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-13T02:00:00+02:00",
             "2026-09-13T04:00:00+02:00"
@@ -981,10 +1095,43 @@
           "notes": null
         },
         {
-          "location": 2,
+          "location": 1,
           "period": [
             "2026-09-13T04:00:00+02:00",
             "2026-09-13T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-12T14:00:00+02:00",
+            "2026-09-12T16:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-12T16:00:00+02:00",
+            "2026-09-12T18:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
+          "period": [
+            "2026-09-12T18:00:00+02:00",
+            "2026-09-12T20:00:00+02:00"
           ],
           "title": null,
           "required_count": 1,
@@ -1049,17 +1196,6 @@
         {
           "location": 4,
           "period": [
-            "2026-09-12T14:00:00+02:00",
-            "2026-09-12T20:00:00+02:00"
-          ],
-          "title": null,
-          "required_count": 1,
-          "max_count": null,
-          "notes": null
-        },
-        {
-          "location": 5,
-          "period": [
             "2026-09-12T20:00:00+02:00",
             "2026-09-12T22:00:00+02:00"
           ],
@@ -1069,7 +1205,7 @@
           "notes": null
         },
         {
-          "location": 5,
+          "location": 4,
           "period": [
             "2026-09-12T22:00:00+02:00",
             "2026-09-13T00:00:00+02:00"
@@ -1080,7 +1216,7 @@
           "notes": null
         },
         {
-          "location": 5,
+          "location": 4,
           "period": [
             "2026-09-13T00:00:00+02:00",
             "2026-09-13T02:00:00+02:00"
@@ -1091,7 +1227,7 @@
           "notes": null
         },
         {
-          "location": 5,
+          "location": 4,
           "period": [
             "2026-09-13T02:00:00+02:00",
             "2026-09-13T04:00:00+02:00"
@@ -1102,7 +1238,7 @@
           "notes": null
         },
         {
-          "location": 5,
+          "location": 4,
           "period": [
             "2026-09-13T04:00:00+02:00",
             "2026-09-13T05:00:00+02:00"
@@ -1113,7 +1249,73 @@
           "notes": null
         },
         {
+          "location": 5,
+          "period": [
+            "2026-09-12T14:00:00+02:00",
+            "2026-09-12T20:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
           "location": 6,
+          "period": [
+            "2026-09-12T20:00:00+02:00",
+            "2026-09-12T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 6,
+          "period": [
+            "2026-09-12T22:00:00+02:00",
+            "2026-09-13T00:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 6,
+          "period": [
+            "2026-09-13T00:00:00+02:00",
+            "2026-09-13T02:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 6,
+          "period": [
+            "2026-09-13T02:00:00+02:00",
+            "2026-09-13T04:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 6,
+          "period": [
+            "2026-09-13T04:00:00+02:00",
+            "2026-09-13T05:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 7,
           "period": [
             "2026-09-13T05:00:00+02:00",
             "2026-09-13T09:00:00+02:00"
@@ -1146,9 +1348,9 @@
           "parent": null,
           "sort_order": 0,
           "colour": null,
-          "description": null,
+          "description": "Servir des boissons aux festivalier·ères",
           "address": null,
-          "exact_address": null,
+          "exact_address": "8 rue du ban de la roche",
           "latitude": null,
           "longitude": null,
           "min_volunteers": 4,
@@ -1168,19 +1370,6 @@
           "max_volunteers": 20
         },
         {
-          "name": "Entrée",
-          "parent": null,
-          "sort_order": 2,
-          "colour": null,
-          "description": null,
-          "address": null,
-          "exact_address": null,
-          "latitude": null,
-          "longitude": null,
-          "min_volunteers": 2,
-          "max_volunteers": 6
-        },
-        {
           "name": "Prévention VHSS",
           "parent": null,
           "sort_order": 3,
@@ -1194,32 +1383,6 @@
           "max_volunteers": 6
         },
         {
-          "name": "Catering",
-          "parent": null,
-          "sort_order": 4,
-          "colour": null,
-          "description": null,
-          "address": null,
-          "exact_address": null,
-          "latitude": null,
-          "longitude": null,
-          "min_volunteers": 3,
-          "max_volunteers": 6
-        },
-        {
-          "name": "Vestiaire",
-          "parent": null,
-          "sort_order": 7,
-          "colour": null,
-          "description": null,
-          "address": null,
-          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
-          "latitude": null,
-          "longitude": null,
-          "min_volunteers": 2,
-          "max_volunteers": 3
-        },
-        {
           "name": "Démontage",
           "parent": null,
           "sort_order": 9,
@@ -1231,6 +1394,19 @@
           "longitude": null,
           "min_volunteers": 8,
           "max_volunteers": 20
+        },
+        {
+          "name": "Responsable bar",
+          "parent": 0,
+          "sort_order": 0,
+          "colour": null,
+          "description": "S'assurer que le bar n'est pas sous staffé et changer les fûts",
+          "address": null,
+          "exact_address": null,
+          "latitude": null,
+          "longitude": null,
+          "min_volunteers": 1,
+          "max_volunteers": 1
         }
       ],
       "shifts": [
@@ -1279,7 +1455,29 @@
           "notes": null
         },
         {
-          "location": 3,
+          "location": 1,
+          "period": [
+            "2026-09-13T10:00:00+02:00",
+            "2026-09-13T12:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 1,
+          "period": [
+            "2026-09-13T12:00:00+02:00",
+            "2026-09-13T14:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
+          "location": 2,
           "period": [
             "2026-09-13T14:00:00+02:00",
             "2026-09-13T16:00:00+02:00"
@@ -1290,7 +1488,7 @@
           "notes": null
         },
         {
-          "location": 3,
+          "location": 2,
           "period": [
             "2026-09-13T16:00:00+02:00",
             "2026-09-13T18:00:00+02:00"
@@ -1301,7 +1499,7 @@
           "notes": null
         },
         {
-          "location": 3,
+          "location": 2,
           "period": [
             "2026-09-13T18:00:00+02:00",
             "2026-09-13T20:00:00+02:00"
@@ -1312,6 +1510,17 @@
           "notes": null
         },
         {
+          "location": 2,
+          "period": [
+            "2026-09-13T20:00:00+02:00",
+            "2026-09-13T22:00:00+02:00"
+          ],
+          "title": null,
+          "required_count": 1,
+          "max_count": null,
+          "notes": null
+        },
+        {
           "location": 3,
           "period": [
             "2026-09-13T20:00:00+02:00",
@@ -1323,18 +1532,7 @@
           "notes": null
         },
         {
-          "location": 6,
-          "period": [
-            "2026-09-13T20:00:00+02:00",
-            "2026-09-13T22:00:00+02:00"
-          ],
-          "title": null,
-          "required_count": 1,
-          "max_count": null,
-          "notes": null
-        },
-        {
-          "location": 6,
+          "location": 3,
           "period": [
             "2026-09-13T22:00:00+02:00",
             "2026-09-14T01:00:00+02:00"
@@ -1374,19 +1572,6 @@
           "longitude": null,
           "min_volunteers": 8,
           "max_volunteers": 20
-        },
-        {
-          "name": "Montage",
-          "parent": null,
-          "sort_order": 0,
-          "colour": null,
-          "description": "Aider au montage de l'événement",
-          "address": null,
-          "exact_address": "19 Rue du Ban-de-la-Roche, 67000 Strasbourg",
-          "latitude": null,
-          "longitude": null,
-          "min_volunteers": 8,
-          "max_volunteers": 20
         }
       ],
       "shifts": [
@@ -1407,7 +1592,7 @@
   "volunteers": [
     {
       "display_name": "Camille 🐚",
-      "first_name": null,
+      "first_name": "Camille 🐚",
       "last_name": null,
       "email": null,
       "phone": null,
@@ -1416,24 +1601,21 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-04T13:09:00+02:00",
-      "answers": [
-        {
-          "value": "Bar, Entrées",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "entrée"
+        ],
+        "volunteer.first_name": "Camille 🐚"
+      },
       "participations": [
         {
           "event": "open-air",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1449,7 +1631,7 @@
         },
         {
           "event": "dub-and-2step",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1465,7 +1647,7 @@
         },
         {
           "event": "dnb-and-dubstep",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1481,7 +1663,7 @@
         },
         {
           "event": "after",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1497,7 +1679,7 @@
         },
         {
           "event": "demontage-molo",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1515,8 +1697,8 @@
     },
     {
       "display_name": "Bastien poire",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Bastien",
+      "last_name": "Poire",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -1524,24 +1706,22 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-04T14:06:00+02:00",
-      "answers": [
-        {
-          "value": "Bar, Entrées",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "entrée"
+        ],
+        "volunteer.first_name": "Bastien",
+        "volunteer.last_name": "Poire"
+      },
       "participations": [
         {
           "event": "dnb-and-dubstep",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1559,8 +1739,8 @@
     },
     {
       "display_name": "MARCHAND Aurel",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Aurel",
+      "last_name": "Marchand",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -1568,24 +1748,25 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T11:22:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "entrée",
+          "montage",
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Aurel",
+        "volunteer.last_name": "Marchand"
+      },
       "participations": [
         {
           "event": "dub-and-2step",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1601,7 +1782,7 @@
         },
         {
           "event": "dnb-and-dubstep",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1617,7 +1798,7 @@
         },
         {
           "event": "after",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1633,7 +1814,7 @@
         },
         {
           "event": "demontage-molo",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1651,7 +1832,7 @@
     },
     {
       "display_name": "Jo",
-      "first_name": null,
+      "first_name": "Jo",
       "last_name": null,
       "email": null,
       "phone": null,
@@ -1660,24 +1841,24 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T11:27:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "C'est ma première soirée en tant que bénévole",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "c-est-ma-premiere-fois",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "entrée",
+          "montage",
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Jo"
+      },
       "participations": [
         {
           "event": "open-air",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1693,7 +1874,7 @@
         },
         {
           "event": "montage-molo",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1709,7 +1890,7 @@
         },
         {
           "event": "dub-and-2step",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1725,7 +1906,7 @@
         },
         {
           "event": "dnb-and-dubstep",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1741,7 +1922,7 @@
         },
         {
           "event": "after",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1757,7 +1938,7 @@
         },
         {
           "event": "demontage-molo",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1775,7 +1956,7 @@
     },
     {
       "display_name": "Delmas",
-      "first_name": null,
+      "first_name": "Delmas",
       "last_name": null,
       "email": null,
       "phone": null,
@@ -1784,16 +1965,16 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T12:38:00+02:00",
-      "answers": [
-        {
-          "value": "Je peux encadrer une équipe de bénévole",
-          "question": "Niveau d'expérience au bar et en évent"
-        }
-      ],
+      "answers": {
+        "Quel est ton niveau d’expérience en bénévolat ?": "je-peux-encadrer-une-equipe-de-benevoles",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "volunteer.first_name": "Delmas"
+      },
       "participations": [
         {
           "event": "dub-and-2step",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1811,8 +1992,8 @@
     },
     {
       "display_name": "Lise Chapuis",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Lise",
+      "last_name": "Chapuis",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -1820,24 +2001,23 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T13:10:00+02:00",
-      "answers": [
-        {
-          "value": "Bar, Entrées, Équipe de prévention VSS",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "entrée",
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Lise",
+        "volunteer.last_name": "Chapuis"
+      },
       "participations": [
         {
           "event": "open-air",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1855,8 +2035,8 @@
     },
     {
       "display_name": "Perret Amélie",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Amélie",
+      "last_name": "Perret",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -1864,20 +2044,24 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T13:34:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        }
-      ],
+      "answers": {
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "entrée",
+          "montage",
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Amélie",
+        "volunteer.last_name": "Perret"
+      },
       "participations": [
         {
           "event": "dnb-and-dubstep",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1895,8 +2079,8 @@
     },
     {
       "display_name": "Margaux Fischbach",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Margaux",
+      "last_name": "Fischbach",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -1904,24 +2088,25 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T14:01:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS, Juges",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "entrée",
+          "montage",
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Margaux",
+        "volunteer.last_name": "Fischbach"
+      },
       "participations": [
         {
           "event": "montage-molo",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1939,8 +2124,8 @@
     },
     {
       "display_name": "BENALI Yasmîn",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Yasmîn",
+      "last_name": "Benali",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -1948,24 +2133,24 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T14:05:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Entrées, Communication",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "entrée",
+          "montage"
+        ],
+        "volunteer.first_name": "Yasmîn",
+        "volunteer.last_name": "Benali"
+      },
       "participations": [
         {
           "event": "open-air",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -1983,8 +2168,8 @@
     },
     {
       "display_name": "Chevalier Olivier",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Olivier",
+      "last_name": "Chevalier",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -1992,24 +2177,21 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T14:08:00+02:00",
-      "answers": [
-        {
-          "value": "Entrées",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "entrée"
+        ],
+        "volunteer.first_name": "Olivier",
+        "volunteer.last_name": "Chevalier"
+      },
       "participations": [
         {
           "event": "dub-and-2step",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2027,8 +2209,8 @@
     },
     {
       "display_name": "Solene Cerf",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Solene",
+      "last_name": "Cerf",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2036,20 +2218,24 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T15:21:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "entrée",
+          "montage",
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Solene",
+        "volunteer.last_name": "Cerf"
+      },
       "participations": [
         {
           "event": "dnb-and-dubstep",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2067,8 +2253,8 @@
     },
     {
       "display_name": "BARTHE Maelle",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Maelle",
+      "last_name": "Barthe",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2076,20 +2262,20 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T16:28:00+02:00",
-      "answers": [
-        {
-          "value": "Bar",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai sais changer un fut les yeux fermés",
-          "question": "Niveau d'expérience au bar et en évent"
-        }
-      ],
+      "answers": {
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar"
+        ],
+        "volunteer.first_name": "Maelle",
+        "volunteer.last_name": "Barthe"
+      },
       "participations": [
         {
           "event": "after",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2107,8 +2293,8 @@
     },
     {
       "display_name": "Weber Margot",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Margot",
+      "last_name": "Weber",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2116,26 +2302,24 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T17:53:00+02:00",
-      "answers": [
-        {
-          "value": "Bar, Entrées",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "entrée"
+        ],
+        "volunteer.first_name": "Margot",
+        "volunteer.last_name": "Weber"
+      },
       "participations": []
     },
     {
       "display_name": "Anouk rousset",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Anouk",
+      "last_name": "Rousset",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2143,24 +2327,22 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-05T18:35:00+02:00",
-      "answers": [
-        {
-          "value": "Bar, Catering",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "Je peux encadrer une équipe de bénévole",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "je-peux-encadrer-une-equipe-de-benevoles",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "catering"
+        ],
+        "volunteer.first_name": "Anouk",
+        "volunteer.last_name": "Rousset"
+      },
       "participations": [
         {
           "event": "dnb-and-dubstep",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2178,8 +2360,8 @@
     },
     {
       "display_name": "Elyne lavigne djcolibri",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Elyne",
+      "last_name": "Lavigne",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2187,24 +2369,21 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-06T19:41:00+02:00",
-      "answers": [
-        {
-          "value": "Bar",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar"
+        ],
+        "volunteer.first_name": "Elyne",
+        "volunteer.last_name": "Lavigne"
+      },
       "participations": [
         {
           "event": "dub-and-2step",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2222,8 +2401,8 @@
     },
     {
       "display_name": "Guyot basile",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Basile",
+      "last_name": "Guyot",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2231,24 +2410,22 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-06T20:38:00+02:00",
-      "answers": [
-        {
-          "value": "Bar, Entrées",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai sais changer un fut les yeux fermés",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "entrée"
+        ],
+        "volunteer.first_name": "Basile",
+        "volunteer.last_name": "Guyot"
+      },
       "participations": [
         {
           "event": "open-air",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2266,7 +2443,7 @@
     },
     {
       "display_name": "Kev",
-      "first_name": null,
+      "first_name": "Kev",
       "last_name": null,
       "email": null,
       "phone": null,
@@ -2275,24 +2452,24 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-07T13:11:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Entrées, Équipe de prévention VSS",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "Je peux encadrer une équipe de bénévole",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "je-peux-encadrer-une-equipe-de-benevoles",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "entrée",
+          "montage",
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Kev"
+      },
       "participations": [
         {
           "event": "open-air",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2308,7 +2485,7 @@
         },
         {
           "event": "montage-molo",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2326,8 +2503,8 @@
     },
     {
       "display_name": "GONÇALVES Lina",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Lina",
+      "last_name": "Gonçalves",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2335,24 +2512,23 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-07T14:23:00+02:00",
-      "answers": [
-        {
-          "value": "Bar, Entrées, Équipe de prévention VSS",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "entrée",
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Lina",
+        "volunteer.last_name": "Gonçalves"
+      },
       "participations": [
         {
           "event": "open-air",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2370,8 +2546,8 @@
     },
     {
       "display_name": "Steinmetz Fabien",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Fabien",
+      "last_name": "Steinmetz",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2379,24 +2555,24 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-07T21:05:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Équipe de prévention VSS, Run",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "montage",
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Fabien",
+        "volunteer.last_name": "Steinmetz"
+      },
       "participations": [
         {
           "event": "after",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2423,8 +2599,8 @@
     },
     {
       "display_name": "Bertaud Maëlys",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Maëlys",
+      "last_name": "Bertaud",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2432,24 +2608,23 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-09T12:49:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "montage"
+        ],
+        "volunteer.first_name": "Maëlys",
+        "volunteer.last_name": "Bertaud"
+      },
       "participations": [
         {
           "event": "montage-molo",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2467,8 +2642,8 @@
     },
     {
       "display_name": "LEFEBVRE Soline",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Soline",
+      "last_name": "Lefebvre",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2476,24 +2651,21 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-10T12:31:00+02:00",
-      "answers": [
-        {
-          "value": "Équipe de prévention VSS",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "Je peux encadrer une équipe de bénévole",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "je-peux-encadrer-une-equipe-de-benevoles",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "prévention vhss"
+        ],
+        "volunteer.first_name": "Soline",
+        "volunteer.last_name": "Lefebvre"
+      },
       "participations": [
         {
           "event": "after",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2511,8 +2683,8 @@
     },
     {
       "display_name": "Renaud Oriane",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Oriane",
+      "last_name": "Renaud",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2520,24 +2692,22 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-10T13:53:00+02:00",
-      "answers": [
-        {
-          "value": "Bar, Entrées",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "entrée"
+        ],
+        "volunteer.first_name": "Oriane",
+        "volunteer.last_name": "Renaud"
+      },
       "participations": [
         {
           "event": "after",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2555,8 +2725,8 @@
     },
     {
       "display_name": "Léna HARRISON",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Léna",
+      "last_name": "Harrison",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2564,24 +2734,21 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-11T21:28:00+02:00",
-      "answers": [
-        {
-          "value": "Bar",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar"
+        ],
+        "volunteer.first_name": "Léna",
+        "volunteer.last_name": "Harrison"
+      },
       "participations": [
         {
           "event": "dub-and-2step",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2599,8 +2766,8 @@
     },
     {
       "display_name": "PASQUALE Barnabé",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Barnabé",
+      "last_name": "Pasquale",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2608,24 +2775,24 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-12T13:35:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Entrées",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "entrée",
+          "montage"
+        ],
+        "volunteer.first_name": "Barnabé",
+        "volunteer.last_name": "Pasquale"
+      },
       "participations": [
         {
           "event": "open-air",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2643,7 +2810,7 @@
     },
     {
       "display_name": "Grégoire",
-      "first_name": null,
+      "first_name": "Grégoire",
       "last_name": null,
       "email": null,
       "phone": null,
@@ -2652,20 +2819,21 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-15T20:16:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "Oui",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": true,
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "montage"
+        ],
+        "volunteer.first_name": "Grégoire"
+      },
       "participations": [
         {
           "event": "dnb-and-dubstep",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2683,7 +2851,7 @@
     },
     {
       "display_name": "Moustache",
-      "first_name": null,
+      "first_name": "Moustache",
       "last_name": null,
       "email": null,
       "phone": null,
@@ -2692,24 +2860,22 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-18T13:21:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Light",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "J'ai de la bouteille",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "j-ai-de-la-bouteille",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "démontage",
+          "mapping vidéo",
+          "montage"
+        ],
+        "volunteer.first_name": "Moustache"
+      },
       "participations": [
         {
           "event": "demontage-molo",
-          "status": "invited",
+          "status": "confirmed",
           "windows": [
             {
               "kind": "available",
@@ -2727,8 +2893,8 @@
     },
     {
       "display_name": "HAMDAOUI Sana",
-      "first_name": null,
-      "last_name": null,
+      "first_name": "Sana",
+      "last_name": "Hamdaoui",
       "email": null,
       "phone": null,
       "tshirt_size": null,
@@ -2736,20 +2902,20 @@
       "notes": null,
       "is_core_team": false,
       "submitted_at": "2026-08-18T23:38:00+02:00",
-      "answers": [
-        {
-          "value": "Montage / Démontage, Bar, Entrées",
-          "question": "Postes préférés lors des événements"
-        },
-        {
-          "value": "C'est ma première soirée en tant que bénévole",
-          "question": "Niveau d'expérience au bar et en évent"
-        },
-        {
-          "value": "Non",
-          "question": "Avez vous le permis"
-        }
-      ],
+      "answers": {
+        "As-tu le permis de conduire (B) ?": false,
+        "Quel est ton niveau d’expérience en bénévolat ?": "c-est-ma-premiere-fois",
+        "consent:commitment": true,
+        "consent:processing": true,
+        "missions": [
+          "bar",
+          "démontage",
+          "entrée",
+          "montage"
+        ],
+        "volunteer.first_name": "Sana",
+        "volunteer.last_name": "Hamdaoui"
+      },
       "participations": []
     }
   ]

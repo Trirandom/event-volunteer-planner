@@ -913,3 +913,91 @@ async fn the_example_creates_volunteers_participations_and_availability() {
         "submissions must come back sorted by submitted_at ascending"
     );
 }
+
+/// The example's submissions are first-party form submissions, not legacy
+/// rows: each pins the example form's live version, and its payload maps
+/// through the same `evp_intake` reading reconciliation uses onto the
+/// volunteer the fixture describes — first name and all, which a legacy
+/// single-name row could not give.
+#[tokio::test]
+async fn the_example_s_submissions_read_back_as_answers_to_its_form() {
+    let pool = pool().await;
+    let mut tx = pool.begin().await.expect("begin");
+    let (org_id, user_id) = seed_org(&mut tx).await;
+    let fixture = evp_domain::example::build().expect("example.json parses and resolves");
+    let (festival, _operation) = catalog::create_example(&mut tx, org_id, user_id, &fixture)
+        .await
+        .expect("the example persists on an empty org");
+
+    let form = evp_db::forms::list(&mut tx, org_id, Some(festival.id), None)
+        .await
+        .expect("list")
+        .remove(0);
+    let version = evp_db::forms::get_version(
+        &mut tx,
+        org_id,
+        form.id,
+        evp_db::forms::VersionRef::Number(1),
+    )
+    .await
+    .expect("get")
+    .expect("the example form has a first version");
+    let asked: Vec<evp_domain::submission::Asked<'_>> = version
+        .questions
+        .iter()
+        .map(|question| evp_domain::submission::Asked {
+            id: question.id,
+            question: &question.draft,
+        })
+        .collect();
+
+    let rows = sqlx::query(
+        "SELECT v.display_name, v.first_name, v.last_name, s.form_version_id, src.kind::text AS kind, p.raw \
+           FROM submissions s \
+           JOIN volunteers v ON v.id = s.volunteer_id \
+           JOIN intake_sources src ON src.id = s.source_id \
+           JOIN submission_payloads p ON p.submission_id = s.id \
+          WHERE s.org_id = $1",
+    )
+    .bind(org_id)
+    .fetch_all(&mut *tx)
+    .await
+    .expect("read the example's submissions");
+    assert_eq!(rows.len(), fixture.volunteers.len());
+
+    for row in &rows {
+        let name: String = row.get("display_name");
+        assert_eq!(row.get::<String, _>("kind"), "internal_form", "{name}");
+        assert_eq!(
+            row.get::<Option<Uuid>, _>("form_version_id"),
+            Some(version.id),
+            "{name}"
+        );
+        let derived = evp_intake::internal_form::parse_payload(&row.get("raw"))
+            .and_then(|payload| evp_intake::internal_form::derive(&asked, &payload))
+            .unwrap_or_else(|error| panic!("{name}'s payload does not map: {error}"));
+        assert_eq!(
+            derived.volunteer.first_name,
+            row.get::<Option<String>, _>("first_name"),
+            "{name}"
+        );
+        assert_eq!(
+            derived.volunteer.last_name,
+            row.get::<Option<String>, _>("last_name"),
+            "{name}"
+        );
+    }
+
+    // Shown as a coordinator reads them: the preset's wording, and the
+    // chosen option's label rather than its stored value.
+    let listed = evp_db::submissions::list(&mut tx, org_id)
+        .await
+        .expect("list submissions");
+    assert!(
+        listed.iter().flat_map(|s| &s.answers).any(|answer| {
+            answer.question == evp_domain::example::EXPERIENCE
+                && answer.value == "J’ai de la bouteille"
+        }),
+        "no experience answer read back with its label"
+    );
+}

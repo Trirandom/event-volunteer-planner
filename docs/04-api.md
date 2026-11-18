@@ -378,8 +378,12 @@ structurally complete scenario instead of building one by hand — Soundclash
 Molo; Dub & 2step; Dnb & Dubstep; After; Démontage Molo), each with its own
 locations and shifts — plus the edition's volunteers, with their
 participations, availability windows and form answers, stored as `applied`
-submissions so the submissions page has something real to show. No
-assignments: placing people is the work the example is there to try.
+submissions so the submissions page has something real to show. They are
+answers to the festival's form, as `/f/{slug}` stores them (docs/08 §9): the
+example's form is loaded published, so each submission pins a frozen
+version, and closed (`public_open = false`), since its slug is unique across
+organisations and opening it is the coordinator's call. No assignments:
+placing people is the work the example is there to try.
 Surfaced in the admin UI as an empty-state action, not only as an endpoint.
 `POST …/events/example` is the same load, reachable from the events screen;
 either route creates the one festival and its six events. Both are `409` when

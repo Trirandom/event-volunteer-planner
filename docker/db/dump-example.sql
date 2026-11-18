@@ -65,13 +65,42 @@ shift AS (
 ),
 -- One submission per volunteer: the latest applied one, which is what the
 -- pool row reflects. Earlier ones it superseded would load as duplicates.
+-- A form submission sent through /f/{slug} has no `submitted_at` of its
+-- own; when it was received is when it was answered.
 submission AS (
-    SELECT DISTINCT ON (s.volunteer_id) s.volunteer_id, s.submitted_at, p.raw
+    SELECT DISTINCT ON (s.volunteer_id)
+           s.volunteer_id, coalesce(s.submitted_at, s.received_at) AS submitted_at,
+           s.form_version_id, p.raw
     FROM submissions s
     JOIN org ON org.id = s.org_id
     LEFT JOIN submission_payloads p ON p.submission_id = s.id
     WHERE s.state = 'applied' AND s.volunteer_id IS NOT NULL
-    ORDER BY s.volunteer_id, s.submitted_at DESC NULLS LAST, s.id DESC
+    ORDER BY s.volunteer_id, coalesce(s.submitted_at, s.received_at) DESC NULLS LAST, s.id DESC
+),
+-- Each answer of a form payload under the key `evp_domain::example::answer_key`
+-- gives its question — the column it fills, `missions`, `consent:<purpose>`,
+-- or a custom question's French wording — since question ids are minted
+-- afresh on every load. The two definitions must agree. A legacy payload (a
+-- `[{question, value}]` array from an import) has no `answers` object and
+-- dumps none: the example form could not have received it.
+answer AS (
+    SELECT sub.volunteer_id,
+           json_object_agg(
+               CASE
+                   WHEN q.target_path IS NOT NULL THEN q.target_path
+                   WHEN q.kind = 'missions' THEN 'missions'
+                   WHEN q.kind = 'consent' THEN 'consent:' || q.consent_purpose::text
+                   ELSE q.label->>'fr'
+               END,
+               (sub.raw->'answers'->(q.id::text))::json
+               ORDER BY q.position
+           ) AS answers
+    FROM submission sub
+    JOIN form_questions q ON q.form_version_id = sub.form_version_id
+    WHERE jsonb_typeof(sub.raw->'answers') = 'object'
+      AND sub.raw->'answers' ? q.id::text
+      AND q.kind NOT IN ('section', 'availability')
+    GROUP BY sub.volunteer_id
 )
 SELECT json_build_object(
     'festival', json_build_object(
@@ -140,9 +169,7 @@ SELECT json_build_object(
             'notes', v.notes,
             'is_core_team', v.is_core_team,
             'submitted_at', sub.submitted_at,
-            -- Stored as `[{question, value}]` by both the example loader and
-            -- intake; passed through untouched.
-            'answers', coalesce(sub.raw::json, '[]'),
+            'answers', coalesce(answer.answers, '{}'),
             'participations', coalesce((
                 SELECT json_agg(json_build_object(
                     'event', e.slug,
@@ -180,6 +207,7 @@ SELECT json_build_object(
         ) ORDER BY sub.submitted_at NULLS LAST, v.display_name, v.id)
         FROM volunteers v
         LEFT JOIN submission sub ON sub.volunteer_id = v.id
+        LEFT JOIN answer ON answer.volunteer_id = v.id
         WHERE v.org_id = festival.org_id
     ), '[]')
 )

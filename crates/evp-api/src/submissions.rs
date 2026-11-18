@@ -4,11 +4,9 @@
 //! `GET /orgs/{org}/festivals/{festival}/submissions` — volunteer form
 //! submissions, for `PlanSubmissionsView` (docs/09, docs/03 §3.10).
 //!
-//! Read-only for now: nothing in this vertical slice reconciles a submission
-//! against the pool, reviews a fuzzy match, or applies an edit — this is the
-//! display the coordinator sees once `evp_db::catalog::create_example` (or,
-//! later, a real CSV import) has already resolved every submission to a
-//! volunteer.
+//! Read-only: this is the display the coordinator sees once intake
+//! (`evp_db::intake`) or `evp_db::catalog::create_example` has resolved a
+//! submission to a volunteer. Review is `evp-api/src/intake.rs`'s.
 
 use axum::Router;
 use axum::extract::{FromRef, Path};

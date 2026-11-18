@@ -577,19 +577,34 @@ pub(crate) async fn insert_seeded(
     Ok((form_id, version_id))
 }
 
-/// The worked example's form: a draft covering the whole festival, seeded
-/// exactly as `POST …/forms` seeds it. Left unpublished — publishing is the
-/// coordinator's decision, and the example's submissions did not come
-/// through it. Returns the ids the example's one operation should name.
+/// The worked example's form, as [`create_example`] leaves it.
+pub(crate) struct ExampleForm {
+    pub(crate) form_id: Uuid,
+    pub(crate) slug: String,
+    pub(crate) version_id: Uuid,
+    /// The live version's questions, with the ids the example's submissions
+    /// pin their answers to.
+    pub(crate) questions: Vec<Question>,
+}
+
+/// The worked example's form: [`evp_domain::example::form`] over the
+/// festival's missions, covering the whole festival.
+///
+/// Published, because the example's submissions answered it: a submission
+/// pins the version it answered (docs/08 §9), and only a published version
+/// is frozen — pinned to a draft, its answers would be relabelled by the next
+/// autosave. Closed (`public_open = false`), because the public slug is
+/// unique across organisations: two orgs loading the example must not
+/// collide, and opening a form to the public is the coordinator's decision.
 pub(crate) async fn create_example(
     conn: &mut PgConnection,
     org_id: Uuid,
+    actor_id: Uuid,
     festival: &crate::catalog::Festival,
-) -> Result<[Uuid; 2], DbError> {
+) -> Result<ExampleForm, DbError> {
     let rows = mission_rows(conn, org_id, Some(festival.id), None).await?;
     let organization = organization_name(conn, org_id).await?;
-    let seed =
-        evp_domain::form::seed_draft(true, &evp_domain::form::fold_missions(&rows), &organization);
+    let seed = evp_domain::example::form(&evp_domain::form::fold_missions(&rows), &organization);
     let (form_id, version_id) = insert_seeded(
         conn,
         org_id,
@@ -602,7 +617,34 @@ pub(crate) async fn create_example(
         &seed,
     )
     .await?;
-    Ok([form_id, version_id])
+
+    sqlx::query(
+        "UPDATE form_versions SET published_at = statement_timestamp(), published_by = $3 \
+          WHERE org_id = $1 AND id = $2",
+    )
+    .bind(org_id)
+    .bind(version_id)
+    .bind(actor_id)
+    .execute(&mut *conn)
+    .await
+    .map_err(DbError::Query)?;
+    sqlx::query(
+        "UPDATE forms SET live_version_id = $3, public_open = false \
+          WHERE org_id = $1 AND id = $2",
+    )
+    .bind(org_id)
+    .bind(form_id)
+    .bind(version_id)
+    .execute(&mut *conn)
+    .await
+    .map_err(DbError::Query)?;
+
+    Ok(ExampleForm {
+        form_id,
+        slug: festival.slug.clone(),
+        version_id,
+        questions: questions_of(conn, org_id, version_id).await?,
+    })
 }
 
 /// The fields `PATCH …/forms/{form}` may change. The slug and the scope are

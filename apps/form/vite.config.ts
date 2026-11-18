@@ -67,12 +67,12 @@ export default defineConfig({
     modulePreload: { polyfill: false },
     sourcemap: true,
     // This bundle is loaded once, on a phone, on event-site mobile data
-    // (docs/01 §5: < 1.5 s cold on 3G-fast). A rollup warning at 250 kB is
+    // (docs/01 §5: < 1.5 s cold on 3G-fast). A size warning at 250 kB is
     // early enough to be a conversation rather than a regression.
     chunkSizeWarningLimit: 250,
     // A second entry so it is its own small file that `build/firstPaint.ts`
     // can run ahead of the application, rather than code inside it.
-    rollupOptions: {
+    rolldownOptions: {
       input: {
         index: fileURLToPath(new URL('index.html', import.meta.url)),
         early: fileURLToPath(new URL('src/early.ts', import.meta.url)),

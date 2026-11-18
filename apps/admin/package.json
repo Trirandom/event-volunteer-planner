@@ -13,7 +13,7 @@
   "dependencies": {
     "@evp/shared": "workspace:*",
     "@floating-ui/dom": "1.8.0",
-    "@tanstack/vue-query": "5.107.1",
+    "@tanstack/vue-query": "5.104.5",
     "@tanstack/vue-virtual": "3.13.52",
     "@tiptap/core": "3.31.4",
     "@tiptap/extension-bold": "3.31.4",

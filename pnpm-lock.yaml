@@ -194,8 +194,8 @@ importers:
         specifier: 1.8.0
         version: 1.8.0
       '@tanstack/vue-query':
-        specifier: 5.107.1
-        version: 5.107.1(vue@3.5.45(typescript@6.0.3))
+        specifier: 5.104.5
+        version: 5.104.5(vue@3.5.45(typescript@6.0.3))
       '@tanstack/vue-virtual':
         specifier: 3.13.52
         version: 3.13.52(vue@3.5.45(typescript@6.0.3))
@@ -1135,14 +1135,14 @@ packages:
     resolution: {integrity: sha512-DIpUSOhPfQ7u/qfUi/Wgm0wBO56MyBYXGvnlI0NcauDRPqdBUlAZZjW2Dxm92m+k1UWVhKw8YJ4f47+75Aujyw==}
     engines: {node: '>=20'}
 
-  '@tanstack/query-core@5.107.1':
-    resolution: {integrity: sha512-PSyAik11oQBEVOiVy5hjZWHmoUqOXqK1WYy4v55mcxozEfKaQgpUMsgnXhWjuESzSht8JfzqMS1m6M/9CpNgvg==}
+  '@tanstack/query-core@5.104.5':
+    resolution: {integrity: sha512-Q94gI8Opd+CbdVNOdj8ZCyV8WqLYitrDq1t96Xc8WZT6lY0r5iRnJLXYDxMex7EEf2v+mXvn4FcjaBKSxXZQ9A==}
 
   '@tanstack/virtual-core@3.19.11':
     resolution: {integrity: sha512-/5iHb0RHBvj8Di59FDs4ESNm45jls33aZAi4zccVXZjc/6ZvwQP6nzEYeT6weXjTf9E6/vrp2JhYWRyO+ZP13A==}
 
-  '@tanstack/vue-query@5.107.1':
-    resolution: {integrity: sha512-O08F25JtbFDWJwEUjQNgSFRhkAXjlrAIUe0o06LfHC5agyNaxgzK9VUqjONu/BOUckARYdlXxSS7KIiKWeWlRw==}
+  '@tanstack/vue-query@5.104.5':
+    resolution: {integrity: sha512-18ydCVbhHYb95vKKxixZ8y1cVE87dG/2d7ZQfj46YKFR0Ry9drJdGp/UYQ3p7IH7b+bdwfoZr6xsnD78jknKng==}
     peerDependencies:
       '@vue/composition-api': ^1.1.2
       vue: ^2.6.0 || ^3.3.0
@@ -3615,14 +3615,14 @@ snapshots:
     dependencies:
       remove-accents: 0.5.0
 
-  '@tanstack/query-core@5.107.1': {}
+  '@tanstack/query-core@5.104.5': {}
 
   '@tanstack/virtual-core@3.19.11': {}
 
-  '@tanstack/vue-query@5.107.1(vue@3.5.45(typescript@6.0.3))':
+  '@tanstack/vue-query@5.104.5(vue@3.5.45(typescript@6.0.3))':
     dependencies:
       '@tanstack/match-sorter-utils': 9.2.6
-      '@tanstack/query-core': 5.107.1
+      '@tanstack/query-core': 5.104.5
       '@vue/devtools-api': 6.6.4
       vue: 3.5.45(typescript@6.0.3)
       vue-demi: 0.14.10(vue@3.5.45(typescript@6.0.3))

@@ -66,7 +66,7 @@ written.
 | utoipa | 5.5.0 | OpenAPI 3.1 from the handlers. Alive (4 May 2026). |
 | thiserror / tracing | 2.0.20 / 0.1.44 | Unchallenged, and both are effectively infrastructure. |
 | openidconnect | 4.0.1 | **Confirmed with a caveat** — see §7. It is the only maintained generic OIDC client in Rust, and ADR-0014 needs a generic one. |
-| lettre | 0.11.23 | SMTP with no SaaS. Alive (3 August 2026). |
+| lettre | 0.11.24 | SMTP with no SaaS. Alive (November 2026; 0.11.24 fixes RUSTSEC-2026-0560…0565). |
 | minijinja | 2.24.0 | Jinja syntax, small, no build step. Alive (12 August 2026). |
 | figment | 0.10.19 | **Confirmed with a caveat** — see §7. Last release 17 May 2024. |
 | tower_governor | 0.8.0 | Rate limiting as a layer, which is the `tower` argument again. |
@@ -197,7 +197,7 @@ alongside the ciphertext.
 
 | Crate | Version | Why this one | Rejected | Licence |
 | --- | --- | --- | --- | --- |
-| `lettre` | 0.11.23 | 02 §2. `default-features = false` because the default enables `native-tls`, which means OpenSSL, a C toolchain in the builder and an OpenSSL CVE cadence in a distroless image. Features `tokio1-rustls` + `rustls-native-certs` + `ring`, **not** `tokio1-rustls-tls`, which expands to `webpki-roots` — the same choice as SQLx's native roots above (§7). Linked by `evp-worker` (`mail.rs`); it brings `quoted_printable`, the one 0BSD crate in the tree, allowed by name in `deny.toml`. | `mail-send`, an SMTP SaaS SDK | MIT |
+| `lettre` | 0.11.24 | 02 §2. `default-features = false` because the default enables `native-tls`, which means OpenSSL, a C toolchain in the builder and an OpenSSL CVE cadence in a distroless image. Features `tokio1-rustls` + `rustls-native-certs` + `ring`, **not** `tokio1-rustls-tls`, which expands to `webpki-roots` — the same choice as SQLx's native roots above (§7). Linked by `evp-worker` (`mail.rs`); it brings `quoted_printable`, the one 0BSD crate in the tree, allowed by name in `deny.toml`. | `mail-send`, an SMTP SaaS SDK | MIT |
 | `minijinja` | 2.24.0 | Jinja syntax, so an email template is readable by someone who has never written Rust, and templates load at runtime rather than at compile time — which is what lets a deployment override one. **Not used for coordinator-written schedule templates:** those already say `{{eventName|festivalName}}` meaning "the first non-empty of the two", which Jinja reads as a filter call; `evp_domain::schedule::render` is a small port of the admin app's renderer instead. | `askama` (compile-time, so a template change is a rebuild), `tera` (larger), `handlebars` | Apache-2.0 |
 | `reqwest` | 0.12.28 | The SMS provider behind `SmsSender`, and `openidconnect`'s HTTP client. **Held on 0.12, not 0.13**: `openidconnect` 4 reaches reqwest through `oauth2` 5, which requires `^0.12`. Taking 0.13 here would compile two reqwest trees and two TLS stacks into one binary for nothing. It costs one duplicate — reqwest 0.12 depends on `tower-http` 0.6 while the server is on 0.7 — which is the cheaper of the two duplications. | `ureq`, `hyper` directly | MIT OR Apache-2.0 |
 | `deunicode` | 1.6.2 | GSM-7 transliteration, in part. See below. | `any_ascii` 0.3.3 (larger tables, same job), `unicode-normalization` + hand-rolled folding | BSD-3-Clause |

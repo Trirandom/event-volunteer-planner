@@ -684,6 +684,25 @@ mod tests {
     }
 
     #[test]
+    fn every_shift_lives_on_a_zone() {
+        // A post works its zone's shifts (ADR-0052); the database refuses a
+        // shift on one (`shift_on_post`), but only once a coordinator clicks
+        // the button, and the API reports it as a bad period. A dump taken
+        // from a database that predates that rule carries post shifts.
+        for event in &festival().events {
+            for shift in &event.shifts {
+                let location = &event.locations[shift.location];
+                assert!(
+                    location.parent.is_none(),
+                    "a shift of {} sits on the post {:?}",
+                    event.slug,
+                    location.name
+                );
+            }
+        }
+    }
+
+    #[test]
     fn slot_lengths_are_deliberately_uneven() {
         // "document uneven slot length": the source sheet never used one
         // uniform width, and code assuming it did must fail on the example.

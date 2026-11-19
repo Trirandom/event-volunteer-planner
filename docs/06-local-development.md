@@ -277,15 +277,16 @@ however few SQL files there are. Three things take most of that away:
   each other's incremental state, and the registry's lock lives in
   `CARGO_HOME` outside the volume, so two containers sharing it would write it
   unguarded.
-- **One pnpm store for every project.** `evp-pnpm-store` has a fixed `name:` in
-  `compose.override.yaml`, so a new worktree's `web` links packages it has
-  seen before instead of downloading them. That one is safe to share live,
-  because the store is content-addressed and written with atomic renames. The
+- **One pnpm store for every project, inside the dev `web` image.**
+  `docker/web/Dockerfile.dev` runs `pnpm fetch` on the lockfile, so starting
+  `web` links packages from the image instead of downloading them, and
+  deleting the `node_modules` volumes costs a relink, not a download. The
   per-package `node_modules` volumes stay per project, since two branches can
   have different lockfiles.
 
-Docker's layer cache is already global, so the dev images themselves are not
-rebuilt per worktree: `--build` resolves from cache.
+Docker's layer cache is already global, so the dev images themselves, and the
+store inside `web`'s, are not rebuilt per worktree: `--build` resolves from
+cache, and the store layer is rebuilt only when the lockfile changes.
 
 **`bootstrap` and `seed` are stubs today**: `evp-cli create-org` and
 `evp-cli seed` exit with "lands with M0/M2", so `just db-reset` stops after

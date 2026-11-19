@@ -134,7 +134,6 @@ services:
       - evp-node-modules-admin:/app/apps/admin/node_modules
       - evp-node-modules-form:/app/apps/form/node_modules
       - evp-node-modules-shared:/app/packages/shared/node_modules
-      - evp-pnpm-store:/pnpm-store
     restart: unless-stopped
 
   caddy:
@@ -189,13 +188,3 @@ volumes:
   evp-node-modules-admin:
   evp-node-modules-form:
   evp-node-modules-shared:
-  # Every other volume belongs to one Compose project, so each worktree has its
-  # own (docs/06 §3). The pnpm store is the exception, by fixed name: it is
-  # content-addressed and pnpm writes it with atomic renames, so concurrent
-  # installs from several worktrees are safe, and sharing it means a new
-  # worktree links packages instead of downloading them. The cargo registry
-  # is NOT shared this way: cargo's lock for it lives in CARGO_HOME, outside
-  # the volume, so two containers would write it unguarded. `just seed-cache`
-  # copies it instead.
-  evp-pnpm-store:
-    name: evp-pnpm-store

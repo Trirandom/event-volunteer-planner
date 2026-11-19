@@ -114,6 +114,16 @@ fn api_state(
                 .as_ref()
                 .map(evp_domain::backoffice::BackofficeKey::new),
         ),
+        // Built here, inside the runtime: the pooled transport spawns onto it
+        // when it is dropped. Neither error repeats the URL, which carries the
+        // relay's credentials.
+        mailer: evp_api::publish::Mailer::new(std::sync::Arc::new(
+            evp_worker::mail::SmtpMailSender::from_url(
+                config.smtp_url.expose_secret(),
+                &config.mail_from,
+            )
+            .context("configuring the mail relay from EVP_SMTP_URL and EVP_MAIL_FROM")?,
+        )),
     })
 }
 

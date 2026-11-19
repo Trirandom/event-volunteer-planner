@@ -14,6 +14,9 @@ description  = "Axum routers, extractors, DTOs, OpenAPI and error mapping."
 [dependencies]
 evp-db     = { workspace = true }
 evp-domain = { workspace = true }
+# `MailSender` and its SMTP sender, for the test send that goes to the relay
+# in the request (ADR-0054). The worker depends on nothing here.
+evp-worker = { workspace = true }
 
 axum       = { workspace = true }
 axum-extra = { workspace = true }

@@ -748,6 +748,29 @@ GET  /api/v1/orgs/{org}/events/{event}/roster-versions/{v}/diff?against={v2}
 `publish/preview` before `publish` means nobody sends 300 messages to find out
 what they contained.
 
+**Served today: `test` only**, on routes of its own
+([ADR-0054](adr/0054-a-test-send-goes-to-the-relay-in-the-request.md)):
+
+```
+POST /api/v1/orgs/{org}/events/{event}/publish/test
+POST /api/v1/orgs/{org}/festivals/{festival}/publish/test
+     { test_recipient, locale: "fr" | "en",
+       template: { subject, body_html } }          (coordinator or above)
+     → { sent, skipped_opted_out, no_address: [name],
+         failed: { name, reason, detail } | null }
+```
+
+The template travels in the body because it has no server-side home yet. The
+run is the one `send` would make: participations `invited` or `confirmed` in
+scope, one message per volunteer across every day, each the `First` kind.
+Opted-out volunteers are counted and those with no address are named, and
+neither is mailed. Every message goes to `test_recipient`, with a subject that
+starts `[Test: <name>]`. The relay is called in the request, so no outbox row,
+snapshot or operation is written. The run stops at the first failure, with
+`reason` set to `refused`, `relay_unavailable` or `render_failed`. An address
+that is not exactly one email, or an unknown `locale`, is a `422` before
+anything is sent.
+
 Three send modes, all carried over from the spreadsheet, which had learned to
 need them:
 

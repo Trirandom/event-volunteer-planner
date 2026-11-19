@@ -98,10 +98,6 @@ pub(crate) struct Config {
     /// credentials (`smtp://user:pass@host`). It is never logged, and the
     /// redacting `Debug` is what makes that structural rather than a habit
     /// ([docs/12 §5](../../../docs/12-security.md)).
-    #[expect(
-        dead_code,
-        reason = "read when the outbox mailer lands; the expect expires by itself when it is"
-    )]
     pub(crate) smtp_url: SecretString,
     pub(crate) mail_from: String,
     #[serde(default)]

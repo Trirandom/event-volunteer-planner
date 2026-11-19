@@ -10,7 +10,7 @@ one — never an edit. See [ADR-0001](0001-record-architecture-decisions.md).
 | [0003](0003-postgresql-with-row-level-security.md) | PostgreSQL, with RLS for tenant isolation | Accepted |
 | [0004](0004-vue3-spa-frontend.md) | Vue 3 SPA, TanStack Query for server state | Accepted |
 | [0005](0005-magic-link-authentication.md) | Email magic links, server-side sessions | Accepted |
-| [0006](0006-postgres-backed-job-queue.md) | Transactional outbox in PostgreSQL, no broker | Accepted |
+| [0006](0006-postgres-backed-job-queue.md) | Transactional outbox in PostgreSQL, no broker | Accepted (amended by 0054) |
 | [0007](0007-hard-vs-soft-scheduling-constraints.md) | Two-tier constraints: hard in the DB, soft in the domain | Accepted (amended by 0022, 0023, 0029) |
 | [0008](0008-no-volunteer-authentication-in-v1.md) | Volunteers do not authenticate in v1 | Accepted (amends 0005; amended by 0010, 0027) |
 | [0009](0009-form-agnostic-intake-pipeline.md) | A form-agnostic, replayable intake pipeline | Accepted (amended by 0010, 0028) |
@@ -58,3 +58,4 @@ one — never an edit. See [ADR-0001](0001-record-architecture-decisions.md).
 | [0051](0051-event-details-autosave-with-editor-undo.md) | Event details save themselves, and their undo is the page's | Accepted (amends 0049, 14 §4) |
 | [0052](0052-posts-are-roles-within-their-zones-shifts.md) | A post is a role within its zone's shifts, not a schedule of its own | Accepted |
 | [0053](0053-deleting-a-festival-ungroups-its-events-and-deletes-its-forms.md) | Deleting a festival ungroups its events and deletes its forms, submissions included | Accepted (amends 04) |
+| [0054](0054-a-test-send-goes-to-the-relay-in-the-request.md) | A test send of the schedule email goes to the relay in the request, not through the outbox | Accepted (amends 0006, 04) |

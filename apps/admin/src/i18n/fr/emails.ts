@@ -8,13 +8,18 @@
  */
 export default {
   lede: 'Rédigez le message que chaque bénévole recevra avec ses créneaux, puis vérifiez-le personne par personne dans le tableau ci-dessous.',
-  /** Shown until publishing (docs/04 §Publishing) is served by the API. */
+  /** Shown until publishing (docs/04 §Publishing) is served by the API;
+   * only the test send is (ADR-0054). */
   notSent:
-    'Rien n’est envoyé depuis cette page pour l’instant : l’envoi arrivera avec la publication du planning. Elle sert à vérifier qui recevra quoi.',
+    'Aucun bénévole ne reçoit rien depuis cette page pour l’instant : l’envoi réel arrivera avec la publication du planning. L’envoi de test, lui, fait partir chaque message vers votre adresse.',
   loadFailed:
     'Une partie du planning n’a pas pu être chargée : certains messages ci-dessous peuvent être incomplets.',
   template: {
     heading: 'Modèle',
+    /** The subject line field. Placeholders work in it as in the body. */
+    subject: 'Objet',
+    /** `eventOrFestival` is the placeholder as typed, with its braces. */
+    subjectDefault: 'Tes créneaux bénévoles – {eventOrFestival}',
     label: 'Modèle du message',
     reset: 'Rétablir le modèle par défaut',
     /** Heading of the row of buttons that insert a placeholder. */
@@ -33,6 +38,35 @@ export default {
      */
     default:
       '<p>Bonjour {firstName},</p><p>Merci pour ton engagement bénévole au {eventOrFestival} !</p><p><strong>Voici tes créneaux bénévoles :</strong></p>{assignations}<p>Si tu as le moindre souci avec l’un des créneaux qui t’a été attribué, merci de nous prévenir en répondant à cet e-mail.</p><p>À bientôt</p><p><strong>L’équipe {organizationName}</strong></p>',
+  },
+  /** Sending the whole run to one address of the coordinator's choosing
+   * (ADR-0054). */
+  test: {
+    heading: 'Envoi de test',
+    address: 'Adresse de test',
+    placeholder: 'vous@exemple.fr',
+    send: 'Envoyer le test',
+    sending: 'Envoi en cours…',
+    hint: '{count, plural, one {Le message de # bénévole part} other {Les messages des # bénévoles partent}} vers cette adresse et nulle part ailleurs, rendus par le serveur exactement comme ils le seront à l’envoi. Leur objet commence par « [Test: nom] ».',
+    invalidAddress: 'Saisissez une seule adresse e-mail.',
+    sent: '{sent, plural, =0 {Aucun message envoyé} one {# message envoyé} other {# messages envoyés}} à {address}.',
+    optedOut:
+      '{count, plural, one {# bénévole a refusé les e-mails : il n’en recevra pas} other {# bénévoles ont refusé les e-mails : ils n’en recevront pas}}.',
+    noAddress:
+      '{count, plural, one {Sans adresse e-mail, à prévenir autrement} other {Sans adresse e-mail, à prévenir autrement}} : {names}',
+    /** The run stopped at the first failure; `name` is whose message it was. */
+    stopped: {
+      refused: 'Le serveur d’e-mail a refusé le message de {name} : {detail}',
+      relay_unavailable:
+        'Le serveur d’e-mail est injoignable : l’envoi s’est arrêté au message de {name}. Réessayez plus tard.',
+      render_failed: 'Le message de {name} n’a pas pu être composé : {detail}',
+    },
+    failed: {
+      invalid: 'L’envoi a été refusé : {detail}',
+      forbidden: 'Seuls les coordinateurs peuvent envoyer un test.',
+      refused: 'L’envoi a été refusé : {detail}',
+      unavailable: 'Le serveur ne répond pas. Réessayez dans un instant.',
+    },
   },
   /** The formatting buttons above the template, and the link form. */
   editor: {

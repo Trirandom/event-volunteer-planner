@@ -21,6 +21,7 @@ pub mod org;
 pub mod participations;
 pub mod patterns;
 pub mod public_form;
+pub mod publish;
 pub mod ratelimit;
 pub mod shifts;
 pub mod sms_settings;
@@ -55,6 +56,8 @@ pub struct ApiState {
     pub captcha: captcha::CaptchaPolicy,
     /// `EVP_BACKOFFICE_KEY`, if the deployment opted in (ADR-0045).
     pub backoffice: backoffice::BackofficeAccess,
+    /// The relay a test send goes through (ADR-0054).
+    pub mailer: publish::Mailer,
 }
 
 // `FromRef` is what lets a handler ask for the one piece of state it needs —
@@ -82,6 +85,12 @@ impl FromRef<ApiState> for captcha::CaptchaPolicy {
 impl FromRef<ApiState> for backoffice::BackofficeAccess {
     fn from_ref(state: &ApiState) -> Self {
         state.backoffice.clone()
+    }
+}
+
+impl FromRef<ApiState> for publish::Mailer {
+    fn from_ref(state: &ApiState) -> Self {
+        state.mailer.clone()
     }
 }
 
@@ -157,6 +166,7 @@ pub fn router(state: ApiState, limits: RateLimitPolicy) -> Option<(Router, RateL
         .merge(participations::router())
         .merge(patterns::router())
         .merge(public_form::router(submit))
+        .merge(publish::router())
         .merge(shifts::router())
         .merge(sms_settings::router())
         .merge(submissions::router())

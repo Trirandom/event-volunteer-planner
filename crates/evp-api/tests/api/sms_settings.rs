@@ -7,10 +7,8 @@
 //! save never echoes the secret back, and that an omitted secret on update
 //! keeps the value already stored.
 
-mod support;
-
+use crate::support::{Call, pool, router, seed_member};
 use serde_json::json;
-use support::{Call, pool, router, seed_member};
 
 #[tokio::test]
 async fn no_settings_yet_is_404() {

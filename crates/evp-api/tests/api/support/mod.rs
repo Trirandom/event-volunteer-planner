@@ -10,16 +10,13 @@
 //! that a test passing here means the org extractor, the `SET LOCAL` dance and
 //! the policies all agreed.
 //!
-//! A `tests/support/` subdirectory rather than a `tests/support.rs`: Cargo
-//! compiles every top-level file in `tests/` as its own test binary, and a
-//! helper module compiled as a binary with no `#[test]` in it is a warning at
-//! best and a confusing empty suite at worst.
+//! Declared once in `main.rs`, which compiles every suite in this directory
+//! into a single test binary.
 
-// Every suite in this directory compiles its own copy of this module, and each
-// uses a different subset of it — so `dead_code` and `unreachable_pub` fire on
-// whatever the *other* suites needed. `allow` rather than `expect` for exactly
-// that reason: which items are unused differs per binary, so an `expect` would
-// be unfulfilled in whichever suite happens to use them all.
+// `pub` items in a private module trip `unreachable_pub`, and an item only some
+// future suite needs would trip `dead_code`. `allow` rather than `expect` so
+// the attribute does not start failing the build the moment every item is
+// used.
 #![allow(
     dead_code,
     unreachable_pub,

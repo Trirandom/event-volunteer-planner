@@ -43,7 +43,7 @@ use uuid::Uuid;
 async fn pool() -> PgPool {
     let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
         "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests \
-         (see crates/evp-db/tests/catalog.rs and migrations/README.md); `just test`/`just test-tz` \
+         (see crates/evp-db/tests/db/catalog.rs and migrations/README.md); `just test`/`just test-tz` \
          set it via compose.override.yaml",
     );
     evp_db::connect(&url)

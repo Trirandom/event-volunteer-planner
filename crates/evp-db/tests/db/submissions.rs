@@ -5,7 +5,7 @@
 //! availability windows (docs/03 §3.3, §3.5): the hard constraints and RLS
 //! tenant isolation, against a real PostgreSQL, never mocked (docs/13 §1).
 //!
-//! Same connection discipline as `crates/evp-db/tests/catalog.rs` — one
+//! Same connection discipline as `crates/evp-db/tests/db/catalog.rs` — one
 //! transaction per test against `EVP_MIGRATION_DATABASE_URL`, rolled back by
 //! never being committed — see that file's module doc for why connecting as
 //! `evp_migrator` still proves what a run as `evp_api` would (every table
@@ -31,10 +31,8 @@ async fn pool() -> PgPool {
         .expect("could not connect to the test database")
 }
 
-/// Same fixture as `catalog.rs`'s `seed_org`, duplicated rather than shared:
-/// each `tests/*.rs` file compiles as its own binary, and a two-line helper is
-/// cheaper to repeat than to factor into a crate this suite would then depend
-/// on for tests alone.
+/// Same fixture as `catalog.rs`'s `seed_org`, repeated per suite. The suites
+/// now share one binary (`main.rs`), so this could move to a shared module.
 #[expect(
     clippy::expect_used,
     reason = "test fixtures — a setup failure must abort the test loudly, not be handled"

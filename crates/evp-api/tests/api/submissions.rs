@@ -10,13 +10,11 @@
 //! submission with no availability windows at all, rendered as `[]` rather
 //! than being missing.
 
-mod support;
-
+use crate::support::{Call, pool, router, seed_member};
 use axum::http::StatusCode;
 use jiff::Timestamp;
 use serde_json::Value;
 use sqlx::Row as _;
-use support::{Call, pool, router, seed_member};
 use uuid::Uuid;
 
 async fn load_example(org_id: Uuid, cookie: &str, router: &axum::Router) -> Value {
@@ -225,7 +223,7 @@ async fn a_zone_lead_cookie_is_forbidden_from_reading_submissions() {
         .expect("festival id")
         .to_owned();
 
-    let zone_lead_cookie = support::add_member(&pool, org_id, "zone_lead").await;
+    let zone_lead_cookie = crate::support::add_member(&pool, org_id, "zone_lead").await;
     let answer = Call::new(
         "GET",
         format!("/api/v1/orgs/{org_id}/festivals/{festival_id}/submissions"),

@@ -145,7 +145,7 @@ fn map_write_error(error: evp_db::DbError) -> ApiError {
         // Covers the duplicate placement as well as the genuine clash: a second
         // placement on the same shift carries the same hours, so the exclusion
         // constraint refuses it before `assignments_one_per_shift` is ever
-        // consulted (crates/evp-db/tests/assignments.rs pins that down). The
+        // consulted (crates/evp-db/tests/db/assignments.rs pins that down). The
         // sentence therefore has to be true of both, which is why it names the
         // hours rather than the other shift.
         Some("23P01" | "23505") => ApiError::ValidationFailed(

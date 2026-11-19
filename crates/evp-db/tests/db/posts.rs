@@ -7,7 +7,7 @@
 //! rather than described, with its SQLSTATE and constraint asserted
 //! (docs/13 §2), from both sides where the trigger guards both.
 //!
-//! Same connection discipline as `crates/evp-db/tests/catalog.rs`: one
+//! Same connection discipline as `crates/evp-db/tests/db/catalog.rs`: one
 //! transaction per test, never committed.
 
 use evp_db::assignments::{self, NewAssignment};
@@ -47,8 +47,8 @@ async fn act_as(conn: &mut PgConnection, org_id: Uuid) {
         .expect("set app.current_org_id");
 }
 
-/// Same fixture as `catalog.rs`'s `seed_org`, duplicated because each
-/// `tests/*.rs` compiles as its own binary.
+/// Same fixture as `catalog.rs`'s `seed_org`, repeated per suite (see
+/// `submissions.rs`).
 #[expect(
     clippy::expect_used,
     reason = "test fixtures — a setup failure must abort the test loudly, not be handled"

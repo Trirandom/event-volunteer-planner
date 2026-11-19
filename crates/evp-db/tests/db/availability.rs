@@ -6,7 +6,7 @@
 //! their own declared windows, and — the product requirement this whole
 //! slice exists to protect — that it never touches a submission-derived row.
 //!
-//! Same connection discipline as `crates/evp-db/tests/submissions.rs`: one
+//! Same connection discipline as `crates/evp-db/tests/db/submissions.rs`: one
 //! transaction per test against `EVP_MIGRATION_DATABASE_URL`, rolled back by
 //! never being committed.
 

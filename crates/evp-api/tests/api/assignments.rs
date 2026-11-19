@@ -4,7 +4,7 @@
 //! `/events/{event}/assignments` and `/events/{event}/participations` — the
 //! roster, through the real router (docs/04 §"Assignments").
 //!
-//! What the database refuses is proved in `crates/evp-db/tests/assignments.rs`,
+//! What the database refuses is proved in `crates/evp-db/tests/db/assignments.rs`,
 //! which attempts each hard rule and asserts its SQLSTATE. What is proved here
 //! is the half that is this crate's: that those refusals arrive as a `422` a
 //! coordinator can act on rather than a `500`, that a zone lead can read the
@@ -16,12 +16,10 @@
 //! with the same three GUCs `evp-api::org` sets, so RLS applies to the fixture
 //! exactly as it does to the requests under test.
 
-mod support;
-
+use crate::support::{Call, add_member, create_event_body, pool, router, seed_member};
 use axum::http::StatusCode;
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use support::{Call, add_member, create_event_body, pool, router, seed_member};
 use uuid::Uuid;
 
 /// An event, a post, and one shift on it running 18:00–20:00.

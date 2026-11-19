@@ -13,7 +13,7 @@
 //! the shift and cannot be dictated by the caller, and moving a shift moves
 //! the placements on it.
 //!
-//! Same connection discipline as `crates/evp-db/tests/catalog.rs`: one
+//! Same connection discipline as `crates/evp-db/tests/db/catalog.rs`: one
 //! transaction per test against `EVP_MIGRATION_DATABASE_URL`, never committed,
 //! which is a rollback. See that file's module doc for why connecting as the
 //! owner still proves what a run as `evp_api` would.
@@ -40,8 +40,8 @@ async fn pool() -> PgPool {
         .expect("could not connect to the test database")
 }
 
-/// Same fixture as `catalog.rs`'s `seed_org`, duplicated for the reason
-/// `submissions.rs` gives: each `tests/*.rs` compiles as its own binary.
+/// Same fixture as `catalog.rs`'s `seed_org`, repeated per suite (see
+/// `submissions.rs`).
 #[expect(
     clippy::expect_used,
     reason = "test fixtures — a setup failure must abort the test loudly, not be handled"

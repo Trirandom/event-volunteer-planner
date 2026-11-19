@@ -6,7 +6,7 @@
 //! must leave one `operations` row behind, in the same transaction, with an
 //! `inverse` command that would actually undo it.
 //!
-//! Same connection discipline as `crates/evp-db/tests/catalog.rs`: one
+//! Same connection discipline as `crates/evp-db/tests/db/catalog.rs`: one
 //! transaction per test against `EVP_MIGRATION_DATABASE_URL`, never
 //! committed.
 

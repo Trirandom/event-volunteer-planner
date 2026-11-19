@@ -127,7 +127,7 @@ pnpm exec playwright test e2e/api-meta.spec.ts
 `just check-web`/`test-web` call the root scripts (`pnpm lint`, `pnpm
 typecheck`, `pnpm test`); `typecheck` also runs each package's `vue-tsc`. The
 Rust DB tests run inside one rolled-back transaction as `evp_migrator` against
-the dev database, not `sqlx::test` (`crates/evp-db/tests/catalog.rs`).
+the dev database, not `sqlx::test` (`crates/evp-db/tests/db/catalog.rs`).
 
 ## Architecture
 

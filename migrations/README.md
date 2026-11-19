@@ -85,7 +85,7 @@ A table carrying `org_id` is not finished until, in the same file:
 A test that enumerates `pg_class` and fails on a table with `org_id` and no
 policy, or with no retention tier, is planned so that the fourth person to add
 a table, who has not read this file, cannot forget. Today only the form tables
-are asserted (`crates/evp-db/tests/forms.rs`).
+are asserted (`crates/evp-db/tests/db/forms.rs`).
 
 ## Testing a migration
 
@@ -96,7 +96,7 @@ a constraint you are guessing about
 ([docs/13 §2](../docs/13-testing-and-tdd.md#2-where-test-first-is-mandatory)).
 
 The database tests run against the migrated dev database, each inside one
-transaction that is rolled back (`crates/evp-db/tests/catalog.rs` explains why
+transaction that is rolled back (`crates/evp-db/tests/db/catalog.rs` explains why
 not `sqlx::test`), so they exercise the migrations rather than a snapshot of
 what they were believed to produce.
 

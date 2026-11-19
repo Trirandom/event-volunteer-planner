@@ -7,12 +7,10 @@
 //! organisation and an account and make one a member of the other — after
 //! which that account can actually sign in and reach the organisation.
 
-mod support;
-
+use crate::support::{Call, pool, router, router_with_backoffice, seed_member};
 use axum::Router;
 use axum::http::StatusCode;
 use serde_json::{Value, json};
-use support::{Call, pool, router, router_with_backoffice, seed_member};
 use uuid::Uuid;
 
 const KEY: &str = "backoffice-test-key-0123456789abcdef";

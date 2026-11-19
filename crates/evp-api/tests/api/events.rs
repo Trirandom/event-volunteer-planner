@@ -12,10 +12,8 @@
 //! coordinators editing the same event silently produce whichever save landed
 //! second.
 
-mod support;
-
+use crate::support::{Call, create_event_body, pool, router, seed_member};
 use axum::http::StatusCode;
-use support::{Call, create_event_body, pool, router, seed_member};
 
 /// Creates an event as the given member and returns `(event_id, etag)`.
 #[expect(
@@ -197,7 +195,7 @@ async fn a_zone_lead_may_read_an_event_but_not_archive_or_patch_it() {
 
     // A zone lead in the *same* org: `seed_member` makes its own org, so the
     // membership is inserted directly rather than seeding a second one.
-    let lead_cookie = support::add_member(&pool, org_id, "zone_lead").await;
+    let lead_cookie = crate::support::add_member(&pool, org_id, "zone_lead").await;
 
     let read = Call::new("GET", format!("/api/v1/orgs/{org_id}/events/{event_id}"))
         .signed_in_as(&lead_cookie)
@@ -234,7 +232,7 @@ async fn deleting_an_event_is_owner_only() {
     let router = router(pool.clone());
     let (org_id, owner_cookie) = seed_member(&pool, "owner").await;
     let (event_id, etag) = seed_event(&router, org_id, &owner_cookie).await;
-    let coordinator_cookie = support::add_member(&pool, org_id, "coordinator").await;
+    let coordinator_cookie = crate::support::add_member(&pool, org_id, "coordinator").await;
     let path = format!("/api/v1/orgs/{org_id}/events/{event_id}");
 
     let refused = Call::new("DELETE", &path)

@@ -4,14 +4,12 @@
 //! Deleting a festival through the real router (ADR-0053): owner only, like
 //! deleting an event (docs/04 §4), behind `If-Match`, with its cost readable
 //! first. What the delete does to the rows underneath is
-//! `crates/evp-db/tests/catalog.rs`'s to prove; this suite proves who may ask
+//! `crates/evp-db/tests/db/catalog.rs`'s to prove; this suite proves who may ask
 //! and what they are told.
 
-mod support;
-
+use crate::support::{Call, pool, router, seed_member};
 use axum::Router;
 use axum::http::StatusCode;
-use support::{Call, pool, router, seed_member};
 use uuid::Uuid;
 
 /// Loads the worked example as the owner and returns its festival's id and
@@ -49,7 +47,7 @@ async fn only_an_owner_may_read_the_cost_of_deleting_a_festival_or_delete_it() {
     let deletion = format!("{festival}/deletion");
 
     for role in ["coordinator", "zone_lead"] {
-        let cookie = support::add_member(&pool, org_id, role).await;
+        let cookie = crate::support::add_member(&pool, org_id, role).await;
         let read = Call::new("GET", &deletion)
             .signed_in_as(&cookie)
             .send(&router)

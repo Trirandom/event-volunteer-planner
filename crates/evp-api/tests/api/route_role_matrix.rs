@@ -13,12 +13,10 @@
 //! caller outside the organisation gets the same `404` a caller who mistyped
 //! the id would (docs/04 §2).
 
-mod support;
-
+use crate::support::{Call, pool, router, seed_member};
 use axum::Router;
 use axum::http::StatusCode;
 use serde_json::Value;
-use support::{Call, pool, router, seed_member};
 use uuid::Uuid;
 
 fn create_festival_body() -> Value {
@@ -30,7 +28,7 @@ fn create_festival_body() -> Value {
     })
 }
 
-/// Thin shim onto [`support::Call`], so the assertions below keep reading as
+/// Thin shim onto [`crate::support::Call`], so the assertions below keep reading as
 /// `(status, body)` pairs — headers are what the events suite cares about,
 /// not this one.
 async fn send(
@@ -240,7 +238,7 @@ async fn reading_submissions_needs_coordinator_or_above_and_a_zone_lead_is_forbi
         let cookie = if role == "coordinator" {
             coordinator_cookie.clone()
         } else {
-            support::add_member(&pool, org_id, role).await
+            crate::support::add_member(&pool, org_id, role).await
         };
         let (status, body) = send(
             &router,
@@ -268,7 +266,7 @@ async fn reading_submissions_needs_coordinator_or_above_and_a_zone_lead_is_forbi
         assert!(submissions[0]["availability"].is_array());
     }
 
-    let zone_lead_cookie = support::add_member(&pool, org_id, "zone_lead").await;
+    let zone_lead_cookie = crate::support::add_member(&pool, org_id, "zone_lead").await;
     let (status, body) = send(
         &router,
         "GET",

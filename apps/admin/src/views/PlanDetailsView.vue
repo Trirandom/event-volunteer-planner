@@ -491,23 +491,23 @@ onBeforeUnmount(() => {
             }}
           </template>
         </p>
-        <p>{{ t('events.detailsPage.deleteFestival.volunteers') }}</p>
-        <label class="evp-festival-delete-name" :for="typedNameId">
-          <span>{{
-            t('events.detailsPage.deleteFestival.typeName', {
-              name: deletableFestival.name,
-            })
-          }}</span>
-          <input
-            :id="typedNameId"
-            v-model="typedName"
-            class="evp-field"
-            type="text"
-            autocomplete="off"
-            spellcheck="false"
-            @keydown.enter.prevent="confirmFestivalDelete"
-          />
-        </label>
+        <p class="evp-field evp-festival-delete-name">
+          <label :for="typedNameId">
+            <span>{{
+              t('events.detailsPage.deleteFestival.typeName', {
+                name: deletableFestival.name,
+              })
+            }}</span>
+            <input
+              :id="typedNameId"
+              v-model="typedName"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              @keydown.enter.prevent="confirmFestivalDelete"
+            />
+          </label>
+        </p>
       </template>
     </ConfirmDialog>
 
@@ -625,9 +625,10 @@ h2 {
   color: var(--evp-danger);
 }
 
+/* `.evp-field` styles the input; this only spaces it from the cost above
+ * and drops the bottom margin a field keeps for the one after it. */
 .evp-festival-delete-name {
-  display: grid;
-  gap: 0.375rem;
+  margin-bottom: 0;
   margin-top: 0.75rem;
 }
 

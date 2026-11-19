@@ -170,14 +170,13 @@ export default {
       countFailed:
         'Impossible de savoir ce que la suppression emporterait. Fermez puis réessayez.',
       ungroup:
-        '{count, plural, =0 {Le festival n’a aucun événement.} one {Son événement est conservé : il devient un événement indépendant.} other {Ses # événements sont conservés : ils deviennent des événements indépendants.}}',
+        '{count, plural, =0 {Le festival n’a aucun événement.} one {Son événement sera conservé : il deviendra un événement indépendant.} other {Ses # événements seront conservés : ils deviendront des événements indépendants.}}',
       individually:
-        'Un événement n’est jamais supprimé avec son festival. Pour les supprimer aussi, supprimez-les ensuite un par un, chacun depuis sa ligne.',
+        'Un événement n’est jamais supprimé avec son festival. Pour les supprimer aussi, il faudra ensuite les supprimer un par un, chacun depuis sa ligne.',
       forms:
-        '{count, plural, =0 {Aucun formulaire n’est rattaché au festival.} one {Son formulaire est supprimé.} other {Ses # formulaires sont supprimés.}}',
+        '{count, plural, =0 {Aucun formulaire n’est rattaché au festival.} one {Son formulaire sera supprimé.} other {Ses # formulaires seront supprimés.}}',
       submissions:
-        '{count, plural, one {La réponse qu’il a reçue est supprimée, avec les disponibilités qu’elle donnait. C’est définitif.} other {Les # réponses reçues sont supprimées, avec les disponibilités qu’elles donnaient. C’est définitif.}}',
-      volunteers: 'Les bénévoles restent dans le vivier.',
+        '{count, plural, one {La réponse qu’il a reçue sera supprimée, avec les disponibilités qu’elle donnait. Ce sera définitif.} other {Les # réponses reçues seront supprimées, avec les disponibilités qu’elles donnaient. Ce sera définitif.}}',
       typeName: 'Pour confirmer, tapez le nom du festival : {name}',
       confirm: 'Supprimer le festival',
       deleting: 'Suppression…',

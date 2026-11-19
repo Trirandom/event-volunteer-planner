@@ -150,14 +150,13 @@ export default {
       countFailed:
         'Could not work out what the deletion would take. Close this and try again.',
       ungroup:
-        '{count, plural, =0 {The festival has no events.} one {Its event is kept: it becomes a standalone event.} other {Its # events are kept: they become standalone events.}}',
+        '{count, plural, =0 {The festival has no events.} one {Its event will be kept: it will become a standalone event.} other {Its # events will be kept: they will become standalone events.}}',
       individually:
-        'An event is never deleted with its festival. To delete them too, delete them afterwards one at a time, each from its own row.',
+        'An event is never deleted with its festival. To delete them too, they will then have to be deleted one at a time, each from its own row.',
       forms:
-        '{count, plural, =0 {No form belongs to the festival.} one {Its form is deleted.} other {Its # forms are deleted.}}',
+        '{count, plural, =0 {No form belongs to the festival.} one {Its form will be deleted.} other {Its # forms will be deleted.}}',
       submissions:
-        '{count, plural, one {The one answer it received is deleted, with the availability it gave. This is permanent.} other {The # answers received are deleted, with the availability they gave. This is permanent.}}',
-      volunteers: 'Volunteers stay in the pool.',
+        '{count, plural, one {The one answer it received will be deleted, with the availability it gave. This will be permanent.} other {The # answers received will be deleted, with the availability they gave. This will be permanent.}}',
       typeName: 'To confirm, type the festival’s name: {name}',
       confirm: 'Delete the festival',
       deleting: 'Deleting…',

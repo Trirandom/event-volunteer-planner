@@ -136,7 +136,7 @@ Compose database — each inside one transaction, opened as `evp_migrator` and
 never committed, so dropping it rolls everything back. Not `sqlx::test`: that
 creates a database per test and needs `CREATEDB`, which neither role has on
 purpose, and `FORCE ROW LEVEL SECURITY` keeps the owner bound by the same
-policies `evp_api` is (`crates/evp-db/tests/catalog.rs` has the full
+policies `evp_api` is (`crates/evp-db/tests/db/catalog.rs` has the full
 reasoning). That is fast enough to run on every save.
 
 Mock only at genuine external boundaries, and prefer a real implementation even

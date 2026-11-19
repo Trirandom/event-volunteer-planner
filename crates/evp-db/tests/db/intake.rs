@@ -13,6 +13,7 @@
 //! Same connection discipline as `public_forms.rs`: one transaction per test,
 //! never committed, scoped to the organisation it seeds.
 
+use crate::support::{at, pool, seed_org};
 use evp_db::catalog;
 use evp_db::forms::{self, DraftWrite, NewForm};
 use evp_db::intake::{self, Outcome};
@@ -23,43 +24,8 @@ use evp_domain::form::{
 use evp_intake::reconcile::MatchKind;
 use jiff::Timestamp;
 use serde_json::{Value, json};
-use sqlx::{PgConnection, PgPool, Row as _};
+use sqlx::{PgConnection, Row as _};
 use uuid::Uuid;
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixture — a setup failure must abort the test loudly, not be handled"
-)]
-async fn pool() -> PgPool {
-    let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
-        "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests; \
-         `just test`/`just test-tz` set it via compose.override.yaml",
-    );
-    evp_db::connect(&url)
-        .await
-        .expect("could not connect to the test database")
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixture — a setup failure must abort the test loudly, not be handled"
-)]
-async fn set(conn: &mut PgConnection, name: &str, value: &str) {
-    sqlx::query("SELECT set_config($1, $2, true)")
-        .bind(name)
-        .bind(value)
-        .execute(&mut *conn)
-        .await
-        .expect("set_config");
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixture — a setup failure must abort the test loudly, not be handled"
-)]
-fn at(value: &str) -> Timestamp {
-    value.parse().expect("valid instant")
-}
 
 /// An organisation, its owner, a festival of two events and a published
 /// festival form asking the seeded questions plus a T-shirt size and the pool
@@ -121,41 +87,6 @@ async fn fixture(conn: &mut PgConnection) -> Fixture {
         version,
         events,
     }
-}
-
-/// An organisation and its owner; leaves the transaction in its scope.
-#[expect(
-    clippy::expect_used,
-    reason = "test fixture — a setup failure must abort the test loudly, not be handled"
-)]
-async fn seed_org(conn: &mut PgConnection) -> (Uuid, Uuid) {
-    let org_id = Uuid::now_v7();
-    let user_id = Uuid::now_v7();
-    let suffix = Uuid::now_v7().simple().to_string();
-    set(conn, "app.current_org_id", &org_id.to_string()).await;
-    set(conn, "app.current_user_id", &user_id.to_string()).await;
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2::citext, 'Test Org')")
-        .bind(org_id)
-        .bind(format!("test-{suffix}"))
-        .execute(&mut *conn)
-        .await
-        .expect("insert organizations row");
-    sqlx::query(
-        "INSERT INTO users (id, email, display_name) VALUES ($1, $2::citext, 'Test Owner')",
-    )
-    .bind(user_id)
-    .bind(format!("{suffix}@example.test"))
-    .execute(&mut *conn)
-    .await
-    .expect("insert users row");
-    sqlx::query("INSERT INTO memberships (id, org_id, user_id, role) VALUES ($1, $2, $3, 'owner')")
-        .bind(Uuid::now_v7())
-        .bind(org_id)
-        .bind(user_id)
-        .execute(&mut *conn)
-        .await
-        .expect("insert memberships row");
-    (org_id, user_id)
 }
 
 /// A festival form asking the seeded questions plus a T-shirt size and the

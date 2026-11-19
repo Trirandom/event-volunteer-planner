@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createFestival,
+  deleteFestival,
   fetchFestival,
+  fetchFestivalDeletion,
   fetchFestivals,
   festivalSchema,
   loadExampleFestival,
@@ -253,6 +255,88 @@ describe('loadExampleFestival', () => {
       rejection: {
         reason: 'conflict',
         detail: 'This organisation already has a festival.',
+      },
+    });
+  });
+});
+
+describe('fetchFestivalDeletion', () => {
+  it('reads what deleting the festival would touch', async () => {
+    stubFetchOnce(200, { events: 6, forms: 1, submissions: 27 });
+
+    const result = await fetchFestivalDeletion('org-1', FESTIVAL.id);
+
+    expect(result).toStrictEqual({
+      ok: true,
+      value: { events: 6, forms: 1, submissions: 27 },
+    });
+  });
+
+  it('refuses a negative count as malformed', async () => {
+    stubFetchOnce(200, { events: -1, forms: 0, submissions: 0 });
+
+    const result = await fetchFestivalDeletion('org-1', FESTIVAL.id);
+
+    expect(result).toStrictEqual({
+      ok: false,
+      failure: { reason: 'malformed' },
+    });
+  });
+});
+
+describe('deleteFestival', () => {
+  it('sends DELETE with If-Match and reports how many events it ungrouped', async () => {
+    stubFetchOnce(200, {
+      operation_id: 'op-1',
+      events_ungrouped: 6,
+      forms_deleted: 1,
+      submissions_deleted: 27,
+    });
+
+    const result = await deleteFestival('org-1', FESTIVAL.id, 4);
+
+    expect(result).toStrictEqual({
+      ok: true,
+      operationId: 'op-1',
+      eventsUngrouped: 6,
+    });
+    expect(vi.mocked(globalThis.fetch).mock.calls[0]?.[1]).toMatchObject({
+      method: 'DELETE',
+      headers: { 'if-match': '"4"' },
+    });
+  });
+
+  it('reads a stale If-Match as a conflict', async () => {
+    stubFetchOnce(409, {
+      type: 'https://evp.example/errors/conflict',
+      title: 'Conflict',
+      status: 409,
+      detail: 'The festival changed.',
+    });
+
+    const result = await deleteFestival('org-1', FESTIVAL.id, 4);
+
+    expect(result).toStrictEqual({
+      ok: false,
+      rejection: { reason: 'conflict', detail: 'The festival changed.' },
+    });
+  });
+
+  it("reads a coordinator's attempt as forbidden", async () => {
+    stubFetchOnce(403, {
+      type: 'https://evp.example/errors/forbidden',
+      title: 'Forbidden',
+      status: 403,
+      detail: 'Only an owner may delete a festival.',
+    });
+
+    const result = await deleteFestival('org-1', FESTIVAL.id, 4);
+
+    expect(result).toStrictEqual({
+      ok: false,
+      rejection: {
+        reason: 'forbidden',
+        detail: 'Only an owner may delete a festival.',
       },
     });
   });

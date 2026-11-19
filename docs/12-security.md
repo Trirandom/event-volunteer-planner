@@ -53,7 +53,7 @@ Controls for **T1** and **T4**, and the strongest guarantees in the system.
 - **A test enumerates `pg_class`** for tables with an `org_id` column and
   fails if RLS is off or no policy exists, so a new table cannot forget.
   *Planned:* today the assertion covers the form tables only
-  (`crates/evp-db/tests/forms.rs`); the others are covered by their own
+  (`crates/evp-db/tests/db/forms.rs`); the others are covered by their own
   isolation tests.
 - **Composite foreign keys** carrying `org_id`, so a cross-tenant reference is a
   foreign-key violation rather than a policy question.

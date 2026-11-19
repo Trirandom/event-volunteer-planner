@@ -4,17 +4,15 @@
 //! A post is a role within its zone's shifts (ADR-0052), through the real
 //! router.
 //!
-//! The two rules are proved in `crates/evp-db/tests/posts.rs`, which attempts
+//! The two rules are proved in `crates/evp-db/tests/db/posts.rs`, which attempts
 //! each and asserts its SQLSTATE. What is proved here is this crate's half:
 //! an assignment carries `post_id` in and out, and both refusals arrive as a
 //! `422` that says what to do instead of a `500`.
 
-mod support;
-
+use crate::support::{Call, create_event_body, pool, router, seed_member};
 use axum::http::StatusCode;
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use support::{Call, create_event_body, pool, router, seed_member};
 use uuid::Uuid;
 
 #[expect(
@@ -155,7 +153,7 @@ async fn seed_participation(pool: &PgPool, org_id: Uuid, event_id: &str) -> Stri
     participation_id.to_string()
 }
 
-fn assert_refused_saying(response: &support::Answer, words: &str) {
+fn assert_refused_saying(response: &crate::support::Answer, words: &str) {
     assert_eq!(
         response.status,
         StatusCode::UNPROCESSABLE_ENTITY,

@@ -14,11 +14,9 @@
 //! * The segment list is an **atomic replacement**, not a per-item bulk
 //!   (ADR-0024): half an *artiste* pattern is not a pattern.
 
-mod support;
-
+use crate::support::{Call, create_event_body, pool, router, seed_member};
 use axum::http::StatusCode;
 use serde_json::json;
-use support::{Call, create_event_body, pool, router, seed_member};
 
 /// `45 / 45 / 90 / 45 / 45` — the *artiste* post from ADR-0029, and the reason
 /// patterns are a table rather than a two-hour constant.
@@ -285,7 +283,7 @@ async fn a_zone_lead_may_read_the_catalogue_but_not_change_it() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, owner_cookie) = seed_member(&pool, "owner").await;
-    let lead_cookie = support::add_member(&pool, org_id, "zone_lead").await;
+    let lead_cookie = crate::support::add_member(&pool, org_id, "zone_lead").await;
 
     let created = Call::new("POST", format!("/api/v1/orgs/{org_id}/shift-patterns"))
         .signed_in_as(&owner_cookie)

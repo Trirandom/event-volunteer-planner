@@ -9,11 +9,9 @@
 //! per-item `skipped` convention, the dry run writing nothing, and the whole
 //! run being one operation (ADR-0024).
 
-mod support;
-
+use crate::support::{Call, pool, router, seed_member};
 use axum::http::StatusCode;
 use serde_json::{Value, json};
-use support::{Call, pool, router, seed_member};
 
 /// An event in Europe/Paris over 2026-03-28 → 2026-03-31 — chosen so the
 /// spring-forward day (the 29th) is inside it — plus one zone and two posts.
@@ -519,7 +517,7 @@ async fn a_zone_lead_may_not_generate_shifts() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, owner_cookie) = seed_member(&pool, "owner").await;
-    let lead_cookie = support::add_member(&pool, org_id, "zone_lead").await;
+    let lead_cookie = crate::support::add_member(&pool, org_id, "zone_lead").await;
     let (event_id, post, _other) = seed(&router, org_id, &owner_cookie).await;
 
     let answer = Call::new(

@@ -174,7 +174,7 @@ pnpm exec playwright test <spec>  # needs `just up`
 
 - **Never mock the database.** Repo and integration tests run against the
   Compose Postgres, inside one rolled-back transaction as `evp_migrator` (see
-  `crates/evp-db/tests/catalog.rs`). Fake only real external boundaries:
+  `crates/evp-db/tests/db/catalog.rs`). Fake only real external boundaries:
   `Clock` (always), `SmsSender`, the in-memory mail sink. OIDC uses Dex.
 - **No wall clock, no unseeded randomness, no network, no `sleep`, no order
   dependence, no reliance on the host `TZ`.** A test that cares about a zone

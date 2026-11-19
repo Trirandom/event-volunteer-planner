@@ -5,97 +5,18 @@
 //! availability windows (docs/03 §3.3, §3.5): the hard constraints and RLS
 //! tenant isolation, against a real PostgreSQL, never mocked (docs/13 §1).
 //!
-//! Same connection discipline as `crates/evp-db/tests/catalog.rs` — one
+//! Same connection discipline as `crates/evp-db/tests/db/catalog.rs` — one
 //! transaction per test against `EVP_MIGRATION_DATABASE_URL`, rolled back by
 //! never being committed — see that file's module doc for why connecting as
 //! `evp_migrator` still proves what a run as `evp_api` would (every table
 //! here carries `FORCE ROW LEVEL SECURITY`, which binds the owner too).
 
+use crate::support::{a_period, pool, seed_org};
 use evp_db::DbError;
 use evp_db::catalog;
 use jiff_sqlx::ToSqlx as _;
-use sqlx::{PgConnection, PgPool};
+use sqlx::PgConnection;
 use uuid::Uuid;
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn pool() -> PgPool {
-    let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
-        "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests; \
-         `just test`/`just test-tz` set it via compose.override.yaml",
-    );
-    evp_db::connect(&url)
-        .await
-        .expect("could not connect to the test database")
-}
-
-/// Same fixture as `catalog.rs`'s `seed_org`, duplicated rather than shared:
-/// each `tests/*.rs` file compiles as its own binary, and a two-line helper is
-/// cheaper to repeat than to factor into a crate this suite would then depend
-/// on for tests alone.
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn seed_org(conn: &mut PgConnection) -> (Uuid, Uuid) {
-    let org_id = Uuid::now_v7();
-    let user_id = Uuid::now_v7();
-    let suffix = Uuid::now_v7().simple().to_string();
-    let slug = format!("test-{suffix}");
-    let email = format!("{suffix}@example.test");
-
-    sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
-        .bind(org_id.to_string())
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_org_id");
-    sqlx::query("SELECT set_config('app.current_user_id', $1, true)")
-        .bind(user_id.to_string())
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_user_id");
-    sqlx::query("SELECT set_config('app.current_role', 'owner', true)")
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_role");
-
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2::citext, 'Test Org')")
-        .bind(org_id)
-        .bind(&slug)
-        .execute(&mut *conn)
-        .await
-        .expect("insert organizations row");
-    sqlx::query(
-        "INSERT INTO users (id, email, display_name) VALUES ($1, $2::citext, 'Test Owner')",
-    )
-    .bind(user_id)
-    .bind(&email)
-    .execute(&mut *conn)
-    .await
-    .expect("insert users row");
-    sqlx::query("INSERT INTO memberships (id, org_id, user_id, role) VALUES ($1, $2, $3, 'owner')")
-        .bind(Uuid::now_v7())
-        .bind(org_id)
-        .bind(user_id)
-        .execute(&mut *conn)
-        .await
-        .expect("insert memberships row");
-
-    (org_id, user_id)
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-fn a_period() -> (jiff::Timestamp, jiff::Timestamp) {
-    (
-        "2026-09-05T08:00:00Z".parse().expect("valid instant"),
-        "2026-09-05T20:00:00Z".parse().expect("valid instant"),
-    )
-}
 
 /// One event, one volunteer, one participation linking them — the minimum
 /// scaffold every test below needs before it can touch `availability_windows`.

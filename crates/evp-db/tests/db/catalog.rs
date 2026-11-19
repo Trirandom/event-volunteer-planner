@@ -30,101 +30,12 @@
 //! own transaction; this suite needs everything on the one transaction it
 //! rolls back.
 
+use crate::support::{a_period, pool, seed_org};
 use evp_db::DbError;
 use evp_db::catalog;
 use jiff_sqlx::ToSqlx as _;
-use sqlx::{PgConnection, PgPool, Row as _};
+use sqlx::{PgConnection, Row as _};
 use uuid::Uuid;
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn pool() -> PgPool {
-    let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
-        "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests \
-         (see crates/evp-db/tests/catalog.rs and migrations/README.md); `just test`/`just test-tz` \
-         set it via compose.override.yaml",
-    );
-    evp_db::connect(&url)
-        .await
-        .expect("could not connect to the test database")
-}
-
-/// Inserts an organisation, an owner user, and their membership on the
-/// caller's transaction, and leaves `app.current_org_id` / `app.current_user_id`
-/// / `app.current_role` set to them — the same three GUCs `evp-api::org`
-/// would set for a request scoped to this org.
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn seed_org(conn: &mut PgConnection) -> (Uuid, Uuid) {
-    let org_id = Uuid::now_v7();
-    let user_id = Uuid::now_v7();
-    // Random per test so parallel tests (nextest's default) never collide on
-    // `organizations_slug_format` uniqueness or `users.email` uniqueness —
-    // both are real constraints and both are global to the shared dev
-    // database this suite connects to.
-    // The full 32 hex characters, not a prefix: two `seed_org` calls a few
-    // microseconds apart (every test that seeds two orgs makes exactly that
-    // call) share a UUIDv7's leading, timestamp-derived bits, so truncating
-    // to the front would collide on `organizations_slug_key`. `5 + 32 = 37`
-    // stays under `organizations_slug_format`'s 40-character cap.
-    let suffix = Uuid::now_v7().simple().to_string();
-    let slug = format!("test-{suffix}");
-    let email = format!("{suffix}@example.test");
-
-    sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
-        .bind(org_id.to_string())
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_org_id");
-    sqlx::query("SELECT set_config('app.current_user_id', $1, true)")
-        .bind(user_id.to_string())
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_user_id");
-    sqlx::query("SELECT set_config('app.current_role', 'owner', true)")
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_role");
-
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2::citext, 'Test Org')")
-        .bind(org_id)
-        .bind(&slug)
-        .execute(&mut *conn)
-        .await
-        .expect("insert organizations row");
-    sqlx::query(
-        "INSERT INTO users (id, email, display_name) VALUES ($1, $2::citext, 'Test Owner')",
-    )
-    .bind(user_id)
-    .bind(&email)
-    .execute(&mut *conn)
-    .await
-    .expect("insert users row");
-    sqlx::query("INSERT INTO memberships (id, org_id, user_id, role) VALUES ($1, $2, $3, 'owner')")
-        .bind(Uuid::now_v7())
-        .bind(org_id)
-        .bind(user_id)
-        .execute(&mut *conn)
-        .await
-        .expect("insert memberships row");
-
-    (org_id, user_id)
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-fn a_period() -> (jiff::Timestamp, jiff::Timestamp) {
-    (
-        "2026-09-05T08:00:00Z".parse().expect("valid instant"),
-        "2026-09-05T20:00:00Z".parse().expect("valid instant"),
-    )
-}
 
 /// The value out of a versioned write, or a loud failure.
 ///
@@ -999,5 +910,268 @@ async fn the_example_s_submissions_read_back_as_answers_to_its_form() {
                 && answer.value == "J’ai de la bouteille"
         }),
         "no experience answer read back with its label"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Deleting a festival (ADR-0053).
+// ---------------------------------------------------------------------------
+
+/// The org's events, with how many still belong to some festival.
+async fn grouped_events(tx: &mut PgConnection, org_id: Uuid) -> (i64, i64) {
+    (
+        count(
+            tx,
+            "SELECT count(*) AS n FROM events WHERE org_id = $1",
+            org_id,
+        )
+        .await,
+        count(
+            tx,
+            "SELECT count(*) AS n FROM events WHERE org_id = $1 AND festival_id IS NOT NULL",
+            org_id,
+        )
+        .await,
+    )
+}
+
+#[tokio::test]
+async fn deleting_a_festival_ungroups_its_events_and_deletes_its_forms_and_submissions() {
+    let pool = pool().await;
+    let mut tx = pool.begin().await.expect("begin");
+    let (org_id, user_id) = seed_org(&mut tx).await;
+    let fixture = evp_domain::example::build().expect("example.json parses and resolves");
+    let (festival, _) = catalog::create_example(&mut tx, org_id, user_id, &fixture)
+        .await
+        .expect("the example persists");
+    let (events_before, _) = grouped_events(&mut tx, org_id).await;
+    let volunteers = "SELECT count(*) AS n FROM volunteers WHERE org_id = $1";
+    let volunteers_before = count(&mut tx, volunteers, org_id).await;
+    let other_windows = "SELECT count(*) AS n FROM availability_windows aw \
+                          WHERE aw.org_id = $1 AND (aw.source_submission_id IS NULL \
+                            OR aw.source_submission_id IN (SELECT s.id FROM submissions s \
+                                 JOIN intake_sources src ON src.id = s.source_id \
+                                WHERE src.form_id IS NULL))";
+    let other_windows_before = count(&mut tx, other_windows, org_id).await;
+    // The example's volunteers answered the festival's form, with windows
+    // read off their submissions — exactly what a plain cascade cannot
+    // delete (`availability_has_provenance`).
+    let answered_windows = count(
+        &mut tx,
+        "SELECT count(*) AS n FROM availability_windows WHERE org_id = $1",
+        org_id,
+    )
+    .await
+    .saturating_sub(other_windows_before);
+    assert!(
+        answered_windows > 0,
+        "the example's form was answered with availability"
+    );
+    let submissions = i64::try_from(fixture.volunteers.len()).expect("small");
+
+    let (impact, _operation) = applied(
+        catalog::delete_festival(
+            &mut tx,
+            org_id,
+            festival.id,
+            user_id,
+            Some(festival.version),
+        )
+        .await
+        .expect("the delete runs"),
+    );
+
+    assert_eq!(
+        (impact.events, impact.forms, impact.submissions),
+        (events_before, 1, submissions),
+        "what the delete reports it did"
+    );
+    assert!(
+        catalog::get_festival(&mut tx, org_id, festival.id)
+            .await
+            .expect("read")
+            .is_none(),
+        "the festival is gone"
+    );
+    assert_eq!(
+        grouped_events(&mut tx, org_id).await,
+        (events_before, 0),
+        "every event stays, and none is grouped any more"
+    );
+    assert_eq!(
+        count(
+            &mut tx,
+            "SELECT count(*) AS n FROM forms WHERE org_id = $1",
+            org_id
+        )
+        .await,
+        0,
+        "the festival's form went with it"
+    );
+    assert_eq!(
+        count(
+            &mut tx,
+            "SELECT count(*) AS n FROM submissions WHERE org_id = $1",
+            org_id
+        )
+        .await,
+        0,
+        "the form's submissions went with it"
+    );
+    assert_eq!(
+        count(&mut tx, other_windows, org_id).await,
+        other_windows_before,
+        "only the windows read off the deleted submissions went"
+    );
+    assert_eq!(
+        count(&mut tx, volunteers, org_id).await,
+        volunteers_before,
+        "the pool is the organisation's, not the festival's"
+    );
+}
+
+#[tokio::test]
+async fn the_deletion_impact_counts_without_deleting() {
+    let pool = pool().await;
+    let mut tx = pool.begin().await.expect("begin");
+    let (org_id, user_id) = seed_org(&mut tx).await;
+    let fixture = evp_domain::example::build().expect("example.json parses and resolves");
+    let (festival, _) = catalog::create_example(&mut tx, org_id, user_id, &fixture)
+        .await
+        .expect("the example persists");
+
+    let impact = catalog::festival_deletion_impact(&mut tx, org_id, festival.id)
+        .await
+        .expect("the count runs")
+        .expect("the festival exists");
+
+    assert_eq!(
+        (impact.events, impact.forms, impact.submissions),
+        (
+            i64::try_from(fixture.events.len()).expect("small"),
+            1,
+            i64::try_from(fixture.volunteers.len()).expect("small"),
+        )
+    );
+    assert!(
+        catalog::get_festival(&mut tx, org_id, festival.id)
+            .await
+            .expect("read")
+            .is_some(),
+        "counting deletes nothing"
+    );
+}
+
+#[tokio::test]
+async fn a_festival_delete_against_a_stale_version_deletes_nothing() {
+    let pool = pool().await;
+    let mut tx = pool.begin().await.expect("begin");
+    let (org_id, user_id) = seed_org(&mut tx).await;
+    let fixture = evp_domain::example::build().expect("example.json parses and resolves");
+    let (festival, _) = catalog::create_example(&mut tx, org_id, user_id, &fixture)
+        .await
+        .expect("the example persists");
+
+    let outcome = catalog::delete_festival(
+        &mut tx,
+        org_id,
+        festival.id,
+        user_id,
+        Some(festival.version.saturating_add(1)),
+    )
+    .await
+    .expect("the delete runs");
+
+    assert!(
+        matches!(outcome, catalog::Versioned::Stale { current } if current == festival.version),
+        "a stale If-Match is a 409, not a delete"
+    );
+    assert!(
+        catalog::get_festival(&mut tx, org_id, festival.id)
+            .await
+            .expect("read")
+            .is_some()
+    );
+}
+
+/// The operation row a festival delete left, read back.
+#[expect(
+    clippy::expect_used,
+    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
+)]
+async fn festival_delete_operation(
+    tx: &mut PgConnection,
+    operation: &catalog::OperationId,
+) -> (String, Option<Uuid>, bool, serde_json::Value) {
+    let row = sqlx::query("SELECT kind, event_id, undoable, inverse FROM operations WHERE id = $1")
+        .bind(operation.0)
+        .fetch_one(&mut *tx)
+        .await
+        .expect("the operation was recorded");
+    (
+        row.get("kind"),
+        row.get("event_id"),
+        row.get("undoable"),
+        row.get("inverse"),
+    )
+}
+
+/// No `event_id`, so the record outlives the cascade, and undoable: an
+/// empty festival lost nothing its inverse cannot recreate.
+#[tokio::test]
+async fn deleting_a_festival_that_lost_nothing_irreversible_is_undoable() {
+    let pool = pool().await;
+    let mut tx = pool.begin().await.expect("begin");
+    let (org_id, user_id) = seed_org(&mut tx).await;
+    let (festival, _) = catalog::create_festival(
+        &mut tx,
+        Uuid::now_v7(),
+        org_id,
+        user_id,
+        "Bare",
+        "bare",
+        "Europe/Paris",
+        a_period(),
+    )
+    .await
+    .expect("create a festival");
+
+    let (_, operation) = applied(
+        catalog::delete_festival(&mut tx, org_id, festival.id, user_id, None)
+            .await
+            .expect("the delete runs"),
+    );
+
+    let (kind, event_id, undoable, inverse) = festival_delete_operation(&mut tx, &operation).await;
+    assert_eq!((kind.as_str(), event_id), ("festival.delete", None));
+    assert!(undoable, "nothing irreversible went");
+    assert_eq!(inverse["command"], "restore_festival");
+    assert_eq!(inverse["festival"]["slug"], "bare");
+}
+
+/// Answered forms cannot come back, so the operation says it cannot be
+/// undone — while still naming the events an undo would regroup.
+#[tokio::test]
+async fn deleting_a_festival_whose_form_was_answered_is_not_undoable() {
+    let pool = pool().await;
+    let mut tx = pool.begin().await.expect("begin");
+    let (org_id, user_id) = seed_org(&mut tx).await;
+    let fixture = evp_domain::example::build().expect("example.json parses and resolves");
+    let (festival, _) = catalog::create_example(&mut tx, org_id, user_id, &fixture)
+        .await
+        .expect("the example persists");
+
+    let (_, operation) = applied(
+        catalog::delete_festival(&mut tx, org_id, festival.id, user_id, None)
+            .await
+            .expect("the delete runs"),
+    );
+
+    let (_, _, undoable, inverse) = festival_delete_operation(&mut tx, &operation).await;
+    assert!(!undoable, "the submissions cannot be recreated");
+    assert_eq!(
+        inverse["event_ids"].as_array().map(Vec::len),
+        Some(fixture.events.len()),
+        "the inverse still knows which events to regroup"
     );
 }

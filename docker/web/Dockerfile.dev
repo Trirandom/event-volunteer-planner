@@ -7,8 +7,9 @@
 #   admin  0.0.0.0:5173   base "/"    → Caddy  /*
 #   form   0.0.0.0:5174   base "/f/"  → Caddy  /f/*
 #
-# Nothing is COPYed: the sources arrive as bind mounts and /app/node_modules
-# and /pnpm-store are named volumes, so the image is only a toolchain.
+# The sources arrive as a bind mount and each package's node_modules is a named
+# volume, so the only thing COPYed is what `pnpm fetch` needs: the image
+# carries the package store, and starting the container links from it.
 #
 # HMR: the browser is on localhost:8080 and cannot see 5173 or 5174, so the
 # HMR client is told to dial 8080 (VITE_HMR_CLIENT_PORT) and Vite's WebSocket
@@ -26,17 +27,33 @@ RUN npm install --global --no-fund --no-audit "pnpm@${PNPM_VERSION}"
 
 WORKDIR /app
 
-ENV npm_config_store_dir=/pnpm-store \
-    # Bind mounts from a Windows or macOS host do not deliver inotify events,
-    # so the watcher polls. Costs a little CPU; the alternative is edits that
-    # silently do not reload.
-    VITE_USE_POLLING=true \
+# Bind mounts from a Windows or macOS host do not deliver inotify events, so
+# the watcher polls. Costs a little CPU; the alternative is edits that silently
+# do not reload.
+ENV VITE_USE_POLLING=true \
     VITE_HMR_CLIENT_PORT=8080 \
     VITE_ALLOWED_HOSTS=localhost,127.0.0.1,web
 
 EXPOSE 5173 5174
 
-# Install on start rather than at build time: node_modules is a named volume,
-# so a layer built here would be masked by the mount anyway. The lockfile is
-# frozen, so this is a no-op once the volume is warm.
-CMD ["sh", "-c", "pnpm install --frozen-lockfile && exec pnpm --filter './apps/*' --parallel dev"]
+# Download every package into the image's store at build time. `pnpm fetch`
+# reads the lockfile and not the package manifests, so this layer is rebuilt
+# only when the lockfile (or the settings and patches it depends on) changes.
+# Docker's layer cache is global, so every worktree on the machine shares one
+# copy. Wiping node_modules volumes therefore costs a relink, not a download.
+# `--store-dir` is passed explicitly: pnpm 12 ignores `npm_config_store_dir`,
+# which is how an earlier store volume here stayed empty and every fresh
+# volume downloaded the whole tree.
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+COPY patches patches
+# The virtual store `fetch` also writes would be masked by the node_modules
+# volume, so it is dropped in the same layer rather than shipped.
+RUN pnpm fetch --store-dir /pnpm-store && rm -rf node_modules
+
+# node_modules is still installed on start, not here: those directories are
+# named volumes, so a layer built here would be masked by the mount. The
+# install links from the store above and is a no-op once the volumes are warm.
+# `--prefer-offline`, not `--offline`: if the lockfile changes and the image
+# has not been rebuilt (`just up` rebuilds, a bare `docker compose up` does
+# not), only the missing packages are downloaded instead of the start failing.
+CMD ["sh", "-c", "pnpm install --frozen-lockfile --prefer-offline --store-dir /pnpm-store && exec pnpm --filter './apps/*' --parallel dev"]

@@ -162,6 +162,30 @@ export default {
     },
     noDays:
       'Ce festival n’a encore aucun jour : il n’y a rien à configurer. Ajoutez le premier ci-dessus.',
+    /** Deleting the festival itself (ADR-0053), from the bottom of its page. */
+    deleteFestival: {
+      button: 'Supprimer le festival',
+      title: 'Supprimer {name} ?',
+      counting: 'Calcul de ce que la suppression emporterait…',
+      countFailed:
+        'Impossible de savoir ce que la suppression emporterait. Fermez puis réessayez.',
+      ungroup:
+        '{count, plural, =0 {Le festival n’a aucun événement.} one {Son événement sera conservé : il deviendra un événement indépendant.} other {Ses # événements seront conservés : ils deviendront des événements indépendants.}}',
+      individually:
+        'Un événement n’est jamais supprimé avec son festival. Pour les supprimer aussi, il faudra ensuite les supprimer un par un, chacun depuis sa ligne.',
+      forms:
+        '{count, plural, =0 {Aucun formulaire n’est rattaché au festival.} one {Son formulaire sera supprimé.} other {Ses # formulaires seront supprimés.}}',
+      submissions:
+        '{count, plural, one {La réponse qu’il a reçue sera supprimée, avec les disponibilités qu’elle donnait. Ce sera définitif.} other {Les # réponses reçues seront supprimées, avec les disponibilités qu’elles donnaient. Ce sera définitif.}}',
+      typeName: 'Pour confirmer, tapez le nom du festival : {name}',
+      confirm: 'Supprimer le festival',
+      deleting: 'Suppression…',
+      keep: 'Garder le festival',
+      conflict:
+        'Le festival a changé depuis l’ouverture de cette page. Rechargez-la puis réessayez.',
+      forbidden: 'Seul un propriétaire peut supprimer un festival.',
+      unavailable: 'Le serveur est injoignable : rien n’a été supprimé.',
+    },
   },
   /** An event's row in the details list. */
   card: {

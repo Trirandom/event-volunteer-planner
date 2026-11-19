@@ -5,7 +5,7 @@
 //! §"Participation and availability").
 //!
 //! What the database refuses is proved in
-//! `crates/evp-db/tests/availability.rs`, including the critical regression
+//! `crates/evp-db/tests/db/availability.rs`, including the critical regression
 //! case: a coordinator's replace must never touch a submission-derived
 //! window. What is proved here is this crate's half — that the write is
 //! `Coordinator`-gated while the read is open to any member, that a `422`
@@ -15,12 +15,10 @@
 //! `20260918141853_availability_windows_provenance_exclusion`), and that
 //! `operation_id` is always returned (ADR-0024).
 
-mod support;
-
+use crate::support::{Call, add_member, create_event_body, pool, router, seed_member};
 use axum::http::StatusCode;
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use support::{Call, add_member, create_event_body, pool, router, seed_member};
 use uuid::Uuid;
 
 /// A coordinator-created event, through the real router.
@@ -45,7 +43,7 @@ async fn seed_event(router: &axum::Router, org_id: Uuid, cookie: &str) -> String
 
 /// A volunteer enrolled on `event_id`, inserted directly — enrolling is a
 /// documented write `evp-api` does not serve yet (`evp_api::participations`),
-/// same reasoning as `crates/evp-api/tests/assignments.rs`'s fixture of the
+/// same reasoning as `crates/evp-api/tests/api/assignments.rs`'s fixture of the
 /// same name.
 #[expect(
     clippy::expect_used,

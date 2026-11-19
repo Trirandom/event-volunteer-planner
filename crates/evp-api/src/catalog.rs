@@ -39,7 +39,14 @@ where
             "/api/v1/orgs/{org}/festivals/example",
             post(create_festival_example),
         )
-        .route("/api/v1/orgs/{org}/festivals/{festival}", get(get_festival))
+        .route(
+            "/api/v1/orgs/{org}/festivals/{festival}",
+            get(get_festival).delete(delete_festival),
+        )
+        .route(
+            "/api/v1/orgs/{org}/festivals/{festival}/deletion",
+            get(get_festival_deletion),
+        )
         .route(
             "/api/v1/orgs/{org}/events",
             get(list_events).post(create_event),
@@ -235,6 +242,27 @@ pub struct FestivalCreated {
     pub operation_id: String,
 }
 
+/// What deleting a festival would touch (ADR-0053), for the confirmation
+/// that shows the owner the cost before they type the festival's name.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct FestivalDeletionImpact {
+    /// Events that stay, ungrouped.
+    pub events: i64,
+    /// Festival-scoped forms that are deleted.
+    pub forms: i64,
+    /// Submissions to those forms, deleted with their payloads.
+    pub submissions: i64,
+}
+
+/// What a festival delete did, with the operation that records it.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct FestivalDeleted {
+    pub operation_id: String,
+    pub events_ungrouped: i64,
+    pub forms_deleted: i64,
+    pub submissions_deleted: i64,
+}
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct EventCreated {
     pub event: EventResponse,
@@ -371,6 +399,56 @@ async fn get_festival(
     let mut response = render_festival(festival);
     response.events = Some(events.into_iter().map(render_event).collect());
     Ok(tagged(version, response))
+}
+
+/// `GET /api/v1/orgs/{org}/festivals/{festival}/deletion` — owner only, as
+/// the delete it describes is.
+async fn get_festival_deletion(
+    Owner(mut org): Owner,
+    Path(path): Path<FestivalPath>,
+) -> Result<axum::Json<FestivalDeletionImpact>, ApiError> {
+    let festival_id = parse_uuid("festival", &path.festival)?;
+    let impact = evp_db::catalog::festival_deletion_impact(&mut org.tx, org.org_id, festival_id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or(ApiError::NotFound)?;
+    org.commit().await?;
+    Ok(axum::Json(FestivalDeletionImpact {
+        events: impact.events,
+        forms: impact.forms,
+        submissions: impact.submissions,
+    }))
+}
+
+/// `DELETE /api/v1/orgs/{org}/festivals/{festival}` — owner only, like
+/// deleting an event (docs/04 §4), and behind `If-Match` (ADR-0053).
+///
+/// `200` with what happened rather than `204`: the events stay, and the
+/// admin has to tell the owner they are standalone now and must be deleted
+/// one by one if that was the intent.
+async fn delete_festival(
+    Owner(mut org): Owner,
+    Path(path): Path<FestivalPath>,
+    precondition: Precondition,
+) -> Result<axum::Json<FestivalDeleted>, ApiError> {
+    let festival_id = parse_uuid("festival", &path.festival)?;
+    let outcome = evp_db::catalog::delete_festival(
+        &mut org.tx,
+        org.org_id,
+        festival_id,
+        org.user_id,
+        precondition_version(&precondition),
+    )
+    .await
+    .map_err(map_write_error)?;
+    let (impact, operation_id) = applied(outcome, &precondition)?;
+    org.commit().await?;
+    Ok(axum::Json(FestivalDeleted {
+        operation_id: operation_id.0.to_string(),
+        events_ungrouped: impact.events,
+        forms_deleted: impact.forms,
+        submissions_deleted: impact.submissions,
+    }))
 }
 
 /// `POST /api/v1/orgs/{org}/festivals/example`.

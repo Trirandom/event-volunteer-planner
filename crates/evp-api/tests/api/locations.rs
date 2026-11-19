@@ -12,11 +12,9 @@
 //! Dub & 2step, and the board would render one event's post inside another
 //! event's zone.
 
-mod support;
-
+use crate::support::{Call, create_event_body, pool, router, seed_member};
 use axum::http::StatusCode;
 use serde_json::{Value, json};
-use support::{Call, create_event_body, pool, router, seed_member};
 
 /// Creates an event and returns its id.
 #[expect(
@@ -38,7 +36,7 @@ async fn seed_event(router: &axum::Router, org_id: uuid::Uuid, cookie: &str) -> 
         .to_owned()
 }
 
-fn id_of(answer: &support::Answer) -> String {
+fn id_of(answer: &crate::support::Answer) -> String {
     answer
         .body
         .pointer("/location/id")
@@ -456,7 +454,7 @@ async fn a_zone_lead_may_read_the_tree_but_not_change_it() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, owner_cookie) = seed_member(&pool, "owner").await;
-    let lead_cookie = support::add_member(&pool, org_id, "zone_lead").await;
+    let lead_cookie = crate::support::add_member(&pool, org_id, "zone_lead").await;
     let event_id = seed_event(&router, org_id, &owner_cookie).await;
     let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/locations");
 

@@ -22,7 +22,9 @@ out of order, driven by the first real festival, Soundclash 26):
 - **Built:** config, password sign-in with opaque Postgres sessions and a login
   rate limit, the bootstrap owner (`EVP_BOOTSTRAP_*`, read only while `users`
   is empty), `GET /api/v1/meta`, RLS; festivals and events (ADR-0032/0044) and
-  the one-click worked example (`evp_db::catalog::create_example`); the
+  the one-click worked example (`evp_db::catalog::create_example`); deleting
+  a festival (ADR-0053: owner only, its events kept and ungrouped, its forms
+  and their submissions deleted, the cost read first from `…/deletion`); the
   zone/post location tree ("missions") with form flags (ADR-0041),
   one line per mission, a checkbox per day a zone runs on, saved as it is
   edited with page-level Ctrl+Z (ADR-0049); posts as roles within their
@@ -37,7 +39,9 @@ out of order, driven by the first real festival, Soundclash 26):
   (`evp-api/src/backoffice.rs`, `evp_db::backoffice`); its writes are the
   first `audit_log` rows. Off (404) when the key is unset.
 - **Admin plan pages:** details (one row per event, saved as it is edited
-  with page-level Ctrl+Z, ADR-0051; sixteen offered colours, ADR-0050) →
+  with page-level Ctrl+Z, ADR-0051; sixteen offered colours, ADR-0050; at
+  festival scope an owner's "Delete the festival", confirmed by typing its
+  name) →
   missions → shifts → form (one rail entry,
   three tabs: builder `…/form` with a drag-and-drop toolbox, publication
   `…/form/publication`, submissions `…/submissions` + `…/submissions/review`)
@@ -123,7 +127,7 @@ pnpm exec playwright test e2e/api-meta.spec.ts
 `just check-web`/`test-web` call the root scripts (`pnpm lint`, `pnpm
 typecheck`, `pnpm test`); `typecheck` also runs each package's `vue-tsc`. The
 Rust DB tests run inside one rolled-back transaction as `evp_migrator` against
-the dev database, not `sqlx::test` (`crates/evp-db/tests/catalog.rs`).
+the dev database, not `sqlx::test` (`crates/evp-db/tests/db/catalog.rs`).
 
 ## Architecture
 

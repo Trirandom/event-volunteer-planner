@@ -810,6 +810,183 @@ pub async fn delete_event(
     Ok(Versioned::Applied(()))
 }
 
+/// What deleting a festival touches (ADR-0053): the events it ungroups, and
+/// the forms and submissions it deletes for good.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FestivalImpact {
+    pub events: i64,
+    pub forms: i64,
+    pub submissions: i64,
+}
+
+/// What [`delete_festival`] would do, counted without doing it — for the
+/// confirmation that shows the owner the cost first. `None` if the festival
+/// is not in this organisation.
+///
+/// A submission is counted when it came in through one of the festival's
+/// forms' intake sources or is pinned to one of their versions: either
+/// foreign key cascades. [`delete_festival`] deletes the windows of the same
+/// set, and the two statements must keep naming it identically.
+///
+/// # Errors
+///
+/// [`DbError::Query`] if the statement fails.
+pub async fn festival_deletion_impact(
+    conn: &mut PgConnection,
+    org_id: Uuid,
+    id: Uuid,
+) -> Result<Option<FestivalImpact>, DbError> {
+    let row = sqlx::query(
+        "SELECT \
+           (SELECT count(*) FROM events e WHERE e.org_id = $1 AND e.festival_id = $2) AS events, \
+           (SELECT count(*) FROM forms f WHERE f.org_id = $1 AND f.festival_id = $2) AS forms, \
+           (SELECT count(*) FROM submissions s \
+             WHERE s.org_id = $1 AND ( \
+               s.source_id IN (SELECT src.id FROM intake_sources src \
+                                 JOIN forms f ON f.id = src.form_id AND f.org_id = src.org_id \
+                                WHERE src.org_id = $1 AND f.festival_id = $2) \
+               OR s.form_version_id IN (SELECT v.id FROM form_versions v \
+                                          JOIN forms f ON f.id = v.form_id AND f.org_id = v.org_id \
+                                         WHERE v.org_id = $1 AND f.festival_id = $2))) \
+             AS submissions \
+         FROM festivals WHERE org_id = $1 AND id = $2",
+    )
+    .bind(org_id)
+    .bind(id)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(DbError::Query)?;
+    row.map(|row| {
+        Ok(FestivalImpact {
+            events: row.try_get("events").map_err(DbError::Query)?,
+            forms: row.try_get("forms").map_err(DbError::Query)?,
+            submissions: row.try_get("submissions").map_err(DbError::Query)?,
+        })
+    })
+    .transpose()
+}
+
+/// Deletes a festival (ADR-0053). Its events stay, ungrouped by their own
+/// `ON DELETE SET NULL`; its forms go by cascade, with their versions,
+/// intake sources, batches, submissions and payloads.
+///
+/// The windows read off those submissions are deleted first. With the
+/// submission gone they would have no provenance, and
+/// `availability_has_provenance` refuses the cascade's `SET NULL` with a
+/// `23514` — a plain `DELETE FROM festivals` fails on any festival whose
+/// form was answered with availability.
+///
+/// Owner-only at the API layer (docs/04 §4). The operation has no
+/// `event_id`, so the cascade cannot take it, and is recorded not undoable
+/// when forms or submissions went: its inverse recreates the festival and
+/// regroups the events, and nothing can recreate those.
+///
+/// # Errors
+///
+/// [`DbError::Query`] if a statement fails.
+pub async fn delete_festival(
+    conn: &mut PgConnection,
+    org_id: Uuid,
+    id: Uuid,
+    actor_id: Uuid,
+    expected_version: Option<i32>,
+) -> Result<Versioned<(FestivalImpact, OperationId)>, DbError> {
+    let Some(before) = get_festival(conn, org_id, id).await? else {
+        return Ok(Versioned::Missing);
+    };
+    if expected_version.is_some_and(|expected| expected != before.version) {
+        return Ok(Versioned::Stale {
+            current: before.version,
+        });
+    }
+    let Some(impact) = festival_deletion_impact(conn, org_id, id).await? else {
+        return Ok(Versioned::Missing);
+    };
+    let event_ids: Vec<Uuid> = sqlx::query_scalar(
+        "SELECT id FROM events WHERE org_id = $1 AND festival_id = $2 ORDER BY id",
+    )
+    .bind(org_id)
+    .bind(id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(DbError::Query)?;
+
+    sqlx::query(
+        "DELETE FROM availability_windows aw \
+          WHERE aw.org_id = $1 AND aw.source_submission_id IN ( \
+            SELECT s.id FROM submissions s \
+             WHERE s.org_id = $1 AND ( \
+               s.source_id IN (SELECT src.id FROM intake_sources src \
+                                 JOIN forms f ON f.id = src.form_id AND f.org_id = src.org_id \
+                                WHERE src.org_id = $1 AND f.festival_id = $2) \
+               OR s.form_version_id IN (SELECT v.id FROM form_versions v \
+                                          JOIN forms f ON f.id = v.form_id AND f.org_id = v.org_id \
+                                         WHERE v.org_id = $1 AND f.festival_id = $2)))",
+    )
+    .bind(org_id)
+    .bind(id)
+    .execute(&mut *conn)
+    .await
+    .map_err(DbError::Query)?;
+
+    let deleted = sqlx::query(
+        "DELETE FROM festivals WHERE org_id = $1 AND id = $2 \
+         AND ($3::int IS NULL OR version = $3)",
+    )
+    .bind(org_id)
+    .bind(id)
+    .bind(expected_version)
+    .execute(&mut *conn)
+    .await
+    .map_err(DbError::Query)?;
+    if deleted.rows_affected() == 0 {
+        return Ok(Versioned::Stale {
+            current: before.version,
+        });
+    }
+
+    let mut entity_ids = Vec::with_capacity(event_ids.len().saturating_add(1));
+    entity_ids.push(id);
+    entity_ids.extend(&event_ids);
+    let operation_id = record_operation(
+        conn,
+        org_id,
+        None,
+        actor_id,
+        "festival.delete",
+        serde_json::json!({
+            "name": before.name,
+            "events_ungrouped": impact.events,
+            "forms_deleted": impact.forms,
+            "submissions_deleted": impact.submissions,
+        }),
+        serde_json::json!({
+            "command": "restore_festival",
+            "festival": {
+                "id": before.id,
+                "name": before.name,
+                "slug": before.slug,
+                "timezone": before.timezone,
+                "period": [before.period_start.to_string(), before.period_end.to_string()],
+                "status": before.status,
+            },
+            "event_ids": event_ids,
+        }),
+        &entity_ids,
+    )
+    .await?;
+    if impact.forms > 0 || impact.submissions > 0 {
+        sqlx::query("UPDATE operations SET undoable = false WHERE org_id = $1 AND id = $2")
+            .bind(org_id)
+            .bind(operation_id.0)
+            .execute(&mut *conn)
+            .await
+            .map_err(DbError::Query)?;
+    }
+
+    Ok(Versioned::Applied((impact, operation_id)))
+}
+
 /// Is there already any festival in this organisation? Backs the `409` on
 /// `POST …/festivals/example`.
 ///

@@ -11,11 +11,9 @@
 //! `…101500`, and what is asserted here is that they surface as a `422` a
 //! coordinator can act on rather than a `500`.
 
-mod support;
-
+use crate::support::{Call, create_event_body, pool, router, seed_member};
 use axum::http::StatusCode;
 use serde_json::{Value, json};
-use support::{Call, create_event_body, pool, router, seed_member};
 
 /// An event running 2026-07-04T06:00Z → 2026-07-07T06:00Z, and one zone to
 /// schedule on. Returns `(event_id, zone_id)`. A zone, not a post: shifts
@@ -365,7 +363,7 @@ async fn a_zone_lead_may_read_shifts_but_not_write_them() {
     let pool = pool().await;
     let router = router(pool.clone());
     let (org_id, owner_cookie) = seed_member(&pool, "owner").await;
-    let lead_cookie = support::add_member(&pool, org_id, "zone_lead").await;
+    let lead_cookie = crate::support::add_member(&pool, org_id, "zone_lead").await;
     let (event_id, zone_id) = seed_event_with_zone(&router, org_id, &owner_cookie).await;
     let base = format!("/api/v1/orgs/{org_id}/events/{event_id}/shifts");
 

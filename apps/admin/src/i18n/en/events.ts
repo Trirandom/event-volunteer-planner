@@ -142,6 +142,30 @@ export default {
     },
     noDays:
       'This festival has no days yet, so there is nothing to configure. Add the first one above.',
+    /** Deleting the festival itself (ADR-0053), from the bottom of its page. */
+    deleteFestival: {
+      button: 'Delete the festival',
+      title: 'Delete {name}?',
+      counting: 'Working out what the deletion would take…',
+      countFailed:
+        'Could not work out what the deletion would take. Close this and try again.',
+      ungroup:
+        '{count, plural, =0 {The festival has no events.} one {Its event will be kept: it will become a standalone event.} other {Its # events will be kept: they will become standalone events.}}',
+      individually:
+        'An event is never deleted with its festival. To delete them too, they will then have to be deleted one at a time, each from its own row.',
+      forms:
+        '{count, plural, =0 {No form belongs to the festival.} one {Its form will be deleted.} other {Its # forms will be deleted.}}',
+      submissions:
+        '{count, plural, one {The one answer it received will be deleted, with the availability it gave. This will be permanent.} other {The # answers received will be deleted, with the availability they gave. This will be permanent.}}',
+      typeName: 'To confirm, type the festival’s name: {name}',
+      confirm: 'Delete the festival',
+      deleting: 'Deleting…',
+      keep: 'Keep the festival',
+      conflict:
+        'The festival changed since this page was opened. Reload it and try again.',
+      forbidden: 'Only an owner can delete a festival.',
+      unavailable: 'The server could not be reached: nothing was deleted.',
+    },
   },
   card: {
     doors: 'Doors {open}–{close}',

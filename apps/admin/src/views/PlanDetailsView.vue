@@ -20,9 +20,10 @@ status and Ctrl+Z for the whole page kept in view above them.
  * /events/{event}` is owner-only (docs/04 §4), so the membership is consulted
  * for the *org this page is under*, never "is this person an owner anywhere".
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 
+import { useDeleteFestival, useFestivalDeletion } from '../api/useFestivals';
 import { usePlanScope } from '../api/usePlan';
 import { useSession } from '../api/useSession';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
@@ -149,6 +150,87 @@ async function afterDelete(deleted: {
         name: 'org-festival-details',
         params: { orgId: orgId.value, festivalId: deleted.festivalId },
       }));
+}
+
+// ── Deleting the festival (ADR-0053) ────────────────────────────────────────
+
+/**
+ * The festival this page can delete: only at festival scope, where the page
+ * is the whole production, and only for an owner. Narrowed to one day, the
+ * button would read as deleting that day.
+ */
+const deletableFestival = computed(() => {
+  const value = scope.value;
+  return isOwner.value && value?.kind === 'festival' ? value.festival : null;
+});
+
+const confirmingFestivalDelete = ref(false);
+const typedName = ref('');
+const typedNameId = useId();
+const festivalDeleteRefusal = ref<string | null>(null);
+
+const { data: deletionCost, isPending: countingDeletion } = useFestivalDeletion(
+  orgId,
+  () => deletableFestival.value?.id ?? '',
+  { enabled: () => confirmingFestivalDelete.value },
+);
+
+/** What the delete would take, or `null` until it has been counted. The
+ * confirm button waits for it: an owner is told the cost before paying. */
+const cost = computed(() =>
+  deletionCost.value?.ok === true ? deletionCost.value.value : null,
+);
+
+const removeFestival = useDeleteFestival(orgId);
+
+/** The name typed back, compared as the owner reads it: surrounding spaces
+ * are a slip, not a different festival. */
+const nameConfirmed = computed(
+  () =>
+    deletableFestival.value !== null &&
+    typedName.value.trim() === deletableFestival.value.name,
+);
+
+function askToDeleteFestival(): void {
+  typedName.value = '';
+  festivalDeleteRefusal.value = null;
+  confirmingFestivalDelete.value = true;
+}
+
+async function confirmFestivalDelete(): Promise<void> {
+  const festival = deletableFestival.value;
+  // Enter in the name field lands here too, so the button's own conditions
+  // are checked again rather than assumed.
+  if (
+    festival === null ||
+    !nameConfirmed.value ||
+    cost.value === null ||
+    removeFestival.isPending.value
+  ) {
+    return;
+  }
+  festivalDeleteRefusal.value = null;
+  const outcome = await removeFestival.mutateAsync({
+    festivalId: festival.id,
+    version: festival.version,
+  });
+  if (!outcome.ok) {
+    const { rejection } = outcome;
+    festivalDeleteRefusal.value =
+      rejection.reason === 'unavailable'
+        ? t('events.detailsPage.deleteFestival.unavailable')
+        : rejection.reason === 'conflict'
+          ? t('events.detailsPage.deleteFestival.conflict')
+          : rejection.reason === 'forbidden'
+            ? t('events.detailsPage.deleteFestival.forbidden')
+            : rejection.detail;
+    return;
+  }
+  confirmingFestivalDelete.value = false;
+  // The festival is gone, so this page names a row the server now answers
+  // 404 for; its events are on the events list, standalone.
+  leavingAfterDelete = true;
+  await router.push({ name: 'org-events', params: { orgId: orgId.value } });
 }
 
 /**
@@ -351,6 +433,84 @@ onBeforeUnmount(() => {
       />
     </div>
 
+    <div v-if="deletableFestival !== null" class="evp-festival-delete">
+      <button
+        type="button"
+        class="evp-button evp-festival-delete-button"
+        @click="askToDeleteFestival"
+      >
+        {{ t('events.detailsPage.deleteFestival.button') }}
+      </button>
+    </div>
+
+    <ConfirmDialog
+      v-if="deletableFestival !== null"
+      :open="confirmingFestivalDelete"
+      :title="
+        t('events.detailsPage.deleteFestival.title', {
+          name: deletableFestival.name,
+        })
+      "
+      :confirm-label="t('events.detailsPage.deleteFestival.confirm')"
+      :busy-label="t('events.detailsPage.deleteFestival.deleting')"
+      :busy="removeFestival.isPending.value"
+      :cancel-label="t('events.detailsPage.deleteFestival.keep')"
+      :error="festivalDeleteRefusal"
+      :confirm-disabled="cost === null || !nameConfirmed"
+      @confirm="confirmFestivalDelete"
+      @cancel="confirmingFestivalDelete = false"
+    >
+      <p v-if="countingDeletion">
+        {{ t('events.detailsPage.deleteFestival.counting') }}
+      </p>
+      <p v-else-if="cost === null" role="alert">
+        {{ t('events.detailsPage.deleteFestival.countFailed') }}
+      </p>
+      <template v-else>
+        <p>
+          {{
+            t('events.detailsPage.deleteFestival.ungroup', {
+              count: cost.events,
+            })
+          }}
+        </p>
+        <p v-if="cost.events > 0">
+          <strong>{{
+            t('events.detailsPage.deleteFestival.individually')
+          }}</strong>
+        </p>
+        <p>
+          {{
+            t('events.detailsPage.deleteFestival.forms', { count: cost.forms })
+          }}
+          <template v-if="cost.submissions > 0">
+            {{
+              t('events.detailsPage.deleteFestival.submissions', {
+                count: cost.submissions,
+              })
+            }}
+          </template>
+        </p>
+        <p class="evp-field evp-festival-delete-name">
+          <label :for="typedNameId">
+            <span>{{
+              t('events.detailsPage.deleteFestival.typeName', {
+                name: deletableFestival.name,
+              })
+            }}</span>
+            <input
+              :id="typedNameId"
+              v-model="typedName"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              @keydown.enter.prevent="confirmFestivalDelete"
+            />
+          </label>
+        </p>
+      </template>
+    </ConfirmDialog>
+
     <ConfirmDialog
       v-if="confirmingLeave"
       :open="true"
@@ -449,6 +609,27 @@ h2 {
 .evp-icon-button[disabled] {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+/* At the foot of the page, apart from the rows: deleting the whole
+   production is not one more setting among the days'. */
+.evp-festival-delete {
+  border-top: var(--evp-edge) solid var(--evp-border);
+  margin-top: 2rem;
+  max-width: 72rem;
+  padding-top: 1rem;
+}
+
+.evp-festival-delete-button {
+  border-color: var(--evp-danger);
+  color: var(--evp-danger);
+}
+
+/* `.evp-field` styles the input; this only spaces it from the cost above
+ * and drops the bottom margin a field keeps for the one after it. */
+.evp-festival-delete-name {
+  margin-bottom: 0;
+  margin-top: 0.75rem;
 }
 
 .evp-visually-hidden {

@@ -12,42 +12,15 @@
 //! Same connection discipline as `forms.rs`: one transaction per test, never
 //! committed, with `set_config(…, true)` switching the organisation in scope.
 
+use crate::support::{assert_refused, at, pool, seed_org, set};
 use evp_db::DbError;
 use evp_db::catalog::{self, Versioned};
 use evp_db::forms::{self, DraftWrite, FormPatch, NewForm};
 use evp_db::public_forms::{self, NewSubmission, Resolved};
 use evp_domain::form as domain;
-use jiff::Timestamp;
 use sqlx::postgres::PgArguments;
-use sqlx::{PgConnection, PgPool, Postgres, Row as _};
+use sqlx::{PgConnection, Postgres, Row as _};
 use uuid::Uuid;
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixture — a setup failure must abort the test loudly, not be handled"
-)]
-async fn pool() -> PgPool {
-    let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
-        "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests; \
-         `just test`/`just test-tz` set it via compose.override.yaml",
-    );
-    evp_db::connect(&url)
-        .await
-        .expect("could not connect to the test database")
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixture — a setup failure must abort the test loudly, not be handled"
-)]
-async fn set(conn: &mut PgConnection, name: &str, value: &str) {
-    sqlx::query("SELECT set_config($1, $2, true)")
-        .bind(name)
-        .bind(value)
-        .execute(&mut *conn)
-        .await
-        .expect("set_config");
-}
 
 #[expect(
     clippy::expect_used,
@@ -65,49 +38,6 @@ async fn setting(conn: &mut PgConnection, name: &str) -> String {
 /// Puts the transaction in `org_id`'s scope, as the org extractor would.
 async fn scope(conn: &mut PgConnection, org_id: Uuid) {
     set(conn, "app.current_org_id", &org_id.to_string()).await;
-}
-
-/// An organisation and its owner; leaves the transaction in its scope.
-#[expect(
-    clippy::expect_used,
-    reason = "test fixture — a setup failure must abort the test loudly, not be handled"
-)]
-async fn seed_org(conn: &mut PgConnection) -> (Uuid, Uuid) {
-    let org_id = Uuid::now_v7();
-    let user_id = Uuid::now_v7();
-    let suffix = Uuid::now_v7().simple().to_string();
-    scope(conn, org_id).await;
-    set(conn, "app.current_user_id", &user_id.to_string()).await;
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2::citext, 'Test Org')")
-        .bind(org_id)
-        .bind(format!("test-{suffix}"))
-        .execute(&mut *conn)
-        .await
-        .expect("insert organizations row");
-    sqlx::query(
-        "INSERT INTO users (id, email, display_name) VALUES ($1, $2::citext, 'Test Owner')",
-    )
-    .bind(user_id)
-    .bind(format!("{suffix}@example.test"))
-    .execute(&mut *conn)
-    .await
-    .expect("insert users row");
-    sqlx::query("INSERT INTO memberships (id, org_id, user_id, role) VALUES ($1, $2, $3, 'owner')")
-        .bind(Uuid::now_v7())
-        .bind(org_id)
-        .bind(user_id)
-        .execute(&mut *conn)
-        .await
-        .expect("insert memberships row");
-    (org_id, user_id)
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixture — a setup failure must abort the test loudly, not be handled"
-)]
-fn at(value: &str) -> Timestamp {
-    value.parse().expect("valid instant")
 }
 
 /// A festival with two events, created out of period order so the sort is
@@ -285,15 +215,6 @@ async fn rollback_to_savepoint(conn: &mut PgConnection) {
         .execute(&mut *conn)
         .await
         .expect("rollback to savepoint");
-}
-
-fn assert_refused(error: &DbError, sqlstate: &str, constraint: &str) {
-    assert_eq!(
-        error.sqlstate().as_deref(),
-        Some(sqlstate),
-        "expected {sqlstate} ({constraint}), got {error:?}"
-    );
-    assert_eq!(error.constraint().as_deref(), Some(constraint), "{error:?}");
 }
 
 #[expect(

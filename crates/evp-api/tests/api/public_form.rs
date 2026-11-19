@@ -11,13 +11,11 @@
 //! publish — through the authenticated API, so what is served is what the
 //! admin app would have produced.
 
-mod support;
-
+use crate::support::{Call, create_event_body, pool, router, seed_member};
 use axum::Router;
 use axum::http::{StatusCode, header};
 use serde_json::{Value, json};
 use sqlx::Row as _;
-use support::{Call, create_event_body, pool, router, seed_member};
 use uuid::Uuid;
 
 fn str_at<'a>(value: &'a Value, pointer: &str) -> &'a str {
@@ -155,7 +153,11 @@ async fn live_form(router: &Router, pool: &sqlx::PgPool) -> Live {
 
 /// [`live_form`]'s setup with a chosen slug, handing back the publish
 /// response for a test that expects it to be refused.
-async fn publish_form(router: &Router, pool: &sqlx::PgPool, slug: &str) -> (Live, support::Answer) {
+async fn publish_form(
+    router: &Router,
+    pool: &sqlx::PgPool,
+    slug: &str,
+) -> (Live, crate::support::Answer) {
     publish_form_with(router, pool, slug, None).await
 }
 
@@ -167,7 +169,7 @@ async fn publish_form_with(
     pool: &sqlx::PgPool,
     slug: &str,
     zone_patch: Option<Value>,
-) -> (Live, support::Answer) {
+) -> (Live, crate::support::Answer) {
     let (org_id, cookie) = seed_member(pool, "coordinator").await;
     let festival = Call::new("POST", format!("/api/v1/orgs/{org_id}/festivals"))
         .signed_in_as(&cookie)

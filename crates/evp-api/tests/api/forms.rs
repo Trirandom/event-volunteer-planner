@@ -9,12 +9,10 @@
 //! against: paths, field names, statuses, the seeded draft, and the shape of
 //! a `422` — `problems`, each naming a position and a code.
 
-mod support;
-
+use crate::support::{Call, add_member, create_event_body, pool, router, seed_member};
 use axum::Router;
 use axum::http::StatusCode;
 use serde_json::{Value, json};
-use support::{Call, add_member, create_event_body, pool, router, seed_member};
 use uuid::Uuid;
 
 struct Scope {

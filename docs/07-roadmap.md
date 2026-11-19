@@ -158,7 +158,8 @@ passes, and no sequence of UI actions can produce a double-booking.
 
 ## M4 — Output
 
-**Status: not started**, beyond a dry-run preview of the schedule email and the
+**Status: not started**, beyond a dry-run preview of the schedule email, its
+test send to one address ([ADR-0054](adr/0054-a-test-send-goes-to-the-relay-in-the-request.md)), and the
 per-org OVH SMS settings ([ADR-0034](adr/0034-per-org-ovh-sms-credentials.md)).
 
 - Roster versions, publish preview with a real diff, publish.

@@ -11,12 +11,14 @@
  * merge got wrong (docs/01 §"Identity is a lowercased name"). So every
  * recipient is rendered, not a sample.
  *
- * **Nothing is sent from here yet.** Sending is publishing (docs/04
- * §Publishing): it snapshots a roster version, needs an `Idempotency-Key` and
- * goes out through the outbox, none of which the API serves today. A send
- * button calling an endpoint that does not exist would be a button that
- * cannot work, so the page says so instead and does the part that can be done
- * now — the dry run.
+ * **Nothing reaches a volunteer from here yet.** Sending is publishing
+ * (docs/04 §Publishing): it snapshots a roster version, needs an
+ * `Idempotency-Key` and goes out through the outbox, none of which the API
+ * serves today. What it does serve is the test send (ADR-0054): the whole
+ * run, rendered by the server from this page's subject and template, every
+ * message to one address the coordinator types. That answers the one
+ * question the preview cannot, which is what the message looks like in a
+ * real mail client.
  *
  * The template is written as rich text (`EmailTemplateEditor`, ADR-0046) and
  * stored as the HTML it produces, so nobody types a tag to make a word bold.
@@ -35,6 +37,12 @@
  */
 import { computed, onUnmounted, ref, watch } from 'vue';
 
+import {
+  sendTestRun,
+  type TestScope,
+  type TestSendResult,
+  type TestSendSummary,
+} from '../api/publish';
 import { useMissionBoard, usePlanScope } from '../api/usePlan';
 import { useRoster } from '../api/useRoster';
 import { useSession } from '../api/useSession';
@@ -232,12 +240,37 @@ const template = computed({
   },
 });
 
+/** The subject is a template too, kept beside the body's draft. */
+const defaultSubject = computed(() =>
+  t('emails.template.subjectDefault', {
+    eventOrFestival: token('eventName|festivalName'),
+  }),
+);
+
+const subjectKey = computed(() => `${storageKey.value}.subject`);
+const subjectDraft = ref<string | null>(readDraft(subjectKey.value));
+watch(subjectKey, (key) => {
+  subjectDraft.value = readDraft(key);
+});
+
+const subject = computed({
+  get: () => subjectDraft.value ?? defaultSubject.value,
+  set: (value: string) => {
+    subjectDraft.value = value;
+    writeDraft(subjectKey.value, value);
+  },
+});
+
 function resetTemplate(): void {
   draft.value = null;
   writeDraft(storageKey.value, null);
+  subjectDraft.value = null;
+  writeDraft(subjectKey.value, null);
 }
 
-const unknown = computed(() => unknownPlaceholders(template.value));
+const unknown = computed(() =>
+  unknownPlaceholders(`${subject.value}\n${template.value}`),
+);
 
 /** What the editor exposes. Written out because a `.vue` file's instance
  * type does not reach the linter's type checker, which reads it as `any`. */
@@ -315,6 +348,27 @@ function frameDocument(body: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"><style>body{background:#fff;color:#1a1a1a;font:15px/1.5 system-ui,sans-serif;margin:1rem;}</style></head><body>${body}</body></html>`;
 }
 
+/** A subject line is not HTML: the server pours raw values into it and
+ * folds its whitespace, so the preview does the same. */
+const previewSubject = computed(() => {
+  const recipient = selected.value;
+  const current = scope.value;
+  if (recipient === null) {
+    return '';
+  }
+  return renderTemplate(subject.value, {
+    firstName: recipient.name,
+    displayName: recipient.name,
+    eventName: current?.selected?.name ?? '',
+    festivalName: current?.festival?.name ?? '',
+    organizationName: organizationName.value,
+    assignations: '',
+  })
+    .split(/\s+/u)
+    .filter((word) => word !== '')
+    .join(' ');
+});
+
 const previewDocument = computed(() =>
   selected.value === null
     ? ''
@@ -354,6 +408,109 @@ const rows = computed<readonly MessageRow[]>(() =>
   })),
 );
 
+// ---------------------------------------------------------------------------
+// The test send (ADR-0054)
+// ---------------------------------------------------------------------------
+
+/** Remembered on this device, like the draft: it is the coordinator's own
+ * address, typed once. */
+const TEST_ADDRESS_KEY = 'evp.emails.testRecipient';
+const testAddress = ref(readDraft(TEST_ADDRESS_KEY) ?? '');
+watch(testAddress, (value) => {
+  writeDraft(TEST_ADDRESS_KEY, value.trim() === '' ? null : value.trim());
+});
+
+/** The server's own rule (`looks_like_email`), restated so an obvious typo
+ * is caught before a round trip. The server still decides. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
+const addressValid = computed(() => EMAIL.test(testAddress.value.trim()));
+const addressTouched = ref(false);
+const showAddressError = computed(
+  () => addressTouched.value && !addressValid.value,
+);
+
+/** One day when the page is narrowed to one, the whole festival otherwise:
+ * the same run the table shows. */
+const testScope = computed<TestScope | null>(() => {
+  const current = scope.value;
+  if (current === null) {
+    return null;
+  }
+  const only = focus.value;
+  if (only !== null) {
+    return { kind: 'event', id: only };
+  }
+  return current.festival === null
+    ? null
+    : { kind: 'festival', id: current.festival.id };
+});
+
+type TestOutcome =
+  | {
+      readonly kind: 'done';
+      readonly address: string;
+      readonly summary: TestSendSummary;
+    }
+  | {
+      readonly kind: 'failed';
+      readonly message: string;
+    };
+
+const sending = ref(false);
+const outcome = ref<TestOutcome | null>(null);
+
+function failureMessage(result: TestSendResult & { ok: false }): string {
+  const detail = result.detail ?? '';
+  switch (result.reason) {
+    case 'invalid':
+      return t('emails.test.failed.invalid', { detail });
+    case 'forbidden':
+      return t('emails.test.failed.forbidden');
+    case 'refused':
+      return t('emails.test.failed.refused', { detail });
+    case 'unavailable':
+      return t('emails.test.failed.unavailable');
+  }
+}
+
+function stoppedMessage(
+  failed: NonNullable<TestSendSummary['failed']>,
+): string {
+  const values = { name: failed.name, detail: failed.detail };
+  switch (failed.reason) {
+    case 'refused':
+      return t('emails.test.stopped.refused', values);
+    case 'relay_unavailable':
+      return t('emails.test.stopped.relay_unavailable', values);
+    case 'render_failed':
+      return t('emails.test.stopped.render_failed', values);
+  }
+}
+
+async function sendTest(): Promise<void> {
+  addressTouched.value = true;
+  const target = testScope.value;
+  if (!addressValid.value || target === null || sending.value) {
+    return;
+  }
+  const address = testAddress.value.trim();
+  sending.value = true;
+  outcome.value = null;
+  try {
+    const result = await sendTestRun(orgId.value, target, {
+      recipient: address,
+      locale: locale.value,
+      subject: subject.value,
+      bodyHtml: template.value,
+    });
+    outcome.value = result.ok
+      ? { kind: 'done', address, summary: result.summary }
+      : { kind: 'failed', message: failureMessage(result) };
+  } finally {
+    sending.value = false;
+  }
+}
+
 const nameFilter = ref('');
 const onlyEmpty = ref(false);
 
@@ -381,6 +538,93 @@ const visibleRows = computed(() => {
       {{ t('emails.loadFailed') }}
     </p>
 
+    <section
+      v-if="recipients.length > 0"
+      aria-labelledby="emails-test"
+      class="evp-test-send"
+    >
+      <h2 id="emails-test">{{ t('emails.test.heading') }}</h2>
+      <form class="evp-test-row" novalidate @submit.prevent="sendTest">
+        <div class="evp-field evp-field--flat evp-test-field">
+          <label for="emails-test-address">
+            <span>{{ t('emails.test.address') }}</span>
+            <input
+              id="emails-test-address"
+              v-model="testAddress"
+              type="email"
+              autocomplete="email"
+              :placeholder="t('emails.test.placeholder')"
+              :aria-invalid="showAddressError"
+              :aria-describedby="
+                showAddressError
+                  ? 'emails-test-hint emails-test-invalid'
+                  : 'emails-test-hint'
+              "
+              @blur="addressTouched = testAddress.trim() !== ''"
+            />
+          </label>
+        </div>
+        <button
+          type="submit"
+          class="evp-button evp-button--primary evp-test-button"
+          :disabled="sending || testScope === null"
+        >
+          {{ sending ? t('emails.test.sending') : t('emails.test.send') }}
+        </button>
+      </form>
+      <p
+        v-if="showAddressError"
+        id="emails-test-invalid"
+        class="evp-danger-text evp-hint"
+      >
+        {{ t('emails.test.invalidAddress') }}
+      </p>
+      <p id="emails-test-hint" class="evp-muted evp-hint">
+        {{ t('emails.test.hint', { count: recipients.length }) }}
+      </p>
+
+      <div role="status" aria-live="polite" class="evp-test-outcome">
+        <template v-if="outcome?.kind === 'done'">
+          <p class="evp-test-sent">
+            {{
+              t('emails.test.sent', {
+                sent: outcome.summary.sent,
+                address: outcome.address,
+              })
+            }}
+          </p>
+          <p v-if="outcome.summary.skipped_opted_out > 0" class="evp-hint">
+            {{
+              t('emails.test.optedOut', {
+                count: outcome.summary.skipped_opted_out,
+              })
+            }}
+          </p>
+          <p
+            v-if="outcome.summary.no_address.length > 0"
+            class="evp-warning-text evp-hint"
+          >
+            {{
+              t('emails.test.noAddress', {
+                count: outcome.summary.no_address.length,
+                names: outcome.summary.no_address.join(', '),
+              })
+            }}
+          </p>
+        </template>
+      </div>
+      <p
+        v-if="outcome?.kind === 'done' && outcome.summary.failed !== null"
+        role="alert"
+        class="evp-error"
+      >
+        {{ stoppedMessage(outcome.summary.failed) }}
+      </p>
+      <p v-if="outcome?.kind === 'failed'" role="alert" class="evp-error">
+        {{ outcome.message }}
+      </p>
+    </section>
+
     <div class="evp-compose">
       <section aria-labelledby="emails-template" class="evp-compose-pane">
         <div class="evp-pane-head">
@@ -388,7 +632,7 @@ const visibleRows = computed(() => {
           <button
             type="button"
             class="evp-button evp-button--small"
-            :disabled="draft === null"
+            :disabled="draft === null && subjectDraft === null"
             @click="resetTemplate"
           >
             {{ t('emails.template.reset') }}
@@ -412,6 +656,13 @@ const visibleRows = computed(() => {
           >
             {{ token(name) }}
           </button>
+        </div>
+
+        <div class="evp-field evp-field--flat evp-subject-field">
+          <label for="emails-subject">
+            <span>{{ t('emails.template.subject') }}</span>
+            <input id="emails-subject" v-model="subject" type="text" />
+          </label>
         </div>
 
         <div class="evp-editor-field">
@@ -483,13 +734,18 @@ const visibleRows = computed(() => {
         <p v-if="selected === null" class="evp-muted">
           {{ t('emails.preview.empty') }}
         </p>
-        <iframe
-          v-else
-          class="evp-frame"
-          sandbox=""
-          :srcdoc="previewDocument"
-          :title="t('emails.preview.frame', { name: selected.name })"
-        ></iframe>
+        <template v-else>
+          <p class="evp-preview-subject">
+            <span class="evp-muted">{{ t('emails.template.subject') }}</span>
+            {{ previewSubject }}
+          </p>
+          <iframe
+            class="evp-frame"
+            sandbox=""
+            :srcdoc="previewDocument"
+            :title="t('emails.preview.frame', { name: selected.name })"
+          ></iframe>
+        </template>
       </section>
     </div>
 
@@ -647,6 +903,63 @@ h2 {
   font-size: 0.875rem;
   min-height: 2.25rem;
   padding: 0.375rem 0.875rem;
+}
+
+.evp-danger-text {
+  color: var(--evp-danger);
+  font-weight: 500;
+}
+
+/* ── Test send ───────────────────────────────────────────────────────────── */
+
+.evp-test-send {
+  border: var(--evp-edge) solid var(--evp-border);
+  border-radius: var(--evp-radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+  max-width: 48rem;
+  padding: 1rem;
+}
+
+/* The address and its button on one line, the button beside the field it
+   acts on; stacked once the line is too narrow for both. */
+.evp-test-row {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.evp-test-field {
+  flex: 1 1 18rem;
+  margin: 0;
+}
+
+.evp-test-button {
+  min-height: 2.75rem;
+}
+
+.evp-test-outcome:empty {
+  display: none;
+}
+
+.evp-test-sent {
+  font-weight: 600;
+  margin: 0;
+}
+
+.evp-subject-field {
+  margin: 0;
+}
+
+.evp-preview-subject {
+  display: flex;
+  gap: 0.5rem;
+  font-weight: 600;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 /* ── Template and preview ────────────────────────────────────────────────── */

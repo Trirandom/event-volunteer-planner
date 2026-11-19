@@ -12,23 +12,10 @@
 //! as `evp_migrator`, where `FORCE ROW LEVEL SECURITY` makes the policies bind
 //! to the owner too.
 
+use crate::support::{pool, set};
 use evp_db::backoffice;
-use sqlx::{PgConnection, PgPool, Row as _};
+use sqlx::{PgConnection, Row as _};
 use uuid::Uuid;
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn pool() -> PgPool {
-    let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
-        "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests; \
-         `just test`/`just test-tz` set it via compose.override.yaml",
-    );
-    evp_db::connect(&url)
-        .await
-        .expect("could not connect to the test database")
-}
 
 fn unique(prefix: &str) -> String {
     format!("{prefix}-{}", Uuid::now_v7().simple())
@@ -71,19 +58,6 @@ async fn seed_tenant(conn: &mut PgConnection) -> Uuid {
     set(conn, "app.current_org_id", "").await;
     set(conn, "app.current_user_id", "").await;
     org_id
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn set(conn: &mut PgConnection, name: &str, value: &str) {
-    sqlx::query("SELECT set_config($1, $2, true)")
-        .bind(name)
-        .bind(value)
-        .execute(&mut *conn)
-        .await
-        .expect("set_config");
 }
 
 #[expect(

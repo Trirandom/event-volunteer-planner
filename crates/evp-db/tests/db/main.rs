@@ -8,7 +8,10 @@
 //! runs every test in its own process, so nothing is shared between tests that
 //! was not shared before.
 //!
-//! A new suite is a file in this directory plus a `mod` line below.
+//! A new suite is a file in this directory plus a `mod` line below; fixtures
+//! every suite shares go in `support.rs`.
+
+mod support;
 
 mod assignments;
 mod availability;

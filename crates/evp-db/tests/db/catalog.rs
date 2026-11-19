@@ -30,101 +30,12 @@
 //! own transaction; this suite needs everything on the one transaction it
 //! rolls back.
 
+use crate::support::{a_period, pool, seed_org};
 use evp_db::DbError;
 use evp_db::catalog;
 use jiff_sqlx::ToSqlx as _;
-use sqlx::{PgConnection, PgPool, Row as _};
+use sqlx::{PgConnection, Row as _};
 use uuid::Uuid;
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn pool() -> PgPool {
-    let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
-        "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests \
-         (see crates/evp-db/tests/db/catalog.rs and migrations/README.md); `just test`/`just test-tz` \
-         set it via compose.override.yaml",
-    );
-    evp_db::connect(&url)
-        .await
-        .expect("could not connect to the test database")
-}
-
-/// Inserts an organisation, an owner user, and their membership on the
-/// caller's transaction, and leaves `app.current_org_id` / `app.current_user_id`
-/// / `app.current_role` set to them — the same three GUCs `evp-api::org`
-/// would set for a request scoped to this org.
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn seed_org(conn: &mut PgConnection) -> (Uuid, Uuid) {
-    let org_id = Uuid::now_v7();
-    let user_id = Uuid::now_v7();
-    // Random per test so parallel tests (nextest's default) never collide on
-    // `organizations_slug_format` uniqueness or `users.email` uniqueness —
-    // both are real constraints and both are global to the shared dev
-    // database this suite connects to.
-    // The full 32 hex characters, not a prefix: two `seed_org` calls a few
-    // microseconds apart (every test that seeds two orgs makes exactly that
-    // call) share a UUIDv7's leading, timestamp-derived bits, so truncating
-    // to the front would collide on `organizations_slug_key`. `5 + 32 = 37`
-    // stays under `organizations_slug_format`'s 40-character cap.
-    let suffix = Uuid::now_v7().simple().to_string();
-    let slug = format!("test-{suffix}");
-    let email = format!("{suffix}@example.test");
-
-    sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
-        .bind(org_id.to_string())
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_org_id");
-    sqlx::query("SELECT set_config('app.current_user_id', $1, true)")
-        .bind(user_id.to_string())
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_user_id");
-    sqlx::query("SELECT set_config('app.current_role', 'owner', true)")
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_role");
-
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2::citext, 'Test Org')")
-        .bind(org_id)
-        .bind(&slug)
-        .execute(&mut *conn)
-        .await
-        .expect("insert organizations row");
-    sqlx::query(
-        "INSERT INTO users (id, email, display_name) VALUES ($1, $2::citext, 'Test Owner')",
-    )
-    .bind(user_id)
-    .bind(&email)
-    .execute(&mut *conn)
-    .await
-    .expect("insert users row");
-    sqlx::query("INSERT INTO memberships (id, org_id, user_id, role) VALUES ($1, $2, $3, 'owner')")
-        .bind(Uuid::now_v7())
-        .bind(org_id)
-        .bind(user_id)
-        .execute(&mut *conn)
-        .await
-        .expect("insert memberships row");
-
-    (org_id, user_id)
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-fn a_period() -> (jiff::Timestamp, jiff::Timestamp) {
-    (
-        "2026-09-05T08:00:00Z".parse().expect("valid instant"),
-        "2026-09-05T20:00:00Z".parse().expect("valid instant"),
-    )
-}
 
 /// The value out of a versioned write, or a loud failure.
 ///

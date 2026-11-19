@@ -16,59 +16,10 @@
 //! check with `SET CONSTRAINTS ALL IMMEDIATE` and asserts the SQLSTATE
 //! (docs/13 §2).
 
+use crate::support::{pool, seed_org};
 use evp_db::patterns::{self, PatternInput, Segment};
-use sqlx::{PgConnection, PgPool, Row as _};
+use sqlx::{PgConnection, Row as _};
 use uuid::Uuid;
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn pool() -> PgPool {
-    let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
-        "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests; \
-         `just test`/`just test-tz` set it via compose.override.yaml",
-    );
-    evp_db::connect(&url)
-        .await
-        .expect("could not connect to the test database")
-}
-
-/// An organisation and the three GUCs a request scoped to it would carry.
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn seed_org(conn: &mut PgConnection) -> (Uuid, Uuid) {
-    let org_id = Uuid::now_v7();
-    let user_id = Uuid::now_v7();
-    let suffix = Uuid::now_v7().simple().to_string();
-
-    sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
-        .bind(org_id.to_string())
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_org_id");
-    sqlx::query("SELECT set_config('app.current_role', 'owner', true)")
-        .execute(&mut *conn)
-        .await
-        .expect("set app.current_role");
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2::citext, 'Test Org')")
-        .bind(org_id)
-        .bind(format!("test-{suffix}"))
-        .execute(&mut *conn)
-        .await
-        .expect("insert organizations row");
-    sqlx::query(
-        "INSERT INTO users (id, email, display_name) VALUES ($1, $2::citext, 'Test Owner')",
-    )
-    .bind(user_id)
-    .bind(format!("{suffix}@example.test"))
-    .execute(&mut *conn)
-    .await
-    .expect("insert users row");
-    (org_id, user_id)
-}
 
 fn named(name: &str, segments: Vec<Segment>) -> PatternInput {
     PatternInput {

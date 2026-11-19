@@ -13,81 +13,14 @@
 //! Same connection discipline as `catalog.rs`: one transaction per test,
 //! never committed.
 
+use crate::support::{assert_refused, at, pool, seed_org};
 use evp_db::DbError;
 use evp_db::catalog::{self, Patch, Versioned};
 use evp_db::forms::{self, DraftWrite, FormPatch, NewDraft, NewForm, VersionRef};
 use evp_domain::form::{self as domain, MissionRow, QuestionKind, TargetPath};
-use jiff::Timestamp;
 use sqlx::postgres::PgArguments;
-use sqlx::{PgConnection, PgPool, Postgres, Row as _};
+use sqlx::{PgConnection, Postgres, Row as _};
 use uuid::Uuid;
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn pool() -> PgPool {
-    let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
-        "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests; \
-         `just test`/`just test-tz` set it via compose.override.yaml",
-    );
-    evp_db::connect(&url)
-        .await
-        .expect("could not connect to the test database")
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
-)]
-async fn seed_org(conn: &mut PgConnection) -> (Uuid, Uuid) {
-    let org_id = Uuid::now_v7();
-    let user_id = Uuid::now_v7();
-    let suffix = Uuid::now_v7().simple().to_string();
-
-    for (name, value) in [
-        ("app.current_org_id", org_id.to_string()),
-        ("app.current_user_id", user_id.to_string()),
-        ("app.current_role", "owner".to_owned()),
-    ] {
-        sqlx::query("SELECT set_config($1, $2, true)")
-            .bind(name)
-            .bind(value)
-            .execute(&mut *conn)
-            .await
-            .expect("set_config");
-    }
-    sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2::citext, 'Test Org')")
-        .bind(org_id)
-        .bind(format!("test-{suffix}"))
-        .execute(&mut *conn)
-        .await
-        .expect("insert organizations row");
-    sqlx::query(
-        "INSERT INTO users (id, email, display_name) VALUES ($1, $2::citext, 'Test Owner')",
-    )
-    .bind(user_id)
-    .bind(format!("{suffix}@example.test"))
-    .execute(&mut *conn)
-    .await
-    .expect("insert users row");
-    sqlx::query("INSERT INTO memberships (id, org_id, user_id, role) VALUES ($1, $2, $3, 'owner')")
-        .bind(Uuid::now_v7())
-        .bind(org_id)
-        .bind(user_id)
-        .execute(&mut *conn)
-        .await
-        .expect("insert memberships row");
-    (org_id, user_id)
-}
-
-#[expect(
-    clippy::expect_used,
-    reason = "test fixture — a malformed literal here is a broken test, not a runtime case"
-)]
-fn at(value: &str) -> Timestamp {
-    value.parse().expect("valid instant")
-}
 
 #[expect(
     clippy::expect_used,
@@ -235,15 +168,6 @@ async fn refused(conn: &mut PgConnection, statement: Statement) -> DbError {
         .await
         .expect("rollback to savepoint");
     DbError::Query(error)
-}
-
-fn assert_refused(error: &DbError, sqlstate: &str, constraint: &str) {
-    assert_eq!(
-        error.sqlstate().as_deref(),
-        Some(sqlstate),
-        "expected {sqlstate} ({constraint}), got {error:?}"
-    );
-    assert_eq!(error.constraint().as_deref(), Some(constraint), "{error:?}");
 }
 
 struct Row {

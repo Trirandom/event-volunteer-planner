@@ -13,7 +13,7 @@
   "dependencies": {
     "@evp/shared": "workspace:*",
     "@floating-ui/dom": "1.8.0",
-    "@tanstack/vue-query": "5.104.5",
+    "@tanstack/vue-query": "5.107.2",
     "@tanstack/vue-virtual": "3.13.52",
     "@tiptap/core": "3.31.4",
     "@tiptap/extension-bold": "3.31.4",
@@ -35,9 +35,9 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.5",
-    "@vitejs/plugin-vue": "6.0.10",
+    "@vitejs/plugin-vue": "6.0.11",
     "tailwindcss": "4.3.5",
-    "vite": "8.3.7",
+    "vite": "8.3.8",
     "vue-tsc": "3.3.14"
   }
 }

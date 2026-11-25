@@ -267,16 +267,23 @@ describe('escaping volunteer data', () => {
     );
   });
 
-  it('escapes each schedule line, so a mission name cannot close the list', () => {
+  it('escapes each heading and line, so an event or mission name cannot close the list', () => {
     expect(
-      assignationsHtml([line('Bar & </ul>', 10, 12)], (l) => l.mission, 'Rien'),
-    ).toBe('<ul><li>Bar &amp; &lt;/ul&gt;</li></ul>');
+      assignationsHtml(
+        [
+          { key: 'a', heading: 'Open <Air>', lines: ['Bar & </ul>'] },
+          { key: 'b', heading: 'Club', lines: ['Gate', 'Bar'] },
+        ],
+        'Rien',
+      ),
+    ).toBe(
+      '<p><strong>Open &lt;Air&gt;</strong></p><ul><li>Bar &amp; &lt;/ul&gt;</li></ul>' +
+        '<p><strong>Club</strong></p><ul><li>Gate</li><li>Bar</li></ul>',
+    );
   });
 
   it('says so in words when there is nothing to list', () => {
-    expect(assignationsHtml([], (l) => l.mission, 'Aucun créneau')).toBe(
-      '<p>Aucun créneau</p>',
-    );
+    expect(assignationsHtml([], 'Aucun créneau')).toBe('<p>Aucun créneau</p>');
   });
 });
 

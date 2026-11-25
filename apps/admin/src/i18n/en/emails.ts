@@ -93,8 +93,9 @@ export default {
     noMatch: 'No volunteer matches this filter.',
   },
   message: {
-    line: '{day}, {start}–{end}: {mission}',
-    lineAcrossDays: '{day}, {start} – {endDay}, {end}: {mission}',
+    heading: '{event} – {weekday} {date}',
+    hours: '{start}–{end}: {mission}',
+    line: '{heading}, {hours}',
     none: 'You have not been given any shifts yet.',
   },
 } satisfies typeof fr;

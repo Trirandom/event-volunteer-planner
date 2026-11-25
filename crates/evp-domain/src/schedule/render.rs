@@ -12,7 +12,7 @@
 //! wrong email went out.
 
 use super::lines::{Diff, ScheduleLine};
-use super::locale::{Locale, UnknownTimeZone, Zones, format_line, labelled, sentences};
+use super::locale::{Locale, UnknownTimeZone, Zones, format_line, groups, labelled, sentences};
 
 /// Every placeholder a template may use. `assignations` and `changes` are
 /// HTML built here; every other one is text, escaped on the way in.
@@ -200,10 +200,14 @@ pub fn render(template: &str, values: &Values) -> String {
     out
 }
 
-/// A schedule as HTML: one list item per line, or a sentence — never an
-/// empty list, which reads as a rendering fault. `none` is the sentence for
-/// an empty schedule, which differs between "never had any" and "had some,
-/// now has none".
+/// A schedule as HTML: a heading and a list for each event and night
+/// (ADR-0055), or a sentence. It is never an empty list, which reads as a
+/// rendering fault. `none` is the sentence for an empty schedule, which
+/// differs between "never had any" and "had some, now has none".
+///
+/// The heading is a bold paragraph, not an `<h3>`. A mail client sizes a
+/// heading as it likes, and the coordinator's own bold text around the list
+/// is what it has to sit with.
 ///
 /// # Errors
 ///
@@ -217,13 +221,18 @@ pub fn assignations_html(
     if lines.is_empty() {
         return Ok(format!("<p>{}</p>", escape_html(none)));
     }
-    let mut out = String::from("<ul>");
-    for line in lines {
-        out.push_str("<li>");
-        out.push_str(&escape_html(&format_line(line, zones, locale)?));
-        out.push_str("</li>");
+    let mut out = String::new();
+    for group in groups(lines, zones, locale)? {
+        out.push_str("<p><strong>");
+        out.push_str(&escape_html(&group.heading));
+        out.push_str("</strong></p><ul>");
+        for line in &group.lines {
+            out.push_str("<li>");
+            out.push_str(&escape_html(line));
+            out.push_str("</li>");
+        }
+        out.push_str("</ul>");
     }
-    out.push_str("</ul>");
     Ok(out)
 }
 
@@ -375,21 +384,27 @@ mod tests {
     }
 
     #[test]
-    fn a_schedule_is_a_list_with_names_escaped() {
-        let html = assignations_html(
-            &[line(
+    fn a_schedule_is_a_heading_and_a_list_per_group_with_names_escaped() {
+        let open_air = ScheduleLine {
+            event_name: "Open <Air>".to_owned(),
+            ..line(
                 "Bar & <Snack>",
                 "2026-09-05T08:00:00Z",
                 "2026-09-05T12:00:00Z",
-            )],
-            &zones(),
-            Locale::Fr,
-            "rien",
-        )
-        .expect("zone supplied");
+            )
+        };
+        let next_day = ScheduleLine {
+            event_name: "Open <Air>".to_owned(),
+            ..line("Gate", "2026-09-06T08:00:00Z", "2026-09-06T10:00:00Z")
+        };
+        let html = assignations_html(&[open_air, next_day], &zones(), Locale::Fr, "rien")
+            .expect("zone supplied");
         assert_eq!(
             html,
-            "<ul><li>samedi 5 septembre, 10:00–14:00 : Bar &amp; &lt;Snack&gt;</li></ul>"
+            "<p><strong>Open &lt;Air&gt; – samedi 05/09</strong></p>\
+             <ul><li>10:00–14:00 : Bar &amp; &lt;Snack&gt;</li></ul>\
+             <p><strong>Open &lt;Air&gt; – dimanche 06/09</strong></p>\
+             <ul><li>10:00–12:00 : Gate</li></ul>"
         );
     }
 
@@ -414,9 +429,9 @@ mod tests {
         assert_eq!(
             changes_html(&diff, &zones(), Locale::En).expect("zones supplied"),
             "<ul>\
-             <li>Moved: Saturday, September 5, 10:00 AM–02:00 PM: Bar → Saturday, September 5, 11:00 AM–03:00 PM: Bar</li>\
-             <li>Added: Saturday, September 5, 04:00 PM–06:00 PM: Gate</li>\
-             <li>Removed: Saturday, September 5, 08:00 AM–09:00 AM: Bar</li>\
+             <li>Moved: Open Air – Saturday 09/05, 10:00 AM–02:00 PM: Bar → Open Air – Saturday 09/05, 11:00 AM–03:00 PM: Bar</li>\
+             <li>Added: Open Air – Saturday 09/05, 04:00 PM–06:00 PM: Gate</li>\
+             <li>Removed: Open Air – Saturday 09/05, 08:00 AM–09:00 AM: Bar</li>\
              </ul>"
         );
         assert_eq!(

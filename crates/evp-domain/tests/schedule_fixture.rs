@@ -7,7 +7,9 @@
 
 use evp_domain::schedule::lines::ScheduleLine;
 use evp_domain::schedule::locale::{Locale, Zones, format_line};
-use evp_domain::schedule::render::{Values, escape_html, render, unknown_placeholders};
+use evp_domain::schedule::render::{
+    Values, assignations_html, escape_html, render, unknown_placeholders,
+};
 use evp_domain::schedule::text::html_to_text;
 use jiff::tz::TimeZone;
 use serde_json::Value;
@@ -46,7 +48,7 @@ fn lines() {
         zones.insert(timezone, TimeZone::get(timezone).expect("in the tzdb"));
         let line = ScheduleLine {
             event_id: Uuid::nil(),
-            event_name: String::new(),
+            event_name: text(&case["event"]).to_owned(),
             location_id: Uuid::nil(),
             mission: text(&case["mission"]).to_owned(),
             timezone: timezone.to_owned(),
@@ -56,6 +58,36 @@ fn lines() {
         let locale = Locale::parse(text(&case["locale"])).expect("fr or en");
         assert_eq!(
             format_line(&line, &zones, locale).expect("zone supplied"),
+            text(&case["expected"]),
+            "{case}"
+        );
+    }
+}
+
+#[test]
+fn schedules() {
+    let fixture = fixture();
+    for case in cases(&fixture, "schedules") {
+        let timezone = text(&case["timezone"]);
+        let mut zones = Zones::new();
+        zones.insert(timezone, TimeZone::get(timezone).expect("in the tzdb"));
+        let lines: Vec<ScheduleLine> = case["lines"]
+            .as_array()
+            .expect("an array of lines")
+            .iter()
+            .map(|line| ScheduleLine {
+                event_id: text(&line["eventId"]).parse().expect("a uuid"),
+                event_name: text(&line["event"]).to_owned(),
+                location_id: Uuid::nil(),
+                mission: text(&line["mission"]).to_owned(),
+                timezone: timezone.to_owned(),
+                start: text(&line["start"]).parse().expect("instant"),
+                end: text(&line["end"]).parse().expect("instant"),
+            })
+            .collect();
+        let locale = Locale::parse(text(&case["locale"])).expect("fr or en");
+        assert_eq!(
+            assignations_html(&lines, &zones, locale, "none").expect("zone supplied"),
             text(&case["expected"]),
             "{case}"
         );

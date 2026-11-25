@@ -60,7 +60,7 @@
  * rows, which is not a page. A seat's list is computed only when it is
  * opened, and only one seat is open at a time.
  */
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import HelpModal from '../components/HelpModal.vue';
@@ -72,6 +72,7 @@ import { useMissionBoard, usePlanScope } from '../api/usePlan';
 import { useRoster } from '../api/useRoster';
 import { missionRows, type EventWindow } from '../board/runs';
 import { useAxis } from '../board/useAxis';
+import { useTrackWidth } from '../board/useTrackWidth';
 import { locale, t } from '../i18n';
 import { narrowToEvent } from '../plan/missions';
 import {
@@ -89,7 +90,6 @@ import {
 } from '../plan/roster';
 import { focusedEventId } from '../plan/scope';
 import { useRouteParam } from '../router/params';
-import { useBoardStore } from '../stores/board';
 import { Temporal } from '@evp/shared/time';
 import { eventColor } from '@evp/shared';
 
@@ -122,8 +122,6 @@ const scopeParams = computed(() =>
     ? { orgId: orgId.value, festivalId: festivalId.value }
     : { orgId: orgId.value, eventId: eventId.value },
 );
-
-const board = useBoardStore();
 
 const { scope, isPending: scopePending } = usePlanScope(
   orgId,
@@ -213,8 +211,14 @@ const axisClock = computed(
  */
 const ASSIGNMENTS_MARGIN_MINUTES = 15;
 
+const trackWidth = useTrackWidth(
+  useTemplateRef<HTMLElement>('scroller'),
+  useTemplateRef<HTMLElement>('trackGutter'),
+);
+
 const {
   laneWidth,
+  zoom,
   axisHeight,
   axisTimezone,
   bands,
@@ -234,6 +238,7 @@ const {
   timezone: axisClock,
   locale,
   marginMinutes: ASSIGNMENTS_MARGIN_MINUTES,
+  trackWidth,
 });
 
 const allRows = computed(() =>
@@ -1069,7 +1074,7 @@ function onZoomInput(event: Event): void {
   }
   const value = Number.parseInt(target.value, 10);
   if (!Number.isNaN(value)) {
-    board.setPixelsPerHour(value);
+    zoom.setPixelsPerHour(value);
   }
 }
 
@@ -1092,7 +1097,9 @@ function onBoardWheel(event: WheelEvent): void {
   }
   event.preventDefault();
   const notches = -event.deltaY / WHEEL_NOTCH_PIXELS;
-  board.setPixelsPerHour(board.pixelsPerHour + notches * ZOOM_STEP_PER_NOTCH);
+  zoom.setPixelsPerHour(
+    zoom.pixelsPerHour.value + notches * ZOOM_STEP_PER_NOTCH,
+  );
 }
 </script>
 
@@ -1141,10 +1148,10 @@ function onBoardWheel(event: WheelEvent): void {
         id="roster-zoom"
         class="evp-zoom"
         type="range"
-        :min="board.MIN_PIXELS_PER_HOUR"
-        :max="board.MAX_PIXELS_PER_HOUR"
+        :min="Math.floor(zoom.minPixelsPerHour.value)"
+        :max="Math.ceil(zoom.maxPixelsPerHour.value)"
         step="4"
-        :value="board.pixelsPerHour"
+        :value="zoom.pixelsPerHour.value"
         @input="onZoomInput"
       />
     </label>
@@ -1180,6 +1187,7 @@ function onBoardWheel(event: WheelEvent): void {
 
     <div v-else class="evp-board" :aria-busy="isSaving">
       <div
+        ref="scroller"
         class="evp-scroll"
         @wheel="onBoardWheel"
         @scroll.passive="onBoardScroll"
@@ -1188,6 +1196,7 @@ function onBoardWheel(event: WheelEvent): void {
           <!-- The gutter's twin, pinned the same way, so the ruler cannot
                slide out of step with the rows beneath it. -->
           <div
+            ref="trackGutter"
             class="evp-gutter evp-gutter--spacer"
             :style="{ height: axisHeight }"
           >

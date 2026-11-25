@@ -36,8 +36,12 @@ test('the events page offers both create forms above the list', async ({
     page.getByRole('button', { name: 'New festival' }),
   ).toBeVisible();
 
+  // A standalone event: an event inside a festival is added from that
+  // festival's own card, so this form no longer asks which festival.
   await page.getByRole('button', { name: 'New event' }).click();
-  await expect(page.getByLabel('Festival')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Create event' }),
+  ).toBeVisible();
 });
 
 test('a fresh organisation offers the worked examples', async ({ page }) => {

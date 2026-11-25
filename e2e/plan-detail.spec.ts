@@ -65,9 +65,13 @@ test('a festival opens as one page, at its details section', async ({
   // page with an empty middle.
   await expect(page).toHaveURL(/\/festivals\/[^/]+\/details$/);
   await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
+  // The section has no heading of its own since it became rows (ADR-0051):
+  // the rail says where the coordinator is.
   await expect(
-    page.getByRole('heading', { name: 'Event details' }),
-  ).toBeVisible();
+    page
+      .getByRole('navigation', { name: 'Sections' })
+      .getByRole('link', { name: 'Event details' }),
+  ).toHaveAttribute('aria-current', 'page');
 });
 
 test('picking a day narrows the same page instead of leaving it', async ({
@@ -139,8 +143,10 @@ test('each day chip carries its own colour', async ({ page }) => {
   const days = page
     .getByRole('navigation', { name: 'Festival scope' })
     .getByRole('link');
+  // `count` does not wait, so the strip is waited for first: counted straight
+  // after the click, it was counted before the festival had loaded.
+  await expect(days.nth(2)).toBeVisible();
   const count = await days.count();
-  expect(count).toBeGreaterThan(2);
 
   const colours = new Set<string>();
   // From 1: "Whole festival" is first and has no colour of its own.
@@ -176,7 +182,9 @@ test('a day can be added from the details section', async ({ page }) => {
   await expect(zone).not.toHaveValue('');
 
   // The slug follows the name, accents folded, until somebody edits it.
-  await page.getByLabel('Name').fill('Samedi 1er août');
+  // Exact: the slug's hint ("…filled in from the name…") is part of its
+  // label, so a substring match finds both fields.
+  await page.getByLabel('Name', { exact: true }).fill('Samedi 1er août');
   await expect(page.getByLabel('Slug')).toHaveValue('samedi-1er-aout');
 });
 

@@ -222,6 +222,7 @@ mod tests {
     fn line(post: Uuid, start: &str, end: &str) -> ScheduleLine {
         ScheduleLine {
             event_id: Uuid::from_u128(0xE),
+            event_name: "Open Air".to_owned(),
             location_id: post,
             mission: if post == BAR { "Bar" } else { "Gate" }.to_owned(),
             timezone: "Europe/Paris".to_owned(),

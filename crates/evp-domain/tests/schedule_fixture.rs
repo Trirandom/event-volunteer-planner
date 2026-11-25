@@ -46,6 +46,7 @@ fn lines() {
         zones.insert(timezone, TimeZone::get(timezone).expect("in the tzdb"));
         let line = ScheduleLine {
             event_id: Uuid::nil(),
+            event_name: String::new(),
             location_id: Uuid::nil(),
             mission: text(&case["mission"]).to_owned(),
             timezone: timezone.to_owned(),

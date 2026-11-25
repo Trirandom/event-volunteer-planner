@@ -328,6 +328,7 @@ mod tests {
     fn line(start: &str, end: &str) -> ScheduleLine {
         ScheduleLine {
             event_id: Uuid::nil(),
+            event_name: "Open Air".to_owned(),
             location_id: Uuid::nil(),
             mission: "Bar & Snack".to_owned(),
             timezone: "Europe/Paris".to_owned(),

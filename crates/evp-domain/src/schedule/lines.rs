@@ -21,6 +21,9 @@ use uuid::Uuid;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScheduleLine {
     pub event_id: Uuid,
+    /// The event's name as the volunteer read it, for the same reason as
+    /// `mission`: it heads the group the line is sent under (ADR-0055).
+    pub event_name: String,
     pub location_id: Uuid,
     pub mission: String,
     pub timezone: String,
@@ -205,6 +208,7 @@ mod tests {
     fn line(post: Uuid, from: i64, to: i64) -> ScheduleLine {
         ScheduleLine {
             event_id: EVENT,
+            event_name: "Open Air".to_owned(),
             location_id: post,
             mission: if post == BAR { "Bar" } else { "Gate" }.to_owned(),
             timezone: "Europe/Paris".to_owned(),
@@ -260,6 +264,7 @@ mod tests {
         let base = digest(&[line(BAR, 10, 14)]);
         let renamed = ScheduleLine {
             mission: "Buvette".to_owned(),
+            event_name: "Club".to_owned(),
             timezone: "UTC".to_owned(),
             ..line(BAR, 10, 14)
         };

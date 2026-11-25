@@ -26,3 +26,4 @@ mod public_forms;
 mod schedule;
 mod sms_settings;
 mod submissions;
+mod transactions;

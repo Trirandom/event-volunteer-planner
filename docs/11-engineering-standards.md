@@ -141,6 +141,14 @@ way to construct one that bypassed the engine.
 
 - No blocking I/O on the async runtime. CPU-bound work (PDF rendering) goes
   through `spawn_blocking`.
+- Any `.await` in a handler can be its last: a client that disconnects, or
+  tower-http's request timeout, drops the future there. Whatever must not be
+  left half-done cannot sit behind such an `.await`. The case that bit:
+  sqlx 0.9's `Pool::begin` is not cancel-safe at the top level (its rollback
+  guard runs before the depth it checks is raised), so a cancelled `BEGIN`
+  handed the pool a connection inside a transaction sqlx had forgotten.
+  `evp_db::begin` runs it on its own task, and `clippy.toml` disallows
+  `Pool::begin` and its variants everywhere else.
 - `tower_http::catch_panic::CatchPanicLayer` turns a panicked handler into a
   `500` instead of killing the process and every in-flight request with it.
 - A panic in production is a **P1 bug**, not a handled condition: it increments
@@ -309,6 +317,7 @@ GitHub Actions runs the same gates on every push and pull request
 | TS strictness | `tsc --noEmit`, `vue-tsc --noEmit` (`pnpm typecheck`) | check | enforced |
 | TS banned constructs | `eslint` with `strictTypeChecked` (`pnpm lint`) | check | enforced |
 | Unused suppressions | `reportUnusedDisableDirectives`, `#[expect]` | check | enforced |
+| Transactions open cancel-safely | clippy `disallowed-methods` on `sqlx::Pool::begin` and its variants (`clippy.toml`) | check | enforced |
 | SQL matches schema | `cargo sqlx prepare --check` | check | partial — runs, but no query uses the macros yet (§4) |
 | No dynamic SQL | grep for SQL built by string formatting | check | planned |
 | API client not hand-edited | regeneration diff | check | planned — no generated client yet (§3) |

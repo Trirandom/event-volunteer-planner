@@ -165,7 +165,7 @@ fn new_window(kind: &str, start: &str, end: &str) -> NewWindow {
 #[tokio::test]
 async fn replace_declared_writes_the_new_set_and_records_an_operation() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, participation_id) = seed_participation(&mut tx, org_id, user_id).await;
 
@@ -202,7 +202,7 @@ async fn replace_declared_writes_the_new_set_and_records_an_operation() {
 #[tokio::test]
 async fn a_second_replace_removes_the_first_declared_set() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, participation_id) = seed_participation(&mut tx, org_id, user_id).await;
 
@@ -257,7 +257,7 @@ async fn a_second_replace_removes_the_first_declared_set() {
 #[tokio::test]
 async fn replacing_with_an_empty_list_clears_declared_windows() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, participation_id) = seed_participation(&mut tx, org_id, user_id).await;
 
@@ -297,7 +297,7 @@ async fn replacing_with_an_empty_list_clears_declared_windows() {
 #[tokio::test]
 async fn a_participation_of_another_event_is_not_found() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (_event_id, participation_id) = seed_participation(&mut tx, org_id, user_id).await;
     let (other_event_id, _other_participation) = seed_participation(&mut tx, org_id, user_id).await;
@@ -335,7 +335,7 @@ async fn a_participation_of_another_event_is_not_found() {
 #[tokio::test]
 async fn replace_declared_leaves_submission_derived_windows_untouched() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, participation_id) = seed_participation(&mut tx, org_id, user_id).await;
     let submission_id = seed_submission(&mut tx, org_id, user_id).await;
@@ -423,7 +423,7 @@ async fn replace_declared_leaves_submission_derived_windows_untouched() {
 #[tokio::test]
 async fn two_overlapping_declared_windows_in_one_request_is_23p01() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, participation_id) = seed_participation(&mut tx, org_id, user_id).await;
 
@@ -458,7 +458,7 @@ async fn two_overlapping_declared_windows_in_one_request_is_23p01() {
 #[tokio::test]
 async fn two_overlapping_submitted_windows_is_23p01() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (_event_id, participation_id) = seed_participation(&mut tx, org_id, user_id).await;
     let submission_id = seed_submission(&mut tx, org_id, user_id).await;
@@ -506,7 +506,7 @@ async fn two_overlapping_submitted_windows_is_23p01() {
 #[tokio::test]
 async fn a_declared_window_may_overlap_a_submitted_one() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, participation_id) = seed_participation(&mut tx, org_id, user_id).await;
     let submission_id = seed_submission(&mut tx, org_id, user_id).await;

@@ -28,11 +28,11 @@ serde      = { workspace = true }
 serde_json = { workspace = true }
 sqlx       = { workspace = true }
 thiserror  = { workspace = true }
+# Only `spawn`, for `begin`: a transaction's BEGIN runs on its own task so a
+# cancelled request cannot leave it half-done (see `evp_db::begin`).
+tokio      = { workspace = true }
 tracing    = { workspace = true }
 uuid       = { workspace = true }
-
-[dev-dependencies]
-tokio = { workspace = true }
 
 [lints]
 workspace = true

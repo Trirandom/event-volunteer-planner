@@ -634,7 +634,7 @@ async fn scoped(
     pool: &PgPool,
     org_id: Uuid,
 ) -> Result<sqlx::Transaction<'static, sqlx::Postgres>, DbError> {
-    let mut tx = pool.begin().await.map_err(DbError::Query)?;
+    let mut tx = crate::begin(pool).await?;
     sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
         .bind(org_id.to_string())
         .execute(&mut *tx)

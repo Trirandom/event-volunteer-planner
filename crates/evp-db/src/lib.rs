@@ -154,6 +154,58 @@ pub async fn connect(url: &str) -> Result<PgPool, DbError> {
         .map_err(DbError::Connect)
 }
 
+/// Opens a transaction on `pool`, on a task of its own so that cancelling the
+/// caller cannot cancel the `BEGIN` halfway.
+///
+/// sqlx 0.9's `Pool::begin` is not cancel-safe at the top level, whatever its
+/// guard suggests: the guard calls `start_rollback` before the depth it checks
+/// has been raised, and at depth 0 that queues nothing. A future dropped while
+/// its `BEGIN` waits for a reply — a client disconnecting, tower-http's
+/// request timeout — therefore hands the pool a connection that is inside a
+/// transaction sqlx believes is closed. Every autocommit statement the next
+/// borrower sends then joins it: `auth::authenticate`'s `UPDATE sessions`
+/// keeps that session's row locked until the connection happens to be begun
+/// and committed again, and a `SET LOCAL app.current_org_id` stays set across
+/// requests — the leak docs/02 §3 says `SET LOCAL` exists to prevent.
+///
+/// Spawned, the `BEGIN` always runs to its reply. If the caller is gone by
+/// then, the task drops the transaction it was about to hand over, at depth
+/// 1, which is the ordinary path: a `ROLLBACK` is queued and the pool's
+/// on-release ping sends it. The task costs a spawn per transaction, which is
+/// nothing beside the round trip it wraps.
+///
+/// Rejected: closing the connection from `after_release` when the server
+/// reports it in a transaction — sqlx tracks that status but does not expose
+/// it (`Connection::is_in_transaction` reads the same depth that went wrong),
+/// and asking the server costs a round trip on every release. Rejected too:
+/// waiting for an upstream fix, which would leave the hole open until then.
+///
+/// `clippy.toml` disallows `Pool::begin` and its variants, so this is the only
+/// way to open a top-level transaction in the workspace. Savepoints
+/// (`Connection::begin` inside a transaction) are not affected: there the
+/// depth is already 1 or more and the guard does queue its rollback.
+///
+/// # Errors
+///
+/// [`DbError::Query`] if the pool cannot hand out a connection or the `BEGIN`
+/// fails, or carrying [`sqlx::Error::WorkerCrashed`] if the task did not run
+/// to the end (a panic, or a runtime shutting down).
+pub async fn begin(pool: &PgPool) -> Result<sqlx::Transaction<'static, sqlx::Postgres>, DbError> {
+    let pool = pool.clone();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the one caller of Pool::begin; running it on its own task is what makes it safe"
+    )]
+    let begun = tokio::spawn(async move { pool.begin().await });
+    match begun.await {
+        Ok(begun) => begun.map_err(DbError::Query),
+        Err(error) => {
+            tracing::error!(%error, "the task opening a transaction did not finish");
+            Err(DbError::Query(sqlx::Error::WorkerCrashed))
+        }
+    }
+}
+
 /// Does the database answer? Backs `GET /readyz`.
 ///
 /// Written with `sqlx::query` rather than the `query!` macro on purpose: the

@@ -23,14 +23,23 @@ use uuid::Uuid;
     reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
 )]
 pub(crate) async fn pool() -> PgPool {
-    let url = std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
+    evp_db::connect(&url())
+        .await
+        .expect("could not connect to the test database")
+}
+
+/// The `evp_migrator` URL, for a suite that has to build its own pool or
+/// connection rather than take [`pool`]'s.
+#[expect(
+    clippy::expect_used,
+    reason = "test fixtures — a setup failure must abort the test loudly, not be handled"
+)]
+pub(crate) fn url() -> String {
+    std::env::var("EVP_MIGRATION_DATABASE_URL").expect(
         "EVP_MIGRATION_DATABASE_URL must be set to run crates/evp-db's database-backed tests \
          (see crates/evp-db/tests/db/catalog.rs and migrations/README.md); `just test`/`just test-tz` \
          set it via compose.override.yaml",
-    );
-    evp_db::connect(&url)
-        .await
-        .expect("could not connect to the test database")
+    )
 }
 
 /// `set_config(name, value, true)`: a `SET LOCAL` that ends with the

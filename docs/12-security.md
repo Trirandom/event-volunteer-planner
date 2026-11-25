@@ -49,7 +49,11 @@ Controls for **T1** and **T4**, and the strongest guarantees in the system.
   with a connection pool a plain `SET` persists onto whichever request borrows
   the connection next, which is precisely the cross-tenant leak the policy
   exists to prevent. This is the single most dangerous one-word mistake
-  available in this codebase, and it is called out in review.
+  available in this codebase, and it is called out in review. `SET LOCAL`
+  only holds if the transaction really ends, so a transaction is opened with
+  `evp_db::begin`, never `Pool::begin`: a cancelled top-level `BEGIN` in
+  sqlx 0.9 leaves the pooled connection inside a transaction, and the next
+  request inherits its settings ([11 §2](11-engineering-standards.md#async-and-panics)).
 - **A test enumerates `pg_class`** for tables with an `org_id` column and
   fails if RLS is off or no policy exists, so a new table cannot forget.
   *Planned:* today the assertion covers the form tables only

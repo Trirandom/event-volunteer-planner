@@ -50,7 +50,7 @@ async fn force_deferred_checks(conn: &mut PgConnection) -> Result<(), sqlx::Erro
 #[tokio::test]
 async fn a_pattern_made_only_of_gaps_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     patterns::create(
@@ -86,7 +86,7 @@ async fn a_pattern_made_only_of_gaps_is_23514() {
 #[tokio::test]
 async fn a_segment_shorter_than_five_minutes_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let error = patterns::create(
@@ -108,7 +108,7 @@ async fn a_segment_shorter_than_five_minutes_is_23514() {
 #[tokio::test]
 async fn segments_keep_the_order_they_were_written_in() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     // The *artiste* post from ADR-0029. Uneven on purpose: a round trip that
@@ -153,7 +153,7 @@ async fn segments_keep_the_order_they_were_written_in() {
 #[tokio::test]
 async fn a_replace_swaps_the_whole_segment_list_rather_than_merging_it() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (created, _operation_id) = patterns::create(
@@ -209,7 +209,7 @@ async fn a_replace_swaps_the_whole_segment_list_rather_than_merging_it() {
 #[tokio::test]
 async fn a_fresh_organisation_gets_a_usable_two_hour_division() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let seeded = patterns::seed_default(&mut tx, org_id, user_id)
@@ -237,7 +237,7 @@ async fn a_fresh_organisation_gets_a_usable_two_hour_division() {
 #[tokio::test]
 async fn org_a_cannot_see_org_b_s_patterns() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
 
     let (org_a, user_a) = seed_org(&mut tx).await;
     patterns::create(&mut tx, org_a, user_a, &named("A Only", vec![shift(120)]))
@@ -292,7 +292,7 @@ async fn operation_row(conn: &mut PgConnection, id: Uuid) -> (String, serde_json
 #[tokio::test]
 async fn creating_a_pattern_records_its_own_deletion_as_the_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (created, operation_id) = patterns::create(
@@ -314,7 +314,7 @@ async fn creating_a_pattern_records_its_own_deletion_as_the_inverse() {
 #[tokio::test]
 async fn replacing_a_pattern_records_the_pre_image_segments_as_the_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (created, _operation_id) = patterns::create(
@@ -361,7 +361,7 @@ async fn replacing_a_pattern_records_the_pre_image_segments_as_the_inverse() {
 #[tokio::test]
 async fn archiving_a_pattern_records_an_unarchive_as_the_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (created, _operation_id) = patterns::create(
@@ -388,7 +388,7 @@ async fn archiving_a_pattern_records_an_unarchive_as_the_inverse() {
 #[tokio::test]
 async fn deleting_an_unreferenced_pattern_records_its_full_pre_image_as_the_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (created, _operation_id) = patterns::create(

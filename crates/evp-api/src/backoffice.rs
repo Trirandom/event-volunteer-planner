@@ -92,7 +92,7 @@ where
         }
 
         let pool = PgPool::from_ref(state);
-        let mut tx = pool.begin().await.map_err(evp_db::DbError::Query)?;
+        let mut tx = evp_db::begin(&pool).await?;
         evp_db::backoffice::enter(&mut tx).await?;
         Ok(Self { tx })
     }

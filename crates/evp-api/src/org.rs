@@ -109,7 +109,7 @@ async fn resolve(parts: &mut Parts, pool: &PgPool, user_id: Uuid) -> Result<OrgT
         .await
         .map_err(|_| ApiError::NotFound)?;
 
-    let mut tx = pool.begin().await.map_err(evp_db::DbError::Query)?;
+    let mut tx = evp_db::begin(pool).await?;
 
     sqlx::query("SELECT set_config('app.current_user_id', $1, true)")
         .bind(user_id.to_string())

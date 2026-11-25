@@ -42,6 +42,12 @@ disallowed-methods = [
   { path = "std::time::SystemTime::now", reason = "time comes from the injected Clock — ADR-0019" },
   { path = "jiff::Timestamp::now", reason = "time comes from the injected Clock — ADR-0019" },
   { path = "jiff::Zoned::now", reason = "time comes from the injected Clock — ADR-0019" },
+  # A cancelled top-level BEGIN leaves the pooled connection inside a
+  # transaction sqlx has forgotten; `evp_db::begin` is the cancel-safe one.
+  { path = "sqlx::Pool::begin", reason = "use evp_db::begin — sqlx's is not cancel-safe at depth 0" },
+  { path = "sqlx::Pool::try_begin", reason = "use evp_db::begin — sqlx's is not cancel-safe at depth 0" },
+  { path = "sqlx::Pool::begin_with", reason = "use evp_db::begin — sqlx's is not cancel-safe at depth 0" },
+  { path = "sqlx::Pool::try_begin_with", reason = "use evp_db::begin — sqlx's is not cancel-safe at depth 0" },
 ]
 
 # One date library is enough (docs/11 §2). chrono and time both arrive

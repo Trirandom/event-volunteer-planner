@@ -136,7 +136,7 @@ pub async fn create_owner(
     let org_id = Uuid::now_v7();
     let user_id = Uuid::now_v7();
 
-    let mut tx = pool.begin().await.map_err(DbError::Query)?;
+    let mut tx = crate::begin(pool).await?;
 
     // Both policies are keyed to these, and both INSERTs below are refused
     // without them. Set inside the transaction, so the next borrower of this
@@ -219,7 +219,7 @@ pub async fn create_session(
     ip: Option<&str>,
 ) -> Result<Uuid, DbError> {
     let session_id = Uuid::now_v7();
-    let mut tx = pool.begin().await.map_err(DbError::Query)?;
+    let mut tx = crate::begin(pool).await?;
 
     sqlx::query(
         "INSERT INTO sessions (id, user_id, token_hash, absolute_expiry, user_agent, ip)
@@ -363,7 +363,7 @@ pub async fn revoke(pool: &PgPool, token_hash: &[u8]) -> Result<(), DbError> {
 ///
 /// [`DbError::Query`] if any statement fails.
 pub async fn memberships(pool: &PgPool, user_id: Uuid) -> Result<Vec<Membership>, DbError> {
-    let mut tx = pool.begin().await.map_err(DbError::Query)?;
+    let mut tx = crate::begin(pool).await?;
 
     sqlx::query("SELECT set_config('app.current_user_id', $1, true)")
         .bind(user_id.to_string())

@@ -236,7 +236,7 @@ async fn empty_version(conn: &mut PgConnection, org_id: Uuid, form_id: Uuid) -> 
 #[tokio::test]
 async fn a_form_scoped_to_both_a_festival_and_an_event_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let festival_id = seed_festival(&mut tx, org_id, user_id).await;
     let event_id = seed_event(
@@ -288,7 +288,7 @@ async fn a_form_scoped_to_both_a_festival_and_an_event_is_23514() {
 #[tokio::test]
 async fn an_unknown_default_locale_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, _user_id) = seed_org(&mut tx).await;
 
     let error = refused(
@@ -307,7 +307,7 @@ async fn an_unknown_default_locale_is_23514() {
 #[tokio::test]
 async fn a_duplicate_slug_in_one_org_is_23505_case_insensitively() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, _user_id) = seed_org(&mut tx).await;
 
     sqlx::query("INSERT INTO forms (id, org_id, slug, name) VALUES ($1, $2, 'benevoles', 'A')")
@@ -329,7 +329,7 @@ async fn a_duplicate_slug_in_one_org_is_23505_case_insensitively() {
 #[tokio::test]
 async fn a_form_scoped_to_another_org_s_festival_or_event_is_23503() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_a, user_a) = seed_org(&mut tx).await;
     let festival_a = seed_festival(&mut tx, org_a, user_a).await;
     let event_a = seed_event(
@@ -372,7 +372,7 @@ async fn a_form_scoped_to_another_org_s_festival_or_event_is_23503() {
 #[tokio::test]
 async fn a_form_cannot_go_live_on_another_form_s_version() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let first = seed_form(&mut tx, org_id, user_id, None, None).await;
     let second = seed_form(&mut tx, org_id, user_id, None, None).await;
@@ -394,7 +394,7 @@ async fn a_form_cannot_go_live_on_another_form_s_version() {
 #[tokio::test]
 async fn a_second_draft_is_23505() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, None).await;
 
@@ -427,7 +427,7 @@ async fn a_second_draft_is_23505() {
 #[tokio::test]
 async fn a_duplicate_version_number_is_23505() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, None).await;
 
@@ -449,7 +449,7 @@ async fn a_duplicate_version_number_is_23505() {
 #[tokio::test]
 async fn published_at_without_published_by_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, None).await;
 
@@ -465,7 +465,7 @@ async fn published_at_without_published_by_is_23514() {
 #[tokio::test]
 async fn a_version_of_another_org_s_form_is_23503() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_a, user_a) = seed_org(&mut tx).await;
     let form_a = seed_form(&mut tx, org_a, user_a, None, None).await;
     let (org_b, _user_b) = seed_org(&mut tx).await;
@@ -493,7 +493,7 @@ async fn a_version_of_another_org_s_form_is_23503() {
 #[tokio::test]
 async fn each_per_row_question_check_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, None).await;
     let version = empty_version(&mut tx, org_id, form.id).await;
@@ -578,7 +578,7 @@ async fn each_per_row_question_check_is_23514() {
 #[tokio::test]
 async fn each_at_most_one_rule_is_a_23505() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, None).await;
     let version = empty_version(&mut tx, org_id, form.id).await;
@@ -657,7 +657,7 @@ async fn each_at_most_one_rule_is_a_23505() {
 #[tokio::test]
 async fn a_question_on_another_org_s_version_is_23503() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_a, user_a) = seed_org(&mut tx).await;
     let form_a = seed_form(&mut tx, org_a, user_a, None, None).await;
     let (org_b, _user_b) = seed_org(&mut tx).await;
@@ -681,7 +681,7 @@ async fn a_question_on_another_org_s_version_is_23503() {
 #[tokio::test]
 async fn org_b_cannot_see_org_a_s_forms_versions_or_questions() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_a, user_a) = seed_org(&mut tx).await;
     let form_a = seed_form(&mut tx, org_a, user_a, None, None).await;
     let version_a = draft_id(&form_a);
@@ -735,7 +735,7 @@ async fn org_b_cannot_see_org_a_s_forms_versions_or_questions() {
 #[tokio::test]
 async fn writing_a_form_stamped_with_another_org_s_id_is_rejected_by_rls() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_a, _user_a) = seed_org(&mut tx).await;
     let (_org_b, user_b) = seed_org(&mut tx).await;
 
@@ -763,7 +763,7 @@ async fn writing_a_form_stamped_with_another_org_s_id_is_rejected_by_rls() {
 #[tokio::test]
 async fn every_form_table_has_forced_rls_and_a_retention_tier() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     for table in ["forms", "form_versions", "form_questions"] {
         let row = sqlx::query(
             "SELECT c.relrowsecurity AS enabled, c.relforcerowsecurity AS forced, \
@@ -793,7 +793,7 @@ async fn every_form_table_has_forced_rls_and_a_retention_tier() {
 #[tokio::test]
 async fn creating_a_form_seeds_version_1_and_records_its_deletion_as_the_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let festival_id = seed_festival(&mut tx, org_id, user_id).await;
     let event = seed_event(
@@ -858,7 +858,7 @@ async fn creating_a_form_seeds_version_1_and_records_its_deletion_as_the_inverse
 #[tokio::test]
 async fn mission_rows_walk_events_by_start_then_each_zone_before_its_posts() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let festival_id = seed_festival(&mut tx, org_id, user_id).await;
     // Created out of order: the later event first.
@@ -954,7 +954,7 @@ async fn mission_rows_walk_events_by_start_then_each_zone_before_its_posts() {
 #[tokio::test]
 async fn mission_rows_give_a_post_its_zone_s_form_flags() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(
         &mut tx,
@@ -997,7 +997,7 @@ async fn mission_rows_give_a_post_its_zone_s_form_flags() {
 #[tokio::test]
 async fn replacing_questions_bumps_the_etag_and_keeps_the_old_list_as_the_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, None).await;
     let before = forms::get_version(&mut tx, org_id, form.id, VersionRef::Id(draft_id(&form)))
@@ -1066,7 +1066,7 @@ async fn replacing_questions_bumps_the_etag_and_keeps_the_old_list_as_the_invers
 #[tokio::test]
 async fn publishing_freezes_the_version_and_a_new_draft_copies_it() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, None).await;
     let v1 = draft_id(&form);
@@ -1149,7 +1149,7 @@ async fn publishing_freezes_the_version_and_a_new_draft_copies_it() {
 #[tokio::test]
 async fn a_form_is_deletable_only_until_it_is_published() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let draft_only = seed_form(&mut tx, org_id, user_id, None, None).await;
@@ -1204,7 +1204,7 @@ async fn a_form_is_deletable_only_until_it_is_published() {
 #[tokio::test]
 async fn patching_a_form_checks_its_version_and_keeps_the_pre_image() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, None).await;
 
@@ -1249,7 +1249,7 @@ async fn deleting_an_event_takes_its_published_form_with_it() {
     // forms → form_versions → forms is a cycle of foreign keys; the cascade
     // must still get through it.
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event = seed_event(
         &mut tx,
@@ -1280,7 +1280,7 @@ async fn deleting_an_event_takes_its_published_form_with_it() {
 #[tokio::test]
 async fn an_unscoped_seed_has_no_availability_or_missions() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, None).await;
     let version = forms::get_version(&mut tx, org_id, form.id, VersionRef::Number(1))
@@ -1302,7 +1302,7 @@ async fn an_unscoped_seed_has_no_availability_or_missions() {
 #[tokio::test]
 async fn the_worked_example_brings_a_published_but_closed_festival_form() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let fixture = evp_domain::example::build().expect("example.json parses and resolves");
     let (festival, _operation) = catalog::create_example(&mut tx, org_id, user_id, &fixture)

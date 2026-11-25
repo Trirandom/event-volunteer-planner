@@ -169,7 +169,10 @@ and writes an `operations` row.
 
 Two steps are load-bearing and must not be worked around: the `SET LOCAL` (RLS
 keys off it, and `SET` instead of `SET LOCAL` leaks across pooled connections),
-and doing side effects through the outbox inside the same transaction.
+and doing side effects through the outbox inside the same transaction. Open
+transactions with `evp_db::begin`, never `Pool::begin` (clippy refuses it): a
+cancelled request otherwise leaks an open transaction, `SET LOCAL`s included,
+to the next borrower of its connection.
 
 ### Multi-tenancy and the database
 

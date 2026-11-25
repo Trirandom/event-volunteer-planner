@@ -248,7 +248,7 @@ async fn serve(pool: &PgPool, slug: &str) -> Result<Served, ApiError> {
     if slug.len() > MAX_SLUG_LEN {
         return Err(ApiError::NotFound);
     }
-    let mut tx = pool.begin().await.map_err(evp_db::DbError::Query)?;
+    let mut tx = evp_db::begin(pool).await?;
     let resolved = evp_db::public_forms::resolve(&mut tx, slug)
         .await?
         .ok_or(ApiError::NotFound)?;

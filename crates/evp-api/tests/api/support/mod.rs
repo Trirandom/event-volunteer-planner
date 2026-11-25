@@ -114,7 +114,9 @@ pub async fn seed_member(pool: &PgPool, role: &str) -> (Uuid, String) {
     let user_id = Uuid::now_v7();
     let suffix = Uuid::now_v7().simple().to_string();
 
-    let mut tx = pool.begin().await.expect("begin fixture transaction");
+    let mut tx = evp_db::begin(pool)
+        .await
+        .expect("begin fixture transaction");
     sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
         .bind(org_id.to_string())
         .execute(&mut *tx)
@@ -176,7 +178,9 @@ pub async fn add_member(pool: &PgPool, org_id: Uuid, role: &str) -> String {
     let user_id = Uuid::now_v7();
     let suffix = Uuid::now_v7().simple().to_string();
 
-    let mut tx = pool.begin().await.expect("begin fixture transaction");
+    let mut tx = evp_db::begin(pool)
+        .await
+        .expect("begin fixture transaction");
     sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
         .bind(org_id.to_string())
         .execute(&mut *tx)

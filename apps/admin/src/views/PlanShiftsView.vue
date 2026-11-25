@@ -2107,6 +2107,13 @@ kbd {
 .evp-row {
   display: flex;
   min-width: max-content;
+  /* Fitted at the lowest zoom, the track ends exactly at the board's edge
+     (`board/useAxis.ts`), and whatever hangs past the end of the axis
+     (the last tick's label, an end handle, a slot at its minimum width)
+     would otherwise give the board a few pixels to scroll. `clip`, not
+     `hidden`: it makes no scroll container, so the gutter stays pinned to
+     the board's and anything that overflows downwards still shows. */
+  overflow-x: clip;
 }
 
 .evp-axis {

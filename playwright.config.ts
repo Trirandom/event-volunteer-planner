@@ -40,6 +40,12 @@ export default defineConfig({
   // build somebody re-runs "because it's flaky" is the one telling the truth
   // (docs/13 §8).
   retries: 0,
+  // One at a time. Every signed-in spec edits the same organisation's worked
+  // example — there is one coordinator account and no org management yet —
+  // and in parallel the three projects dragged the same day's bar and
+  // recoloured the same event at the same moment, each then asserting on a
+  // value the other had just moved.
+  workers: 1,
   forbidOnly: process.env['CI'] === 'true',
   reporter: process.env['CI'] === 'true' ? [['list'], ['junit']] : [['list']],
   use: {

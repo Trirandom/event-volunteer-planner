@@ -12,16 +12,17 @@
  * shape of claim: what a coordinator picks has to survive the round trip, the
  * invalidation and the re-render.
  *
- * **These tests write**, against the worked example, and leave their changes
- * behind. Every assertion is therefore relative to what the page said a moment
- * earlier rather than to a fixture, and the colour test picks a swatch by
- * position rather than by value so a second run is not asserting the first
- * run's leftovers.
+ * **These tests write**, against the worked example. Every assertion is
+ * relative to what the page said a moment earlier rather than to a fixture,
+ * and the colour tests pick a swatch by position rather than by value. They
+ * put the colour they found back, though: the festival's day strip asserts
+ * that every day has its own (`plan-detail.spec.ts`), and a swatch picked by
+ * position can be another day's.
  *
  * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
 import { openExampleFestival } from './support/festival';
@@ -55,6 +56,24 @@ async function expectAllSaved(page: Page): Promise<void> {
   await expect(page.locator('.evp-toolbar-status')).toHaveText(
     'Everything is saved',
   );
+}
+
+/** The swatch the event holds now, found by position so it can be put back
+ * after a reload. */
+async function checkedSwatch(swatches: Locator): Promise<Locator> {
+  const count = await swatches.count();
+  for (let index = 0; index < count; index += 1) {
+    if (await swatches.nth(index).isChecked()) {
+      return swatches.nth(index);
+    }
+  }
+  throw new Error('no colour swatch is selected');
+}
+
+/** The first of two fixed positions that is not the one already chosen. */
+async function anotherSwatch(swatches: Locator): Promise<Locator> {
+  const first = swatches.nth(0);
+  return (await first.isChecked()) ? swatches.nth(5) : first;
 }
 
 test('the rail names the production and reaches the details section', async ({
@@ -130,18 +149,19 @@ test('a colour picked on the form is the colour the event keeps', async ({
   const swatches = page.getByRole('radio');
   expect([16, 17]).toContain(await swatches.count());
 
-  // By position, not by value: these tests leave their writes behind, so the
-  // currently-selected swatch differs between runs. Two positions and whichever
-  // one is not already chosen is the change.
-  const first = swatches.nth(0);
-  const other = swatches.nth(5);
-  const target = (await first.isChecked()) ? other : first;
+  // By position, not by value: two positions, and whichever one is not
+  // already chosen is the change.
+  const original = await checkedSwatch(swatches);
+  const target = await anotherSwatch(swatches);
 
   await target.check();
   await expectAllSaved(page);
 
   await page.reload();
   await expect(target).toBeChecked();
+
+  await original.check();
+  await expectAllSaved(page);
 });
 
 /** Undo is a forward write (ADR-0051), so what it puts back survives a
@@ -153,13 +173,8 @@ test('Ctrl+Z takes a colour back, and the server keeps it', async ({
   await openADayDetails(page);
 
   const swatches = page.getByRole('radio');
-  const first = swatches.nth(0);
-  const other = swatches.nth(5);
-  const [original, target] = (await first.isChecked())
-    ? [first, other]
-    : [other, first];
-  await original.check();
-  await expectAllSaved(page);
+  const original = await checkedSwatch(swatches);
+  const target = await anotherSwatch(swatches);
 
   await target.check();
   await expectAllSaved(page);

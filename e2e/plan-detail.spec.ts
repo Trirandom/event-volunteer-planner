@@ -91,7 +91,11 @@ test('switching scope keeps the section the coordinator is reading', async ({
  * test because the custom property only becomes a colour once the real
  * stylesheet is loaded.
  */
-test('each day chip carries its own colour', async ({ page }) => {
+test('each day chip carries its own colour', async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === 'forced-colors',
+    'forced colours replace author colours by design; every chip is also named in words',
+  );
   await openAdmin(page);
   await openExampleFestival(page);
 

@@ -2,28 +2,18 @@
 // Copyright (C) 2026 Tristan Grunert and contributors
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openEvents } from './support/festival';
 
 /**
- * The events page — festivals and events on one list — end to end.
+ * The events page — festivals and events on one list — end to end. What it
+ * shows an organisation with nothing in it is `empty-org.spec.ts`.
  *
  * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 signedInAsCoordinator();
-
-/** The header link, which is the route a signed-in coordinator actually takes
- * — and which only exists once the session has resolved. */
-async function openEvents(page: Page): Promise<void> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-}
 
 test('the events page offers both create forms above the list', async ({
   page,
@@ -42,44 +32,6 @@ test('the events page offers both create forms above the list', async ({
   await expect(
     page.getByRole('button', { name: 'Create event' }),
   ).toBeVisible();
-});
-
-test('a fresh organisation offers the worked examples', async ({ page }) => {
-  await openAdmin(page);
-  await openEvents(page);
-
-  const empty = page.getByRole('heading', { name: 'Nothing planned yet' });
-  if (!(await empty.isVisible())) {
-    // Another run already populated this org; nothing left to prove here.
-    test.skip();
-  }
-
-  await expect(
-    page.getByRole('button', { name: /Load the example festival/ }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: /Load the example event/ }),
-  ).toBeVisible();
-});
-
-test('loading the example festival announces what was created', async ({
-  page,
-}) => {
-  await openAdmin(page);
-  await openEvents(page);
-
-  const loadButton = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (!(await loadButton.isVisible())) {
-    test.skip();
-  }
-
-  await loadButton.click();
-
-  await expect(page.getByRole('status')).toContainText(
-    /Loaded the example festival/,
-  );
 });
 
 test('the old festivals path still lands somewhere useful', async ({

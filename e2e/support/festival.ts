@@ -3,6 +3,18 @@
 
 import { expect, type Locator, type Page } from '@playwright/test';
 
+/** The header link, which is the route a signed-in coordinator actually takes
+ * — and which only exists once the session has resolved. */
+export async function openEvents(page: Page): Promise<void> {
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: 'Events' })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Events', level: 1 }),
+  ).toBeVisible();
+}
+
 /**
  * Opens the organisation's first festival at its details section, loading
  * the worked example first when the organisation has none, and returns the
@@ -15,13 +27,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
  * can always be made here, so not finding one is a failure, not a skip.
  */
 export async function openExampleFestival(page: Page): Promise<string> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
+  await openEvents(page);
 
   const loadExample = page.getByRole('button', {
     name: /Load the example festival/,

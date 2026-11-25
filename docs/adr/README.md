@@ -59,3 +59,4 @@ one — never an edit. See [ADR-0001](0001-record-architecture-decisions.md).
 | [0052](0052-posts-are-roles-within-their-zones-shifts.md) | A post is a role within its zone's shifts, not a schedule of its own | Accepted |
 | [0053](0053-deleting-a-festival-ungroups-its-events-and-deletes-its-forms.md) | Deleting a festival ungroups its events and deletes its forms, submissions included | Accepted (amends 04) |
 | [0054](0054-a-test-send-goes-to-the-relay-in-the-request.md) | A test send of the schedule email goes to the relay in the request, not through the outbox | Accepted (amends 0006, 04) |
+| [0055](0055-a-schedule-is-grouped-under-its-event-and-night.md) | A volunteer's schedule is grouped under its event and the night it belongs to | Accepted (amends 01) |

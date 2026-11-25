@@ -332,8 +332,10 @@ Acceptance criteria are written so that they are testable.
   actually changed, and says what changed.
 - A volunteer who previously had shifts and now has none receives an explicit
   message saying so. Silence is not an acceptable output for that case.
-- Adjacent shifts at the same post render as one line — "Sam. 5/9 10h–18h :
-  Bar", not four half-day entries.
+- Adjacent shifts at the same post render as one line — "10h–18h : Bar", not
+  four half-day entries — under a heading naming the event and the night it
+  belongs to, "Open Air – samedi 05/09", so that a shift after midnight still
+  reads as Saturday night ([ADR-0055](adr/0055-a-schedule-is-grouped-under-its-event-and-night.md)).
 - I can preview the diff, and separately send the whole run to a single test
   address to see the rendered messages before anyone else does.
 - Volunteers I have marked as not-to-be-contacted are skipped, and the run

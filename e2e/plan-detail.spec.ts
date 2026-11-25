@@ -9,30 +9,14 @@
  * when it has more than one day in it; a standalone event exercises none of
  * the scope switching this page exists for.
  *
- * Needs a coordinator account that already exists in the running stack — the
- * one `just bootstrap <email>` creates — because there is no self-service
- * sign-up. Set `EVP_E2E_EMAIL` / `EVP_E2E_PASSWORD` to run these against a
- * stack seeded that way; otherwise every test here is skipped rather than
- * failing on a precondition nobody arranged.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email address').fill(email ?? '');
-  await page.getByLabel('Password').fill(password ?? '');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/admin');
-}
+signedInAsCoordinator();
 
 /**
  * Opens a festival from the events list, loading the worked example first if
@@ -70,7 +54,7 @@ async function openAFestival(page: Page): Promise<string | null> {
 test('a festival opens as one page, at its details section', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   const name = await openAFestival(page);
   if (name === null) {
     test.skip();
@@ -89,7 +73,7 @@ test('a festival opens as one page, at its details section', async ({
 test('picking a day narrows the same page instead of leaving it', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   if ((await openAFestival(page)) === null) {
     test.skip();
     return;
@@ -117,7 +101,7 @@ test('picking a day narrows the same page instead of leaving it', async ({
 test('switching scope keeps the section the coordinator is reading', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   if ((await openAFestival(page)) === null) {
     test.skip();
     return;
@@ -146,7 +130,7 @@ test('switching scope keeps the section the coordinator is reading', async ({
  * stylesheet is loaded.
  */
 test('each day chip carries its own colour', async ({ page }) => {
-  await signIn(page);
+  await openAdmin(page);
   if ((await openAFestival(page)) === null) {
     test.skip();
     return;
@@ -180,7 +164,7 @@ test('each day chip carries its own colour', async ({ page }) => {
  * *sends* is proven against a mocked API in `PlanDetailsView.test.ts`.
  */
 test('a day can be added from the details section', async ({ page }) => {
-  await signIn(page);
+  await openAdmin(page);
   if ((await openAFestival(page)) === null) {
     test.skip();
     return;
@@ -199,7 +183,7 @@ test('a day can be added from the details section', async ({ page }) => {
 test('the merged page has no axe violations at either scope', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   if ((await openAFestival(page)) === null) {
     test.skip();
     return;

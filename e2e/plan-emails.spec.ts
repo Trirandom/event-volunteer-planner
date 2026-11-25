@@ -13,69 +13,18 @@
  * **These tests do not write to the API.** The template lives in this
  * browser's storage only, and every Playwright context starts with none.
  *
- * Needs a coordinator account in the running stack; set `EVP_E2E_EMAIL` /
- * `EVP_E2E_PASSWORD`, or every test here is skipped.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type FrameLocator,
-  type Page,
-} from '@playwright/test';
+import { expect, test, type FrameLocator, type Page } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
-
-interface SessionCookie {
-  readonly name: string;
-  readonly value: string;
-  readonly domain: string;
-  readonly path: string;
-}
-
-/** One sign-in for the file, replayed as a cookie: the login route is rate
- * limited across the whole suite (see `plan-shifts.spec.ts`). */
-let signedIn: SessionCookie | null = null;
-
-async function sessionCookie(
-  request: APIRequestContext,
-): Promise<SessionCookie> {
-  if (signedIn !== null) {
-    return signedIn;
-  }
-  const response = await request.post('/api/v1/auth/login', {
-    data: { email, password },
-  });
-  expect(
-    response.ok(),
-    'EVP_E2E_EMAIL / EVP_E2E_PASSWORD must name a real coordinator',
-  ).toBe(true);
-  const { cookies } = await request.storageState();
-  const found = cookies.find((cookie) => cookie.name === 'evp_session');
-  expect(found, 'a successful login must set evp_session').toBeDefined();
-  signedIn = {
-    name: 'evp_session',
-    value: found?.value ?? '',
-    domain: found?.domain ?? 'localhost',
-    path: '/',
-  };
-  return signedIn;
-}
+signedInAsCoordinator();
 
 /** Opens a festival's emails section, loading the worked example first if
  * this organisation has nothing in it yet. */
-async function openEmails(
-  page: Page,
-  request: APIRequestContext,
-): Promise<boolean> {
-  await page.context().addCookies([await sessionCookie(request)]);
-  await page.goto('/admin');
+async function openEmails(page: Page): Promise<boolean> {
+  await openAdmin(page);
   await page
     .getByRole('navigation')
     .getByRole('link', { name: 'Events' })
@@ -115,11 +64,8 @@ function preview(page: Page): FrameLocator {
   return page.frameLocator('iframe.evp-frame');
 }
 
-test('bold is a button, and the preview shows it as bold', async ({
-  page,
-  request,
-}) => {
-  test.skip(!(await openEmails(page, request)), 'no festival to write to');
+test('bold is a button, and the preview shows it as bold', async ({ page }) => {
+  test.skip(!(await openEmails(page)), 'no festival to write to');
 
   const box = editor(page);
   await box.click();
@@ -141,9 +87,8 @@ test('bold is a button, and the preview shows it as bold', async ({
 
 test('a variable button inserts a chip that the preview fills in', async ({
   page,
-  request,
 }) => {
-  test.skip(!(await openEmails(page, request)), 'no festival to write to');
+  test.skip(!(await openEmails(page)), 'no festival to write to');
 
   const recipient = page.getByLabel('Volunteer');
   test.skip(
@@ -171,9 +116,8 @@ test('a variable button inserts a chip that the preview fills in', async ({
 
 test('a link the schema does not allow is refused, and the page says why', async ({
   page,
-  request,
 }) => {
-  test.skip(!(await openEmails(page, request)), 'no festival to write to');
+  test.skip(!(await openEmails(page)), 'no festival to write to');
 
   await editor(page).click();
   await page.getByRole('button', { name: 'Link' }).click();

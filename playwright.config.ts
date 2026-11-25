@@ -50,8 +50,14 @@ export default defineConfig({
   },
   projects: [
     {
+      // One sign-in for the whole run (e2e/support/coordinator.ts says why).
+      name: 'setup',
+      testMatch: /\.setup\.ts$/,
+    },
+    {
       name: 'chromium',
       use: { ...desktopChrome },
+      dependencies: ['setup'],
     },
     {
       // docs/14 §7 — forced-colors on key screens. A separate project rather
@@ -60,12 +66,14 @@ export default defineConfig({
       // `forcedColors` is a browser-context option, not a top-level test
       // option, in this Playwright line.
       use: { ...desktopChrome, contextOptions: { forcedColors: 'active' } },
+      dependencies: ['setup'],
     },
     {
       // docs/14 §2 / docs/01 §5 — 320 px is the conformance floor and 400 px
       // is the width the form is designed for. Both are asserted.
       name: 'mobile-320',
       use: { ...desktopChrome, viewport: { width: 320, height: 720 } },
+      dependencies: ['setup'],
     },
   ],
 });

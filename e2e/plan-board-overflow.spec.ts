@@ -15,30 +15,17 @@
  * Only a real browser can see this: jsdom lays nothing out, so no unit test
  * can tell a page that overflows from one that does not.
  *
- * Needs a coordinator account in the running stack (`EVP_E2E_EMAIL` /
- * `EVP_E2E_PASSWORD`), and skips without one, like the other signed-in specs.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 import { expect, test, type Page } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
+signedInAsCoordinator();
 
 /** Narrower than any festival's board at full zoom, wide enough to keep the
  * rail beside the content rather than above it. */
 test.use({ viewport: { width: 1024, height: 768 } });
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email address').fill(email ?? '');
-  await page.getByLabel('Password').fill(password ?? '');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/admin');
-}
 
 /** The whole festival rather than one day: its axis spans every day, which is
  * the widest board the page can be asked to hold. */
@@ -113,7 +100,7 @@ async function expectOnlyTheBoardScrolls(page: Page): Promise<void> {
 test('the shifts board scrolls inside itself, not the page', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   await openFestival(page);
   await openSection(page, 'Shifts');
   await page.waitForURL(/\/festivals\/[^/]+\/shifts$/);
@@ -128,7 +115,7 @@ test('the shifts board scrolls inside itself, not the page', async ({
 test('the availability board scrolls inside itself, not the page', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   await openFestival(page);
   await openSection(page, 'Availability');
   await page.waitForURL(/\/festivals\/[^/]+\/availability$/);

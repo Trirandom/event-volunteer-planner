@@ -19,27 +19,13 @@
  * is specified for both the first widening and every later one precisely
  * because a second run of this file is a later one.
  *
- * Needs a coordinator account that already exists in the running stack — the
- * one `just bootstrap <email>` creates — because there is no self-service
- * sign-up. Set `EVP_E2E_EMAIL` / `EVP_E2E_PASSWORD` to run these against a
- * stack seeded that way; otherwise every test here is skipped rather than
- * failing on a precondition nobody arranged.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type Locator,
-  type Page,
-} from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
+signedInAsCoordinator();
 
 const MINUTE_MS = 60_000;
 
@@ -61,59 +47,6 @@ const PIXELS_PER_HOUR = 20;
 interface Period {
   readonly start: string;
   readonly end: string;
-}
-
-interface SessionCookie {
-  readonly name: string;
-  readonly value: string;
-  readonly domain: string;
-  readonly path: string;
-}
-
-/**
- * One sign-in for the whole file, replayed as a cookie.
- *
- * `POST /auth/login` is rate limited — ten, then one every fifteen seconds
- * (.env.example) — and that budget is *shared by the whole suite*, not per
- * spec. Four more sign-ins for four tests is how a suite starts failing on
- * whichever test happens to run eleventh, which is a flake in the sense
- * docs/13 §8 refuses: it fails for a reason that has nothing to do with what
- * it asserts.
- */
-let signedIn: SessionCookie | null = null;
-
-async function sessionCookie(
-  request: APIRequestContext,
-): Promise<SessionCookie> {
-  if (signedIn !== null) {
-    return signedIn;
-  }
-
-  const response = await request.post('/api/v1/auth/login', {
-    data: { email, password },
-  });
-  expect(
-    response.ok(),
-    'EVP_E2E_EMAIL / EVP_E2E_PASSWORD must name a real coordinator',
-  ).toBe(true);
-
-  const { cookies } = await request.storageState();
-  const found = cookies.find((cookie) => cookie.name === 'evp_session');
-  expect(found, 'a successful login must set evp_session').toBeDefined();
-
-  signedIn = {
-    name: 'evp_session',
-    value: found?.value ?? '',
-    domain: found?.domain ?? 'localhost',
-    path: '/',
-  };
-  return signedIn;
-}
-
-/** Arrive signed in, at the page every test here starts from. */
-async function signIn(page: Page, request: APIRequestContext): Promise<void> {
-  await page.context().addCookies([await sessionCookie(request)]);
-  await page.goto('/admin');
 }
 
 /**
@@ -325,9 +258,8 @@ async function dragEdge(
 
 test('dragging a bar past closing time adds a slot and lengthens the day', async ({
   page,
-  request,
 }) => {
-  await signIn(page, request);
+  await openAdmin(page);
   if (!(await openADayBoard(page))) {
     test.skip();
     return;
@@ -368,9 +300,8 @@ test('dragging a bar past closing time adds a slot and lengthens the day', async
 
 test('growing a day leaves its published door times alone', async ({
   page,
-  request,
 }) => {
-  await signIn(page, request);
+  await openAdmin(page);
   if (!(await openADayBoard(page))) {
     test.skip();
     return;
@@ -407,11 +338,8 @@ test('growing a day leaves its published door times alone', async ({
  * pointer path is an enhancement, so every drag has a keyboard equivalent —
  * including this one, now that it also moves the event.
  */
-test('the keyboard lengthens the day the same way', async ({
-  page,
-  request,
-}) => {
-  await signIn(page, request);
+test('the keyboard lengthens the day the same way', async ({ page }) => {
+  await openAdmin(page);
   if (!(await openADayBoard(page))) {
     test.skip();
     return;
@@ -450,9 +378,8 @@ test('the keyboard lengthens the day the same way', async ({
  */
 test('a drag past the end of the axis stops there and says so', async ({
   page,
-  request,
 }) => {
-  await signIn(page, request);
+  await openAdmin(page);
   if (!(await openADayBoard(page))) {
     test.skip();
     return;

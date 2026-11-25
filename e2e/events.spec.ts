@@ -4,36 +4,14 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+
 /**
  * The events page — festivals and events on one list — end to end.
  *
- * Needs a coordinator account that already exists in the running stack — the
- * same one `just bootstrap <email>` creates — because there is no
- * self-service sign-up (`LoginView.vue`'s own doc comment explains why). Set
- * `EVP_E2E_EMAIL` / `EVP_E2E_PASSWORD` to run this against a stack seeded that
- * way; otherwise every test here is skipped rather than failing on a
- * precondition nobody arranged.
- *
- * At the time this was written the `evp-api` routes under
- * `/orgs/{org}/festivals` and `/orgs/{org}/events` were being built in
- * parallel by another agent and did not exist yet, so this file has not been
- * run against a live backend — see the accompanying report.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
-
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email address').fill(email ?? '');
-  await page.getByLabel('Password').fill(password ?? '');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/admin');
-}
+signedInAsCoordinator();
 
 /** The header link, which is the route a signed-in coordinator actually takes
  * — and which only exists once the session has resolved. */
@@ -50,7 +28,7 @@ async function openEvents(page: Page): Promise<void> {
 test('the events page offers both create forms above the list', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   await openEvents(page);
 
   await expect(page.getByRole('button', { name: 'New event' })).toBeVisible();
@@ -63,7 +41,7 @@ test('the events page offers both create forms above the list', async ({
 });
 
 test('a fresh organisation offers the worked examples', async ({ page }) => {
-  await signIn(page);
+  await openAdmin(page);
   await openEvents(page);
 
   const empty = page.getByRole('heading', { name: 'Nothing planned yet' });
@@ -83,7 +61,7 @@ test('a fresh organisation offers the worked examples', async ({ page }) => {
 test('loading the example festival announces what was created', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   await openEvents(page);
 
   const loadButton = page.getByRole('button', {
@@ -103,7 +81,7 @@ test('loading the example festival announces what was created', async ({
 test('the old festivals path still lands somewhere useful', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   await openEvents(page);
 
   const orgPath = new URL(page.url()).pathname;
@@ -114,7 +92,7 @@ test('the old festivals path still lands somewhere useful', async ({
 });
 
 test('the events page has no axe violations', async ({ page }) => {
-  await signIn(page);
+  await openAdmin(page);
   await openEvents(page);
 
   const results = await new AxeBuilder({ page })

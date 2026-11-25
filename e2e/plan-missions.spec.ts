@@ -18,29 +18,14 @@
  * the end, so a second run is not asserting the first run's leftovers and a
  * failure leaves at most one stray post behind.
  *
- * Needs a coordinator account that already exists in the running stack — the
- * one `just bootstrap <email>` creates. Set `EVP_E2E_EMAIL` /
- * `EVP_E2E_PASSWORD` to run these; otherwise every test here skips rather than
- * failing on a precondition nobody arranged.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email address').fill(email ?? '');
-  await page.getByLabel('Password').fill(password ?? '');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/admin');
-}
+signedInAsCoordinator();
 
 /**
  * Opens the worked example's festival at its missions section, loading the
@@ -110,7 +95,7 @@ async function removeMission(page: Page, name: string): Promise<void> {
 test('a mission added at festival scope lands on every day', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   if (!(await openFestivalMissions(page))) {
     test.skip();
     return;
@@ -147,7 +132,7 @@ test('a mission added at festival scope lands on every day', async ({
 });
 
 test('the missions section has no axe violations', async ({ page }) => {
-  await signIn(page);
+  await openAdmin(page);
   if (!(await openFestivalMissions(page))) {
     test.skip();
     return;

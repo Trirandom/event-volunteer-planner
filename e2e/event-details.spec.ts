@@ -18,29 +18,14 @@
  * position rather than by value so a second run is not asserting the first
  * run's leftovers.
  *
- * Needs a coordinator account that already exists in the running stack — the
- * one `just bootstrap <email>` creates. Set `EVP_E2E_EMAIL` /
- * `EVP_E2E_PASSWORD` to run these; otherwise every test here skips rather than
- * failing on a precondition nobody arranged.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email address').fill(email ?? '');
-  await page.getByLabel('Password').fill(password ?? '');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/admin');
-}
+signedInAsCoordinator();
 
 /**
  * Opens one day of the worked example at its details section, loading the
@@ -96,7 +81,7 @@ async function expectAllSaved(page: Page): Promise<void> {
 test('the rail names the production and reaches the details section', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   if (!(await openADayDetails(page))) {
     test.skip();
     return;
@@ -115,7 +100,7 @@ test('the rail names the production and reaches the details section', async ({
 });
 
 test('door times are typed in and can be taken back off', async ({ page }) => {
-  await signIn(page);
+  await openAdmin(page);
   if (!(await openADayDetails(page))) {
     test.skip();
     return;
@@ -146,7 +131,7 @@ test('door times are typed in and can be taken back off', async ({ page }) => {
 test('doors outside the working hours are refused before the round trip', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   if (!(await openADayDetails(page))) {
     test.skip();
     return;
@@ -167,7 +152,7 @@ test('doors outside the working hours are refused before the round trip', async 
 test('a colour picked on the form is the colour the event keeps', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   if (!(await openADayDetails(page))) {
     test.skip();
     return;
@@ -197,7 +182,7 @@ test('a colour picked on the form is the colour the event keeps', async ({
 test('Ctrl+Z takes a colour back, and the server keeps it', async ({
   page,
 }) => {
-  await signIn(page);
+  await openAdmin(page);
   if (!(await openADayDetails(page))) {
     test.skip();
     return;
@@ -223,7 +208,7 @@ test('Ctrl+Z takes a colour back, and the server keeps it', async ({
 });
 
 test('the details section has no axe violations', async ({ page }) => {
-  await signIn(page);
+  await openAdmin(page);
   if (!(await openADayDetails(page))) {
     test.skip();
     return;

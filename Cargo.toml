@@ -59,7 +59,7 @@ tower_governor = { version = "0.8.0", default-features = false, features = ["axu
 # allow-list in CONTRIBUTING.md. Native roots come from the image's
 # ca-certificates, which distroless provides.
 sqlx     = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-native-roots", "postgres", "macros", "migrate", "uuid", "json", "rust_decimal"] }
-jiff-sqlx = { version = "0.2.0", default-features = false, features = ["postgres"] }
+jiff-sqlx = { version = "1.0.0", default-features = false, features = ["postgres"] }
 
 # ---------------------------------------------------------------------------
 # Domain vocabulary types

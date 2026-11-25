@@ -213,6 +213,58 @@ function segmentAtX(scale: TimeScale, x: number): ScaleSegment {
   return found;
 }
 
+/**
+ * The zoom at which a folded scale is exactly `widthPx` wide.
+ *
+ * The board's floor: below it the track stops short of the viewport and the
+ * rest of the screen is blank axis-coloured nothing. It cannot be read off as
+ * `width / minutes`, because which folds apply depends on the zoom (a fold is
+ * dropped once its marker would be wider than the stretch), so the width is
+ * only *piecewise* linear in the zoom. It is continuous and strictly
+ * increasing, though — a fold drops at the zoom where folding it changes
+ * nothing — so a bisection over the real `foldedTimeScale` finds it, and
+ * cannot disagree with the layout the board then draws.
+ *
+ * Returns the low side of the bracket: a board a billionth of a pixel narrow
+ * is invisible, one a billionth wide is a horizontal scrollbar.
+ */
+export function fitPixelsPerMinute(
+  startMs: number,
+  endMs: number,
+  folds: readonly MsSpan[],
+  foldedPixels: number,
+  widthPx: number,
+): number {
+  checkedSpan(startMs, endMs);
+  if (!(widthPx > 0)) {
+    throw new RangeError('a scale cannot be fitted to no width');
+  }
+  const widthAt = (pixelsPerMinute: number): number =>
+    scaleWidth(
+      foldedTimeScale(startMs, endMs, pixelsPerMinute, folds, foldedPixels),
+    );
+
+  // Folding only ever narrows, so the unfolded fit is never too wide.
+  let lo = widthPx / ((endMs - startMs) / MS_PER_MINUTE);
+  if (widthAt(lo) >= widthPx) {
+    return lo;
+  }
+  let hi = lo * 2;
+  while (widthAt(hi) < widthPx) {
+    lo = hi;
+    hi *= 2;
+  }
+  for (let step = 0; step < 64; step += 1) {
+    const mid = (lo + hi) / 2;
+    if (widthAt(mid) <= widthPx) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
 /** The scale's full extent in CSS pixels — the board's scrollable width. */
 export function scaleWidth(scale: TimeScale): number {
   return xOf(scale, scale.endMs);

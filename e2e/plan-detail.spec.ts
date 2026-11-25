@@ -9,91 +9,40 @@
  * when it has more than one day in it; a standalone event exercises none of
  * the scope switching this page exists for.
  *
- * Needs a coordinator account that already exists in the running stack — the
- * one `just bootstrap <email>` creates — because there is no self-service
- * sign-up. Set `EVP_E2E_EMAIL` / `EVP_E2E_PASSWORD` to run these against a
- * stack seeded that way; otherwise every test here is skipped rather than
- * failing on a precondition nobody arranged.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival, scopeLinks } from './support/festival';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email address').fill(email ?? '');
-  await page.getByLabel('Password').fill(password ?? '');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/admin');
-}
-
-/**
- * Opens a festival from the events list, loading the worked example first if
- * this organisation has nothing in it yet. Returns `null` when there is no
- * festival to open and none can be created, which is a skip rather than a
- * failure — another run may have filled the org with standalone events.
- */
-async function openAFestival(page: Page): Promise<string | null> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  const festival = page.locator('.evp-group-title').first();
-  if ((await festival.count()) === 0) {
-    return null;
-  }
-
-  const name = (await festival.textContent())?.trim() ?? '';
-  await festival.click();
-  return name;
-}
+signedInAsCoordinator();
 
 test('a festival opens as one page, at its details section', async ({
   page,
 }) => {
-  await signIn(page);
-  const name = await openAFestival(page);
-  if (name === null) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  const name = await openExampleFestival(page);
 
   // The bare festival URL redirects to a section rather than rendering a
   // page with an empty middle.
   await expect(page).toHaveURL(/\/festivals\/[^/]+\/details$/);
   await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
+  // The section has no heading of its own since it became rows (ADR-0051):
+  // the rail says where the coordinator is.
   await expect(
-    page.getByRole('heading', { name: 'Event details' }),
-  ).toBeVisible();
+    page
+      .getByRole('navigation', { name: 'Sections' })
+      .getByRole('link', { name: 'Event details' }),
+  ).toHaveAttribute('aria-current', 'page');
 });
 
 test('picking a day narrows the same page instead of leaving it', async ({
   page,
 }) => {
-  await signIn(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openExampleFestival(page);
 
   const scope = page.getByRole('navigation', { name: 'Festival scope' });
   await expect(
@@ -117,11 +66,8 @@ test('picking a day narrows the same page instead of leaving it', async ({
 test('switching scope keeps the section the coordinator is reading', async ({
   page,
 }) => {
-  await signIn(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openExampleFestival(page);
 
   await page
     .getByRole('navigation', { name: 'Sections' })
@@ -145,18 +91,19 @@ test('switching scope keeps the section the coordinator is reading', async ({
  * test because the custom property only becomes a colour once the real
  * stylesheet is loaded.
  */
-test('each day chip carries its own colour', async ({ page }) => {
-  await signIn(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+test('each day chip carries its own colour', async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === 'forced-colors',
+    'forced colours replace author colours by design; every chip is also named in words',
+  );
+  await openAdmin(page);
+  await openExampleFestival(page);
 
-  const days = page
-    .getByRole('navigation', { name: 'Festival scope' })
-    .getByRole('link');
+  const days = scopeLinks(page);
+  // `count` does not wait, so the strip is waited for first: counted straight
+  // after the click, it was counted before the festival had loaded.
+  await expect(days.nth(2)).toBeVisible();
   const count = await days.count();
-  expect(count).toBeGreaterThan(2);
 
   const colours = new Set<string>();
   // From 1: "Whole festival" is first and has no colour of its own.
@@ -180,11 +127,8 @@ test('each day chip carries its own colour', async ({ page }) => {
  * *sends* is proven against a mocked API in `PlanDetailsView.test.ts`.
  */
 test('a day can be added from the details section', async ({ page }) => {
-  await signIn(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openExampleFestival(page);
 
   await page.getByRole('button', { name: 'Add a day' }).click();
 
@@ -192,18 +136,17 @@ test('a day can be added from the details section', async ({ page }) => {
   await expect(zone).not.toHaveValue('');
 
   // The slug follows the name, accents folded, until somebody edits it.
-  await page.getByLabel('Name').fill('Samedi 1er août');
+  // Exact: the slug's hint ("…filled in from the name…") is part of its
+  // label, so a substring match finds both fields.
+  await page.getByLabel('Name', { exact: true }).fill('Samedi 1er août');
   await expect(page.getByLabel('Slug')).toHaveValue('samedi-1er-aout');
 });
 
 test('the merged page has no axe violations at either scope', async ({
   page,
 }) => {
-  await signIn(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openExampleFestival(page);
 
   const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 

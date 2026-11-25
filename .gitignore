@@ -26,6 +26,8 @@ dist/
 coverage/
 playwright-report/
 test-results/
+# A live session cookie (e2e/coordinator.setup.ts).
+e2e/.auth/
 .pnpm-store/
 
 # Editors and OS

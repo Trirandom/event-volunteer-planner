@@ -40,6 +40,12 @@ export default defineConfig({
   // build somebody re-runs "because it's flaky" is the one telling the truth
   // (docs/13 §8).
   retries: 0,
+  // One at a time. Every signed-in spec edits the same organisation's worked
+  // example — there is one coordinator account and no org management yet —
+  // and in parallel the three projects dragged the same day's bar and
+  // recoloured the same event at the same moment, each then asserting on a
+  // value the other had just moved.
+  workers: 1,
   forbidOnly: process.env['CI'] === 'true',
   reporter: process.env['CI'] === 'true' ? [['list'], ['junit']] : [['list']],
   use: {
@@ -50,8 +56,23 @@ export default defineConfig({
   },
   projects: [
     {
+      // One sign-in for the whole run (e2e/support/coordinator.ts says why).
+      name: 'setup',
+      testMatch: /\.setup\.ts$/,
+    },
+    {
+      // Before anything loads the worked example, which every other signed-in
+      // spec does on its first test (e2e/empty-org.spec.ts says why).
+      name: 'empty-org',
+      testMatch: /empty-org\.spec\.ts$/,
+      use: { ...desktopChrome },
+      dependencies: ['setup'],
+    },
+    {
       name: 'chromium',
       use: { ...desktopChrome },
+      testIgnore: /empty-org\.spec\.ts$/,
+      dependencies: ['empty-org'],
     },
     {
       // docs/14 §7 — forced-colors on key screens. A separate project rather
@@ -60,12 +81,16 @@ export default defineConfig({
       // `forcedColors` is a browser-context option, not a top-level test
       // option, in this Playwright line.
       use: { ...desktopChrome, contextOptions: { forcedColors: 'active' } },
+      testIgnore: /empty-org\.spec\.ts$/,
+      dependencies: ['empty-org'],
     },
     {
       // docs/14 §2 / docs/01 §5 — 320 px is the conformance floor and 400 px
       // is the width the form is designed for. Both are asserted.
       name: 'mobile-320',
       use: { ...desktopChrome, viewport: { width: 320, height: 720 } },
+      testIgnore: /empty-org\.spec\.ts$/,
+      dependencies: ['empty-org'],
     },
   ],
 });

@@ -19,27 +19,14 @@
  * is specified for both the first widening and every later one precisely
  * because a second run of this file is a later one.
  *
- * Needs a coordinator account that already exists in the running stack — the
- * one `just bootstrap <email>` creates — because there is no self-service
- * sign-up. Set `EVP_E2E_EMAIL` / `EVP_E2E_PASSWORD` to run these against a
- * stack seeded that way; otherwise every test here is skipped rather than
- * failing on a precondition nobody arranged.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type Locator,
-  type Page,
-} from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival } from './support/festival';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
+signedInAsCoordinator();
 
 const MINUTE_MS = 60_000;
 
@@ -63,59 +50,6 @@ interface Period {
   readonly end: string;
 }
 
-interface SessionCookie {
-  readonly name: string;
-  readonly value: string;
-  readonly domain: string;
-  readonly path: string;
-}
-
-/**
- * One sign-in for the whole file, replayed as a cookie.
- *
- * `POST /auth/login` is rate limited — ten, then one every fifteen seconds
- * (.env.example) — and that budget is *shared by the whole suite*, not per
- * spec. Four more sign-ins for four tests is how a suite starts failing on
- * whichever test happens to run eleventh, which is a flake in the sense
- * docs/13 §8 refuses: it fails for a reason that has nothing to do with what
- * it asserts.
- */
-let signedIn: SessionCookie | null = null;
-
-async function sessionCookie(
-  request: APIRequestContext,
-): Promise<SessionCookie> {
-  if (signedIn !== null) {
-    return signedIn;
-  }
-
-  const response = await request.post('/api/v1/auth/login', {
-    data: { email, password },
-  });
-  expect(
-    response.ok(),
-    'EVP_E2E_EMAIL / EVP_E2E_PASSWORD must name a real coordinator',
-  ).toBe(true);
-
-  const { cookies } = await request.storageState();
-  const found = cookies.find((cookie) => cookie.name === 'evp_session');
-  expect(found, 'a successful login must set evp_session').toBeDefined();
-
-  signedIn = {
-    name: 'evp_session',
-    value: found?.value ?? '',
-    domain: found?.domain ?? 'localhost',
-    path: '/',
-  };
-  return signedIn;
-}
-
-/** Arrive signed in, at the page every test here starts from. */
-async function signIn(page: Page, request: APIRequestContext): Promise<void> {
-  await page.context().addCookies([await sessionCookie(request)]);
-  await page.goto('/admin');
-}
-
 /**
  * Opens one day of a festival's mission board, loading the worked example
  * first if this organisation has nothing in it yet.
@@ -126,31 +60,8 @@ async function signIn(page: Page, request: APIRequestContext): Promise<void> {
  * axis but for the margin — which is the situation a coordinator is actually
  * in, and the one that used to be a dead end.
  */
-async function openADayBoard(page: Page): Promise<boolean> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  const festival = page.locator('.evp-group-title').first();
-  if ((await festival.count()) === 0) {
-    return false;
-  }
-  await festival.click();
-  // A festival lands on its details section, not on the board: the rail's
-  // order is the order a festival is set up in (`router/index.ts`).
-  await page.waitForURL(/\/festivals\/[^/]+\/details$/);
+async function openADayBoard(page: Page): Promise<void> {
+  await openExampleFestival(page);
   await page
     .getByRole('navigation', { name: 'Sections' })
     .getByRole('link', { name: 'Shifts' })
@@ -167,7 +78,6 @@ async function openADayBoard(page: Page): Promise<boolean> {
 
   await setZoom(page, PIXELS_PER_HOUR);
   await setSlotLength(page, SLOT_MINUTES);
-  return true;
 }
 
 /** The board writes one slot at a time and re-reads afterwards; `aria-busy` is
@@ -179,10 +89,35 @@ async function settled(page: Page): Promise<void> {
   );
 }
 
-/** The first bar's end handle, re-found each time: the board re-renders from
- * the server after every plan, so a handle held across one is detached. */
-function endHandle(page: Page): Locator {
-  return page.locator('.evp-run').first().locator('.evp-handle--end');
+/**
+ * The bar that runs to closing time — the latest-ending one on the board.
+ *
+ * Not simply the first: rows are missions in name order (ADR-0052), and in
+ * the worked example the first of them ends hours before the day does, so
+ * lengthening it never reaches the day's end. Re-found each time, because the
+ * board re-renders from the server after every plan, so a bar held across one
+ * is detached; the one just lengthened is still the latest afterwards.
+ */
+async function closingBar(page: Page): Promise<Locator> {
+  const runs = page.locator('.evp-run');
+  const ends = await runs.evaluateAll((elements) =>
+    elements.map((run) =>
+      Number(
+        run.querySelector('.evp-handle--end')?.getAttribute('aria-valuenow') ??
+          Number.NaN,
+      ),
+    ),
+  );
+  const latest = ends.reduce(
+    (best, end, index) =>
+      end > (ends[best] ?? Number.NEGATIVE_INFINITY) ? index : best,
+    0,
+  );
+  return runs.nth(latest);
+}
+
+async function endHandle(page: Page): Promise<Locator> {
+  return (await closingBar(page)).locator('.evp-handle--end');
 }
 
 async function numberOf(handle: Locator, attribute: string): Promise<number> {
@@ -325,61 +260,56 @@ async function dragEdge(
 
 test('dragging a bar past closing time adds a slot and lengthens the day', async ({
   page,
-  request,
 }) => {
-  await signIn(page, request);
-  if (!(await openADayBoard(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openADayBoard(page);
 
-  const bar = page.locator('.evp-run').first();
-  const barEndBefore = await numberOf(endHandle(page), 'aria-valuenow');
-  const axisEndBefore = await numberOf(endHandle(page), 'aria-valuemax');
+  const bar = await closingBar(page);
+  const barEndBefore = await numberOf(await endHandle(page), 'aria-valuenow');
+  const axisEndBefore = await numberOf(await endHandle(page), 'aria-valuemax');
   const slotsBefore = await bar.locator('.evp-cut-mark').count();
   const before = await dayPeriods(page);
 
-  // The precondition that made this a bug rather than a preference: a bar
-  // arrives already spanning its whole day, so the only way out is through.
+  // The precondition that made this a bug rather than a preference: the
+  // closing bar arrives already reaching the end of its day, so the only way
+  // out is through.
   expect(before.period?.end).toBeDefined();
   expect(axisEndBefore - barEndBefore).toBe(AXIS_MARGIN_MINUTES * MINUTE_MS);
 
-  await dragEdge(page, endHandle(page), SLOT_MINUTES);
+  await dragEdge(page, await endHandle(page), SLOT_MINUTES);
 
   // One slot of exactly the shift length…
   expect(
-    (await numberOf(endHandle(page), 'aria-valuenow')) - barEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuenow')) - barEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
-  expect(
-    await page.locator('.evp-run').first().locator('.evp-cut-mark').count(),
-  ).toBe(slotsBefore + 1);
+  expect(await (await closingBar(page)).locator('.evp-cut-mark').count()).toBe(
+    slotsBefore + 1,
+  );
 
   // …and the day grown to hold it. Read through the axis, whose margin past
   // the last day is a constant, so its end moves exactly as the day's does.
   expect(
-    (await numberOf(endHandle(page), 'aria-valuemax')) - axisEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuemax')) - axisEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
   expect((await dayPeriods(page)).period?.end).not.toBe(before.period?.end);
 
   // Moving the day is not a change to one bar, so the board says so.
-  await expect(page.getByRole('status')).toContainText(/now runs until/);
+  await expect(
+    page.getByRole('status').filter({ hasText: /now runs until/ }),
+  ).toBeVisible();
   await expect(page.locator('.evp-error')).toHaveCount(0);
 });
 
 test('growing a day leaves its published door times alone', async ({
   page,
-  request,
 }) => {
-  await signIn(page, request);
-  if (!(await openADayBoard(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openADayBoard(page);
 
-  const axisEndBefore = await numberOf(endHandle(page), 'aria-valuemax');
+  const axisEndBefore = await numberOf(await endHandle(page), 'aria-valuemax');
   const before = await dayPeriods(page);
 
-  await dragEdge(page, endHandle(page), SLOT_MINUTES);
+  await dragEdge(page, await endHandle(page), SLOT_MINUTES);
 
   const after = await dayPeriods(page);
   // The day grew, read off the axis rather than by parsing two timestamps:
@@ -387,7 +317,7 @@ test('growing a day leaves its published door times alone', async ({
   // (docs/16 §4), and the axis margin is a constant, so its end moves exactly
   // as the day's does.
   expect(
-    (await numberOf(endHandle(page), 'aria-valuemax')) - axisEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuemax')) - axisEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
 
   // The rule, and the whole reason the old one was wrong: the doors are a
@@ -397,9 +327,14 @@ test('growing a day leaves its published door times alone', async ({
   // editing accident frozen into the programme.
   expect(after.publicPeriod).toEqual(before.publicPeriod);
 
-  // And the board says only what it did.
-  await expect(page.getByRole('status')).toContainText(/now runs until/);
-  await expect(page.getByRole('status')).not.toContainText(/public/);
+  // And the board says only what it did. Every message is its own status
+  // region, so "only" is asked of all of them.
+  await expect(
+    page.getByRole('status').filter({ hasText: /now runs until/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: /public/ }),
+  ).toHaveCount(0);
 });
 
 /**
@@ -407,30 +342,24 @@ test('growing a day leaves its published door times alone', async ({
  * pointer path is an enhancement, so every drag has a keyboard equivalent —
  * including this one, now that it also moves the event.
  */
-test('the keyboard lengthens the day the same way', async ({
-  page,
-  request,
-}) => {
-  await signIn(page, request);
-  if (!(await openADayBoard(page))) {
-    test.skip();
-    return;
-  }
+test('the keyboard lengthens the day the same way', async ({ page }) => {
+  await openAdmin(page);
+  await openADayBoard(page);
 
-  const barEndBefore = await numberOf(endHandle(page), 'aria-valuenow');
-  const axisEndBefore = await numberOf(endHandle(page), 'aria-valuemax');
+  const barEndBefore = await numberOf(await endHandle(page), 'aria-valuenow');
+  const axisEndBefore = await numberOf(await endHandle(page), 'aria-valuemax');
 
-  await endHandle(page).focus();
+  await (await endHandle(page)).focus();
   // `Shift` moves by one whole slot, which is the unit a coordinator thinks in
   // — "one more hour on the bar" — and the unit this file set.
   await page.keyboard.press('Shift+ArrowRight');
   await settled(page);
 
   expect(
-    (await numberOf(endHandle(page), 'aria-valuenow')) - barEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuenow')) - barEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
   expect(
-    (await numberOf(endHandle(page), 'aria-valuemax')) - axisEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuemax')) - axisEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
 });
 
@@ -450,13 +379,9 @@ test('the keyboard lengthens the day the same way', async ({
  */
 test('a drag past the end of the axis stops there and says so', async ({
   page,
-  request,
 }) => {
-  await signIn(page, request);
-  if (!(await openADayBoard(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openADayBoard(page);
 
   const startHandle = page
     .locator('.evp-run')
@@ -475,7 +400,11 @@ test('a drag past the end of the axis stops there and says so', async ({
 
   expect(grewBy).toBeGreaterThan(0);
   expect(grewBy).toBeLessThanOrEqual(AXIS_MARGIN_MINUTES * MINUTE_MS);
-  await expect(page.getByRole('status')).toContainText(
-    /as far as this board reaches/,
-  );
+  // Beside the day's own "now starts at" message: both are true, and each
+  // toast is its own status region.
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: /as far as this board reaches/ }),
+  ).toBeVisible();
 });

@@ -18,65 +18,28 @@
  * the end, so a second run is not asserting the first run's leftovers and a
  * failure leaves at most one stray post behind.
  *
- * Needs a coordinator account that already exists in the running stack — the
- * one `just bootstrap <email>` creates. Set `EVP_E2E_EMAIL` /
- * `EVP_E2E_PASSWORD` to run these; otherwise every test here skips rather than
- * failing on a precondition nobody arranged.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival, scopeLinks } from './support/festival';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email address').fill(email ?? '');
-  await page.getByLabel('Password').fill(password ?? '');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/admin');
-}
+signedInAsCoordinator();
 
 /**
  * Opens the worked example's festival at its missions section, loading the
- * example first if this organisation is empty. Returns `false` when there is
- * nothing to open, which is a skip rather than a failure.
+ * example first if this organisation is empty.
  */
-async function openFestivalMissions(page: Page): Promise<boolean> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  const festival = page.locator('.evp-group-title').first();
-  if ((await festival.count()) === 0) {
-    return false;
-  }
-  await festival.click();
-  await page.waitForURL(/\/festivals\/[^/]+\/details$/);
+async function openFestivalMissions(page: Page): Promise<void> {
+  await openExampleFestival(page);
 
   await page
     .getByRole('navigation', { name: 'Sections' })
     .getByRole('link', { name: 'Missions' })
     .click();
   await expect(page).toHaveURL(/\/festivals\/[^/]+\/missions$/);
-  return true;
 }
 
 /**
@@ -110,32 +73,31 @@ async function removeMission(page: Page, name: string): Promise<void> {
 test('a mission added at festival scope lands on every day', async ({
   page,
 }) => {
-  await signIn(page);
-  if (!(await openFestivalMissions(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openFestivalMissions(page);
 
   // How many days this festival runs, as the page itself counts them — the
   // fan-out's expected reach, read off the scope switch rather than assumed
   // from the fixture.
-  const dayCount = await page
-    .getByRole('navigation', { name: 'Festival scope' })
-    .getByRole('link')
-    .count();
+  // `count` does not wait, so the strip is waited for first.
+  await expect(scopeLinks(page).nth(1)).toBeVisible();
+  const dayCount = await scopeLinks(page).count();
   // 'Whole festival' is one of those links; the rest are the days.
   const days = dayCount - 1;
   test.skip(days < 2, 'the example festival has fewer than two days');
 
   const name = uniqueName();
   await page.getByRole('button', { name: 'Add a zone' }).click();
-  await page.getByLabel('Name').fill(name);
+  await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Where to stand').fill('Halle 3, quai ouest');
   await page.getByRole('button', { name: 'Add mission' }).click();
 
-  await expect(page.getByRole('status')).toContainText(
-    `added to all ${String(days)} days`,
-  );
+  // Filtered: the save bar (ADR-0049) is a status region of its own.
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: `added to all ${String(days)} days` }),
+  ).toBeVisible();
 
   // One card, not N: the rows fold back into the mission the coordinator
   // thought they were declaring.
@@ -147,11 +109,8 @@ test('a mission added at festival scope lands on every day', async ({
 });
 
 test('the missions section has no axe violations', async ({ page }) => {
-  await signIn(page);
-  if (!(await openFestivalMissions(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openFestivalMissions(page);
 
   // With the add form open, since a closed disclosure hides half the controls
   // on the page from the scan.

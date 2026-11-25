@@ -12,63 +12,29 @@
  * shape of claim: what a coordinator picks has to survive the round trip, the
  * invalidation and the re-render.
  *
- * **These tests write**, against the worked example, and leave their changes
- * behind. Every assertion is therefore relative to what the page said a moment
- * earlier rather than to a fixture, and the colour test picks a swatch by
- * position rather than by value so a second run is not asserting the first
- * run's leftovers.
+ * **These tests write**, against the worked example. Every assertion is
+ * relative to what the page said a moment earlier rather than to a fixture,
+ * and the colour tests pick a swatch by position rather than by value. They
+ * put the colour they found back, though: the festival's day strip asserts
+ * that every day has its own (`plan-detail.spec.ts`), and a swatch picked by
+ * position can be another day's.
  *
- * Needs a coordinator account that already exists in the running stack — the
- * one `just bootstrap <email>` creates. Set `EVP_E2E_EMAIL` /
- * `EVP_E2E_PASSWORD` to run these; otherwise every test here skips rather than
- * failing on a precondition nobody arranged.
+ * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
-const email = process.env['EVP_E2E_EMAIL'];
-const password = process.env['EVP_E2E_PASSWORD'];
+import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival } from './support/festival';
 
-test.skip(
-  email === undefined || password === undefined,
-  'EVP_E2E_EMAIL / EVP_E2E_PASSWORD not set — no coordinator account to sign in as',
-);
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email address').fill(email ?? '');
-  await page.getByLabel('Password').fill(password ?? '');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/admin');
-}
+signedInAsCoordinator();
 
 /**
  * Opens one day of the worked example at its details section, loading the
- * example first if this organisation is empty. Returns `false` when there is
- * nothing to open, which is a skip rather than a failure.
+ * example first if this organisation is empty.
  */
-async function openADayDetails(page: Page): Promise<boolean> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  const festival = page.locator('.evp-group-title').first();
-  if ((await festival.count()) === 0) {
-    return false;
-  }
-  await festival.click();
+async function openADayDetails(page: Page): Promise<void> {
+  await openExampleFestival(page);
 
   // One day, not the whole festival: the festival-scope details page renders
   // six of these forms, and every locator below would be ambiguous.
@@ -83,7 +49,6 @@ async function openADayDetails(page: Page): Promise<boolean> {
     .click();
 
   await expect(page).toHaveURL(/\/events\/[^/]+\/details$/);
-  return true;
 }
 
 /** The page saves by itself (ADR-0051); this waits for it to say so. */
@@ -93,14 +58,29 @@ async function expectAllSaved(page: Page): Promise<void> {
   );
 }
 
+/** The swatch the event holds now, found by position so it can be put back
+ * after a reload. */
+async function checkedSwatch(swatches: Locator): Promise<Locator> {
+  const count = await swatches.count();
+  for (let index = 0; index < count; index += 1) {
+    if (await swatches.nth(index).isChecked()) {
+      return swatches.nth(index);
+    }
+  }
+  throw new Error('no colour swatch is selected');
+}
+
+/** The first of two fixed positions that is not the one already chosen. */
+async function anotherSwatch(swatches: Locator): Promise<Locator> {
+  const first = swatches.nth(0);
+  return (await first.isChecked()) ? swatches.nth(5) : first;
+}
+
 test('the rail names the production and reaches the details section', async ({
   page,
 }) => {
-  await signIn(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openADayDetails(page);
 
   const rail = page.getByRole('navigation', { name: 'Sections' });
   const title = await page.locator('.evp-rail-title').textContent();
@@ -115,11 +95,8 @@ test('the rail names the production and reaches the details section', async ({
 });
 
 test('door times are typed in and can be taken back off', async ({ page }) => {
-  await signIn(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openADayDetails(page);
 
   // Doors inside the working hours, expressed relative to them so this works
   // on whichever day of the example the run landed on.
@@ -146,11 +123,8 @@ test('door times are typed in and can be taken back off', async ({ page }) => {
 test('doors outside the working hours are refused before the round trip', async ({
   page,
 }) => {
-  await signIn(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openADayDetails(page);
 
   const end = await page.getByLabel('Ends').inputValue();
   await page.getByLabel('Doors open').fill(end);
@@ -167,29 +141,27 @@ test('doors outside the working hours are refused before the round trip', async 
 test('a colour picked on the form is the colour the event keeps', async ({
   page,
 }) => {
-  await signIn(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openADayDetails(page);
 
   // Sixteen offered (ADR-0050), plus one when the event holds a colour
   // outside them.
   const swatches = page.getByRole('radio');
   expect([16, 17]).toContain(await swatches.count());
 
-  // By position, not by value: these tests leave their writes behind, so the
-  // currently-selected swatch differs between runs. Two positions and whichever
-  // one is not already chosen is the change.
-  const first = swatches.nth(0);
-  const other = swatches.nth(5);
-  const target = (await first.isChecked()) ? other : first;
+  // By position, not by value: two positions, and whichever one is not
+  // already chosen is the change.
+  const original = await checkedSwatch(swatches);
+  const target = await anotherSwatch(swatches);
 
   await target.check();
   await expectAllSaved(page);
 
   await page.reload();
   await expect(target).toBeChecked();
+
+  await original.check();
+  await expectAllSaved(page);
 });
 
 /** Undo is a forward write (ADR-0051), so what it puts back survives a
@@ -197,20 +169,12 @@ test('a colour picked on the form is the colour the event keeps', async ({
 test('Ctrl+Z takes a colour back, and the server keeps it', async ({
   page,
 }) => {
-  await signIn(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openADayDetails(page);
 
   const swatches = page.getByRole('radio');
-  const first = swatches.nth(0);
-  const other = swatches.nth(5);
-  const [original, target] = (await first.isChecked())
-    ? [first, other]
-    : [other, first];
-  await original.check();
-  await expectAllSaved(page);
+  const original = await checkedSwatch(swatches);
+  const target = await anotherSwatch(swatches);
 
   await target.check();
   await expectAllSaved(page);
@@ -223,11 +187,8 @@ test('Ctrl+Z takes a colour back, and the server keeps it', async ({
 });
 
 test('the details section has no axe violations', async ({ page }) => {
-  await signIn(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openAdmin(page);
+  await openADayDetails(page);
 
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])

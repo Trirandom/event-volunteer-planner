@@ -75,7 +75,7 @@ spreadsheet got right.
   volunteer pool inline; ambiguous ones go to a review queue.
 - **Admin:** a plan workflow — details → missions → shifts → form →
   assignments → submissions (+ review) → availability → emails (written as
-  rich text, dry-run preview only) — and per-organisation SMS provider
+  rich text, previewed per volunteer, and test-sent to one address) — and per-organisation SMS provider
   settings (encrypted). French and English UI.
 - **Accounts:** password sign-in, opaque server-side sessions, login rate
   limiting. The first owner is created from environment variables.

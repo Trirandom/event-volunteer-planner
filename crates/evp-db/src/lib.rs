@@ -18,6 +18,7 @@ pub mod locations;
 pub mod participations;
 pub mod patterns;
 pub mod public_forms;
+pub mod schedule;
 pub mod shifts;
 pub mod sms_settings;
 pub mod submissions;

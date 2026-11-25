@@ -23,10 +23,13 @@
     reason = "shared test fixtures; each suite uses a different subset"
 )]
 
+use std::sync::Arc;
+
 use axum::Router;
 use axum::body::{Body, to_bytes};
 use axum::http::{HeaderMap, Request, StatusCode, header};
 use evp_domain::token::Token;
+use evp_worker::mail::MemoryMailSender;
 use serde_json::Value;
 use sqlx::PgPool;
 use tower::ServiceExt as _;
@@ -50,12 +53,23 @@ pub fn router(pool: PgPool) -> Router {
     router_with_backoffice(pool, None)
 }
 
+/// [`router`], with the mail sink it sends through, so a suite can read what
+/// was handed to the relay (ADR-0054).
+pub fn router_with_mail(pool: PgPool) -> (Router, Arc<MemoryMailSender>) {
+    let sink = Arc::new(MemoryMailSender::new());
+    (build(pool, None, Arc::clone(&sink)), sink)
+}
+
 /// [`router`], with the backoffice switched on by `key` (ADR-0045).
+pub fn router_with_backoffice(pool: PgPool, key: Option<&str>) -> Router {
+    build(pool, key, Arc::new(MemoryMailSender::new()))
+}
+
 #[expect(
     clippy::expect_used,
     reason = "test fixture — an unusable quota here is a broken test, not a runtime case"
 )]
-pub fn router_with_backoffice(pool: PgPool, key: Option<&str>) -> Router {
+fn build(pool: PgPool, key: Option<&str>, mail: Arc<MemoryMailSender>) -> Router {
     let state = evp_api::ApiState {
         pool,
         meta: evp_api::Meta {
@@ -75,6 +89,7 @@ pub fn router_with_backoffice(pool: PgPool, key: Option<&str>) -> Router {
         backoffice: evp_api::backoffice::BackofficeAccess(
             key.map(|key| evp_domain::backoffice::BackofficeKey::new(&key.to_owned().into())),
         ),
+        mailer: evp_api::publish::Mailer::new(mail),
     };
     let limits = evp_api::RateLimitPolicy {
         login_burst: 100,

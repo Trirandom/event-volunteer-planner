@@ -21,6 +21,7 @@ path = "src/main.rs"
 evp-api    = { workspace = true }
 evp-db     = { workspace = true }
 evp-domain = { workspace = true }
+evp-worker = { workspace = true }
 
 anyhow             = { workspace = true }
 axum               = { workspace = true }

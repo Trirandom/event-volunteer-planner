@@ -47,8 +47,11 @@ out of order, driven by the first real festival, Soundclash 26):
   `…/form/publication`, submissions `…/submissions` + `…/submissions/review`)
   → availability → assignments → emails (template
   written in a Tiptap rich-text editor whose schema is the email-safe
-  allowlist, ADR-0046, `plan/emailEditor.ts`; dry-run preview only — nothing
-  is sent), plus `/:org/sms-settings`, and `/backoffice` outside any org (key
+  allowlist, ADR-0046, `plan/emailEditor.ts`, plus a subject line; a dry-run
+  preview of every message, and a test send of the whole run to one typed
+  address, rendered server side and sent to the relay in the request,
+  ADR-0054, `evp-api/src/publish.rs` over `evp_db::schedule`; nothing
+  reaches a volunteer), plus `/:org/sms-settings`, and `/backoffice` outside any org (key
   held in memory only).
 - **First-party form (docs/09):** authoring with
   `forms`/`form_versions`/`form_questions`, draft/publish, festival-scoped forms,
@@ -73,7 +76,7 @@ out of order, driven by the first real festival, Soundclash 26):
   soft-warning engine (`acknowledge_warnings` is accepted but nothing computes
   warnings; no `/assignments/check` or move), coverage view, event duplication;
   undo endpoints (operations are recorded, nothing reads them), audit-log
-  writes; outbox/worker (the OVH `SmsSender` and the SMTP `MailSender` exist, unwired), publishing
+  writes; outbox/worker (the OVH `SmsSender` exists, unwired; the SMTP `MailSender` is wired only to the test send), publishing
   rosters, emails, ICS, PDF; foreign intake sources (CSV/Sheets/webhook);
   retention sweep and rights routes; `/metrics`; OpenAPI and the generated TS
   client; `evp-cli` `create-org`/`seed`/`rotate-app-key` (stubs that `bail!`).

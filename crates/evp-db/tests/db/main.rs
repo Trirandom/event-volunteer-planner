@@ -23,5 +23,6 @@ mod locations;
 mod patterns;
 mod posts;
 mod public_forms;
+mod schedule;
 mod sms_settings;
 mod submissions;

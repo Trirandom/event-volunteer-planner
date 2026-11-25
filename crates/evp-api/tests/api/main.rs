@@ -22,6 +22,7 @@ mod locations;
 mod participations;
 mod posts;
 mod public_form;
+mod publish_test;
 mod route_role_matrix;
 mod shift_patterns;
 mod shifts;

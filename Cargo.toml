@@ -67,7 +67,7 @@ jiff-sqlx = { version = "0.2.0", default-features = false, features = ["postgres
 # jiff's default features read the platform tzdb (/usr/share/zoneinfo) rather
 # than bundling one, so a tzdata update arrives with the base image instead of
 # a rebuild — and the API and PostgreSQL stay on comparable data.
-jiff         = { version = "0.2.35", features = ["serde"] }
+jiff         = { version = "1.0.1", features = ["serde"] }
 rust_decimal = { version = "1.43.0", default-features = false, features = ["std", "serde", "macros"] }
 uuid         = { version = "1.26.1", default-features = false, features = ["std", "v7", "serde", "rng-getrandom"] }
 

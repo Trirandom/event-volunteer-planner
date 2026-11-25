@@ -89,10 +89,35 @@ async function settled(page: Page): Promise<void> {
   );
 }
 
-/** The first bar's end handle, re-found each time: the board re-renders from
- * the server after every plan, so a handle held across one is detached. */
-function endHandle(page: Page): Locator {
-  return page.locator('.evp-run').first().locator('.evp-handle--end');
+/**
+ * The bar that runs to closing time — the latest-ending one on the board.
+ *
+ * Not simply the first: rows are missions in name order (ADR-0052), and in
+ * the worked example the first of them ends hours before the day does, so
+ * lengthening it never reaches the day's end. Re-found each time, because the
+ * board re-renders from the server after every plan, so a bar held across one
+ * is detached; the one just lengthened is still the latest afterwards.
+ */
+async function closingBar(page: Page): Promise<Locator> {
+  const runs = page.locator('.evp-run');
+  const ends = await runs.evaluateAll((elements) =>
+    elements.map((run) =>
+      Number(
+        run.querySelector('.evp-handle--end')?.getAttribute('aria-valuenow') ??
+          Number.NaN,
+      ),
+    ),
+  );
+  const latest = ends.reduce(
+    (best, end, index) =>
+      end > (ends[best] ?? Number.NEGATIVE_INFINITY) ? index : best,
+    0,
+  );
+  return runs.nth(latest);
+}
+
+async function endHandle(page: Page): Promise<Locator> {
+  return (await closingBar(page)).locator('.evp-handle--end');
 }
 
 async function numberOf(handle: Locator, attribute: string): Promise<number> {
@@ -239,31 +264,32 @@ test('dragging a bar past closing time adds a slot and lengthens the day', async
   await openAdmin(page);
   await openADayBoard(page);
 
-  const bar = page.locator('.evp-run').first();
-  const barEndBefore = await numberOf(endHandle(page), 'aria-valuenow');
-  const axisEndBefore = await numberOf(endHandle(page), 'aria-valuemax');
+  const bar = await closingBar(page);
+  const barEndBefore = await numberOf(await endHandle(page), 'aria-valuenow');
+  const axisEndBefore = await numberOf(await endHandle(page), 'aria-valuemax');
   const slotsBefore = await bar.locator('.evp-cut-mark').count();
   const before = await dayPeriods(page);
 
-  // The precondition that made this a bug rather than a preference: a bar
-  // arrives already spanning its whole day, so the only way out is through.
+  // The precondition that made this a bug rather than a preference: the
+  // closing bar arrives already reaching the end of its day, so the only way
+  // out is through.
   expect(before.period?.end).toBeDefined();
   expect(axisEndBefore - barEndBefore).toBe(AXIS_MARGIN_MINUTES * MINUTE_MS);
 
-  await dragEdge(page, endHandle(page), SLOT_MINUTES);
+  await dragEdge(page, await endHandle(page), SLOT_MINUTES);
 
   // One slot of exactly the shift length…
   expect(
-    (await numberOf(endHandle(page), 'aria-valuenow')) - barEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuenow')) - barEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
-  expect(
-    await page.locator('.evp-run').first().locator('.evp-cut-mark').count(),
-  ).toBe(slotsBefore + 1);
+  expect(await (await closingBar(page)).locator('.evp-cut-mark').count()).toBe(
+    slotsBefore + 1,
+  );
 
   // …and the day grown to hold it. Read through the axis, whose margin past
   // the last day is a constant, so its end moves exactly as the day's does.
   expect(
-    (await numberOf(endHandle(page), 'aria-valuemax')) - axisEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuemax')) - axisEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
   expect((await dayPeriods(page)).period?.end).not.toBe(before.period?.end);
 
@@ -280,10 +306,10 @@ test('growing a day leaves its published door times alone', async ({
   await openAdmin(page);
   await openADayBoard(page);
 
-  const axisEndBefore = await numberOf(endHandle(page), 'aria-valuemax');
+  const axisEndBefore = await numberOf(await endHandle(page), 'aria-valuemax');
   const before = await dayPeriods(page);
 
-  await dragEdge(page, endHandle(page), SLOT_MINUTES);
+  await dragEdge(page, await endHandle(page), SLOT_MINUTES);
 
   const after = await dayPeriods(page);
   // The day grew, read off the axis rather than by parsing two timestamps:
@@ -291,7 +317,7 @@ test('growing a day leaves its published door times alone', async ({
   // (docs/16 §4), and the axis margin is a constant, so its end moves exactly
   // as the day's does.
   expect(
-    (await numberOf(endHandle(page), 'aria-valuemax')) - axisEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuemax')) - axisEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
 
   // The rule, and the whole reason the old one was wrong: the doors are a
@@ -320,20 +346,20 @@ test('the keyboard lengthens the day the same way', async ({ page }) => {
   await openAdmin(page);
   await openADayBoard(page);
 
-  const barEndBefore = await numberOf(endHandle(page), 'aria-valuenow');
-  const axisEndBefore = await numberOf(endHandle(page), 'aria-valuemax');
+  const barEndBefore = await numberOf(await endHandle(page), 'aria-valuenow');
+  const axisEndBefore = await numberOf(await endHandle(page), 'aria-valuemax');
 
-  await endHandle(page).focus();
+  await (await endHandle(page)).focus();
   // `Shift` moves by one whole slot, which is the unit a coordinator thinks in
   // — "one more hour on the bar" — and the unit this file set.
   await page.keyboard.press('Shift+ArrowRight');
   await settled(page);
 
   expect(
-    (await numberOf(endHandle(page), 'aria-valuenow')) - barEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuenow')) - barEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
   expect(
-    (await numberOf(endHandle(page), 'aria-valuemax')) - axisEndBefore,
+    (await numberOf(await endHandle(page), 'aria-valuemax')) - axisEndBefore,
   ).toBe(SLOT_MINUTES * MINUTE_MS);
 });
 

@@ -12,54 +12,18 @@
  * Signed in as the suite's coordinator (`support/coordinator.ts`).
  */
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival } from './support/festival';
 
 signedInAsCoordinator();
-
-/**
- * Opens a festival from the events list, loading the worked example first if
- * this organisation has nothing in it yet. Returns `null` when there is no
- * festival to open and none can be created, which is a skip rather than a
- * failure — another run may have filled the org with standalone events.
- */
-async function openAFestival(page: Page): Promise<string | null> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  const festival = page.locator('.evp-group-title').first();
-  if ((await festival.count()) === 0) {
-    return null;
-  }
-
-  const name = (await festival.textContent())?.trim() ?? '';
-  await festival.click();
-  return name;
-}
 
 test('a festival opens as one page, at its details section', async ({
   page,
 }) => {
   await openAdmin(page);
-  const name = await openAFestival(page);
-  if (name === null) {
-    test.skip();
-    return;
-  }
+  const name = await openExampleFestival(page);
 
   // The bare festival URL redirects to a section rather than rendering a
   // page with an empty middle.
@@ -78,10 +42,7 @@ test('picking a day narrows the same page instead of leaving it', async ({
   page,
 }) => {
   await openAdmin(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+  await openExampleFestival(page);
 
   const scope = page.getByRole('navigation', { name: 'Festival scope' });
   await expect(
@@ -106,10 +67,7 @@ test('switching scope keeps the section the coordinator is reading', async ({
   page,
 }) => {
   await openAdmin(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+  await openExampleFestival(page);
 
   await page
     .getByRole('navigation', { name: 'Sections' })
@@ -135,10 +93,7 @@ test('switching scope keeps the section the coordinator is reading', async ({
  */
 test('each day chip carries its own colour', async ({ page }) => {
   await openAdmin(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+  await openExampleFestival(page);
 
   const days = page
     .getByRole('navigation', { name: 'Festival scope' })
@@ -171,10 +126,7 @@ test('each day chip carries its own colour', async ({ page }) => {
  */
 test('a day can be added from the details section', async ({ page }) => {
   await openAdmin(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+  await openExampleFestival(page);
 
   await page.getByRole('button', { name: 'Add a day' }).click();
 
@@ -192,10 +144,7 @@ test('the merged page has no axe violations at either scope', async ({
   page,
 }) => {
   await openAdmin(page);
-  if ((await openAFestival(page)) === null) {
-    test.skip();
-    return;
-  }
+  await openExampleFestival(page);
 
   const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 

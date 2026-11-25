@@ -24,6 +24,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival } from './support/festival';
 
 signedInAsCoordinator();
 
@@ -59,31 +60,8 @@ interface Period {
  * axis but for the margin — which is the situation a coordinator is actually
  * in, and the one that used to be a dead end.
  */
-async function openADayBoard(page: Page): Promise<boolean> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  const festival = page.locator('.evp-group-title').first();
-  if ((await festival.count()) === 0) {
-    return false;
-  }
-  await festival.click();
-  // A festival lands on its details section, not on the board: the rail's
-  // order is the order a festival is set up in (`router/index.ts`).
-  await page.waitForURL(/\/festivals\/[^/]+\/details$/);
+async function openADayBoard(page: Page): Promise<void> {
+  await openExampleFestival(page);
   await page
     .getByRole('navigation', { name: 'Sections' })
     .getByRole('link', { name: 'Shifts' })
@@ -100,7 +78,6 @@ async function openADayBoard(page: Page): Promise<boolean> {
 
   await setZoom(page, PIXELS_PER_HOUR);
   await setSlotLength(page, SLOT_MINUTES);
-  return true;
 }
 
 /** The board writes one slot at a time and re-reads afterwards; `aria-busy` is
@@ -260,10 +237,7 @@ test('dragging a bar past closing time adds a slot and lengthens the day', async
   page,
 }) => {
   await openAdmin(page);
-  if (!(await openADayBoard(page))) {
-    test.skip();
-    return;
-  }
+  await openADayBoard(page);
 
   const bar = page.locator('.evp-run').first();
   const barEndBefore = await numberOf(endHandle(page), 'aria-valuenow');
@@ -302,10 +276,7 @@ test('growing a day leaves its published door times alone', async ({
   page,
 }) => {
   await openAdmin(page);
-  if (!(await openADayBoard(page))) {
-    test.skip();
-    return;
-  }
+  await openADayBoard(page);
 
   const axisEndBefore = await numberOf(endHandle(page), 'aria-valuemax');
   const before = await dayPeriods(page);
@@ -340,10 +311,7 @@ test('growing a day leaves its published door times alone', async ({
  */
 test('the keyboard lengthens the day the same way', async ({ page }) => {
   await openAdmin(page);
-  if (!(await openADayBoard(page))) {
-    test.skip();
-    return;
-  }
+  await openADayBoard(page);
 
   const barEndBefore = await numberOf(endHandle(page), 'aria-valuenow');
   const axisEndBefore = await numberOf(endHandle(page), 'aria-valuemax');
@@ -380,10 +348,7 @@ test('a drag past the end of the axis stops there and says so', async ({
   page,
 }) => {
   await openAdmin(page);
-  if (!(await openADayBoard(page))) {
-    test.skip();
-    return;
-  }
+  await openADayBoard(page);
 
   const startHandle = page
     .locator('.evp-run')

@@ -24,44 +24,22 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival } from './support/festival';
 
 signedInAsCoordinator();
 
 /**
  * Opens the worked example's festival at its missions section, loading the
- * example first if this organisation is empty. Returns `false` when there is
- * nothing to open, which is a skip rather than a failure.
+ * example first if this organisation is empty.
  */
-async function openFestivalMissions(page: Page): Promise<boolean> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  const festival = page.locator('.evp-group-title').first();
-  if ((await festival.count()) === 0) {
-    return false;
-  }
-  await festival.click();
-  await page.waitForURL(/\/festivals\/[^/]+\/details$/);
+async function openFestivalMissions(page: Page): Promise<void> {
+  await openExampleFestival(page);
 
   await page
     .getByRole('navigation', { name: 'Sections' })
     .getByRole('link', { name: 'Missions' })
     .click();
   await expect(page).toHaveURL(/\/festivals\/[^/]+\/missions$/);
-  return true;
 }
 
 /**
@@ -96,10 +74,7 @@ test('a mission added at festival scope lands on every day', async ({
   page,
 }) => {
   await openAdmin(page);
-  if (!(await openFestivalMissions(page))) {
-    test.skip();
-    return;
-  }
+  await openFestivalMissions(page);
 
   // How many days this festival runs, as the page itself counts them — the
   // fan-out's expected reach, read off the scope switch rather than assumed
@@ -133,10 +108,7 @@ test('a mission added at festival scope lands on every day', async ({
 
 test('the missions section has no axe violations', async ({ page }) => {
   await openAdmin(page);
-  if (!(await openFestivalMissions(page))) {
-    test.skip();
-    return;
-  }
+  await openFestivalMissions(page);
 
   // With the add form open, since a closed disclosure hides half the controls
   // on the page from the scan.

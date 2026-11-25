@@ -24,36 +24,16 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival } from './support/festival';
 
 signedInAsCoordinator();
 
 /**
  * Opens one day of the worked example at its details section, loading the
- * example first if this organisation is empty. Returns `false` when there is
- * nothing to open, which is a skip rather than a failure.
+ * example first if this organisation is empty.
  */
-async function openADayDetails(page: Page): Promise<boolean> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  const festival = page.locator('.evp-group-title').first();
-  if ((await festival.count()) === 0) {
-    return false;
-  }
-  await festival.click();
+async function openADayDetails(page: Page): Promise<void> {
+  await openExampleFestival(page);
 
   // One day, not the whole festival: the festival-scope details page renders
   // six of these forms, and every locator below would be ambiguous.
@@ -68,7 +48,6 @@ async function openADayDetails(page: Page): Promise<boolean> {
     .click();
 
   await expect(page).toHaveURL(/\/events\/[^/]+\/details$/);
-  return true;
 }
 
 /** The page saves by itself (ADR-0051); this waits for it to say so. */
@@ -82,10 +61,7 @@ test('the rail names the production and reaches the details section', async ({
   page,
 }) => {
   await openAdmin(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openADayDetails(page);
 
   const rail = page.getByRole('navigation', { name: 'Sections' });
   const title = await page.locator('.evp-rail-title').textContent();
@@ -101,10 +77,7 @@ test('the rail names the production and reaches the details section', async ({
 
 test('door times are typed in and can be taken back off', async ({ page }) => {
   await openAdmin(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openADayDetails(page);
 
   // Doors inside the working hours, expressed relative to them so this works
   // on whichever day of the example the run landed on.
@@ -132,10 +105,7 @@ test('doors outside the working hours are refused before the round trip', async 
   page,
 }) => {
   await openAdmin(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openADayDetails(page);
 
   const end = await page.getByLabel('Ends').inputValue();
   await page.getByLabel('Doors open').fill(end);
@@ -153,10 +123,7 @@ test('a colour picked on the form is the colour the event keeps', async ({
   page,
 }) => {
   await openAdmin(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openADayDetails(page);
 
   // Sixteen offered (ADR-0050), plus one when the event holds a colour
   // outside them.
@@ -183,10 +150,7 @@ test('Ctrl+Z takes a colour back, and the server keeps it', async ({
   page,
 }) => {
   await openAdmin(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openADayDetails(page);
 
   const swatches = page.getByRole('radio');
   const first = swatches.nth(0);
@@ -209,10 +173,7 @@ test('Ctrl+Z takes a colour back, and the server keeps it', async ({
 
 test('the details section has no axe violations', async ({ page }) => {
   await openAdmin(page);
-  if (!(await openADayDetails(page))) {
-    test.skip();
-    return;
-  }
+  await openADayDetails(page);
 
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])

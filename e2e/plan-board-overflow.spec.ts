@@ -20,46 +20,13 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival, openSection } from './support/festival';
 
 signedInAsCoordinator();
 
 /** Narrower than any festival's board at full zoom, wide enough to keep the
  * rail beside the content rather than above it. */
 test.use({ viewport: { width: 1024, height: 768 } });
-
-/** The whole festival rather than one day: its axis spans every day, which is
- * the widest board the page can be asked to hold. */
-async function openFestival(page: Page): Promise<void> {
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  // `isVisible` does not wait, so it is asked only once the list has settled
-  // into one of its two answers: a festival to open, or the button to make one.
-  const festival = page.locator('.evp-group-title').first();
-  await expect(festival.or(loadExample)).toBeVisible();
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  await festival.click();
-  await page.waitForURL(/\/festivals\/[^/]+\/details$/);
-}
-
-async function openSection(page: Page, name: string): Promise<void> {
-  await page
-    .getByRole('navigation', { name: 'Sections' })
-    .getByRole('link', { name })
-    .click();
-}
 
 /** Measured, not judged by eye: the page overflows when the root's scroll
  * width passes the viewport, and the header has stretched when its box does. */
@@ -101,7 +68,9 @@ test('the shifts board scrolls inside itself, not the page', async ({
   page,
 }) => {
   await openAdmin(page);
-  await openFestival(page);
+  // The whole festival rather than one day: its axis spans every day, which
+  // is the widest board the page can be asked to hold.
+  await openExampleFestival(page);
   await openSection(page, 'Shifts');
   await page.waitForURL(/\/festivals\/[^/]+\/shifts$/);
   await expect(page.locator('.evp-scroll')).toBeVisible();
@@ -116,7 +85,9 @@ test('the availability board scrolls inside itself, not the page', async ({
   page,
 }) => {
   await openAdmin(page);
-  await openFestival(page);
+  // The whole festival rather than one day: its axis spans every day, which
+  // is the widest board the page can be asked to hold.
+  await openExampleFestival(page);
   await openSection(page, 'Availability');
   await page.waitForURL(/\/festivals\/[^/]+\/availability$/);
 

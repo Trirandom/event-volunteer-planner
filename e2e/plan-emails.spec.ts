@@ -18,42 +18,21 @@
 import { expect, test, type FrameLocator, type Page } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
+import { openExampleFestival } from './support/festival';
 
 signedInAsCoordinator();
 
 /** Opens a festival's emails section, loading the worked example first if
  * this organisation has nothing in it yet. */
-async function openEmails(page: Page): Promise<boolean> {
+async function openEmails(page: Page): Promise<void> {
   await openAdmin(page);
-  await page
-    .getByRole('navigation')
-    .getByRole('link', { name: 'Events' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Events', level: 1 }),
-  ).toBeVisible();
-
-  const loadExample = page.getByRole('button', {
-    name: /Load the example festival/,
-  });
-  if (await loadExample.isVisible()) {
-    await loadExample.click();
-    await expect(page.getByRole('status')).toBeVisible();
-  }
-
-  const festival = page.locator('.evp-group-title').first();
-  if ((await festival.count()) === 0) {
-    return false;
-  }
-  await festival.click();
-  await page.waitForURL(/\/festivals\/[^/]+\/details$/);
+  await openExampleFestival(page);
   await page
     .getByRole('navigation', { name: 'Sections' })
     .getByRole('link', { name: 'Emails' })
     .click();
   await page.waitForURL(/\/festivals\/[^/]+\/emails$/);
   await expect(editor(page)).toBeVisible();
-  return true;
 }
 
 function editor(page: Page): ReturnType<Page['getByRole']> {
@@ -65,7 +44,7 @@ function preview(page: Page): FrameLocator {
 }
 
 test('bold is a button, and the preview shows it as bold', async ({ page }) => {
-  test.skip(!(await openEmails(page)), 'no festival to write to');
+  await openEmails(page);
 
   const box = editor(page);
   await box.click();
@@ -88,7 +67,7 @@ test('bold is a button, and the preview shows it as bold', async ({ page }) => {
 test('a variable button inserts a chip that the preview fills in', async ({
   page,
 }) => {
-  test.skip(!(await openEmails(page)), 'no festival to write to');
+  await openEmails(page);
 
   const recipient = page.getByLabel('Volunteer');
   test.skip(
@@ -117,7 +96,7 @@ test('a variable button inserts a chip that the preview fills in', async ({
 test('a link the schema does not allow is refused, and the page says why', async ({
   page,
 }) => {
-  test.skip(!(await openEmails(page)), 'no festival to write to');
+  await openEmails(page);
 
   await editor(page).click();
   await page.getByRole('button', { name: 'Link' }).click();

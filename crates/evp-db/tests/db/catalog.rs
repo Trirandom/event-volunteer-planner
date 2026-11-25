@@ -72,7 +72,7 @@ fn applied<T>(outcome: catalog::Versioned<T>) -> T {
 #[tokio::test]
 async fn duplicate_festival_slug_in_one_org_is_23505() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     catalog::create_festival(
@@ -111,7 +111,7 @@ async fn duplicate_festival_slug_in_one_org_is_23505() {
 #[tokio::test]
 async fn unknown_timezone_on_an_event_is_23503() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let error = catalog::create_event(
@@ -141,7 +141,7 @@ async fn unknown_timezone_on_an_event_is_23503() {
 #[tokio::test]
 async fn a_colour_outside_the_palette_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (event, _op) = catalog::create_event(
@@ -185,7 +185,7 @@ async fn a_colour_outside_the_palette_is_23514() {
 #[tokio::test]
 async fn siblings_are_created_in_different_colours() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let mut colours = Vec::new();
@@ -219,7 +219,7 @@ async fn siblings_are_created_in_different_colours() {
 #[tokio::test]
 async fn a_colour_freed_by_a_deletion_is_handed_out_again() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let mut ids = Vec::new();
@@ -270,7 +270,7 @@ async fn a_colour_freed_by_a_deletion_is_handed_out_again() {
 #[tokio::test]
 async fn widening_an_event_leaves_the_doors_where_they_were() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (event, _op) = catalog::create_event(
@@ -319,7 +319,7 @@ async fn widening_an_event_leaves_the_doors_where_they_were() {
 #[tokio::test]
 async fn door_times_are_set_left_alone_and_cleared() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (event, _op) = catalog::create_event(
@@ -401,7 +401,7 @@ async fn door_times_are_set_left_alone_and_cleared() {
 #[tokio::test]
 async fn a_shift_outside_its_event_s_period_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (event, _operation) = catalog::create_event(
@@ -475,7 +475,7 @@ async fn a_shift_outside_its_event_s_period_is_23514() {
 #[tokio::test]
 async fn org_a_cannot_read_org_b_s_festivals() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
 
     let (org_a, user_a) = seed_org(&mut tx).await;
     let (festival_a, _operation) = catalog::create_festival(
@@ -521,7 +521,7 @@ async fn org_a_cannot_read_org_b_s_festivals() {
 #[tokio::test]
 async fn writing_a_row_stamped_with_another_org_s_id_is_rejected_by_rls() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
 
     let (org_a, _user_a) = seed_org(&mut tx).await;
     let (_org_b, user_b) = seed_org(&mut tx).await;
@@ -568,7 +568,7 @@ async fn app_current_org_id_does_not_leak_across_pooled_connections() {
         .expect("connect");
 
     let marker = Uuid::now_v7().to_string();
-    let mut first = pool.begin().await.expect("begin first transaction");
+    let mut first = evp_db::begin(&pool).await.expect("begin first transaction");
     sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
         .bind(&marker)
         .execute(&mut *first)
@@ -579,7 +579,9 @@ async fn app_current_org_id_does_not_leak_across_pooled_connections() {
         .await
         .expect("commit releases the connection back to the pool");
 
-    let mut second = pool.begin().await.expect("begin second transaction");
+    let mut second = evp_db::begin(&pool)
+        .await
+        .expect("begin second transaction");
     let row = sqlx::query("SELECT current_setting('app.current_org_id', true) AS value")
         .fetch_one(&mut *second)
         .await
@@ -603,7 +605,7 @@ async fn app_current_org_id_does_not_leak_across_pooled_connections() {
 #[tokio::test]
 async fn the_example_creates_the_expected_structure_on_an_empty_org() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     assert!(
@@ -719,7 +721,7 @@ async fn count(tx: &mut PgConnection, sql: &'static str, org_id: Uuid) -> i64 {
 #[tokio::test]
 async fn the_example_creates_volunteers_participations_and_availability() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let fixture = evp_domain::example::build().expect("example.json parses and resolves");
@@ -833,7 +835,7 @@ async fn the_example_creates_volunteers_participations_and_availability() {
 #[tokio::test]
 async fn the_example_s_submissions_read_back_as_answers_to_its_form() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let fixture = evp_domain::example::build().expect("example.json parses and resolves");
     let (festival, _operation) = catalog::create_example(&mut tx, org_id, user_id, &fixture)
@@ -938,7 +940,7 @@ async fn grouped_events(tx: &mut PgConnection, org_id: Uuid) -> (i64, i64) {
 #[tokio::test]
 async fn deleting_a_festival_ungroups_its_events_and_deletes_its_forms_and_submissions() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let fixture = evp_domain::example::build().expect("example.json parses and resolves");
     let (festival, _) = catalog::create_example(&mut tx, org_id, user_id, &fixture)
@@ -1033,7 +1035,7 @@ async fn deleting_a_festival_ungroups_its_events_and_deletes_its_forms_and_submi
 #[tokio::test]
 async fn the_deletion_impact_counts_without_deleting() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let fixture = evp_domain::example::build().expect("example.json parses and resolves");
     let (festival, _) = catalog::create_example(&mut tx, org_id, user_id, &fixture)
@@ -1065,7 +1067,7 @@ async fn the_deletion_impact_counts_without_deleting() {
 #[tokio::test]
 async fn a_festival_delete_against_a_stale_version_deletes_nothing() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let fixture = evp_domain::example::build().expect("example.json parses and resolves");
     let (festival, _) = catalog::create_example(&mut tx, org_id, user_id, &fixture)
@@ -1121,7 +1123,7 @@ async fn festival_delete_operation(
 #[tokio::test]
 async fn deleting_a_festival_that_lost_nothing_irreversible_is_undoable() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (festival, _) = catalog::create_festival(
         &mut tx,
@@ -1154,7 +1156,7 @@ async fn deleting_a_festival_that_lost_nothing_irreversible_is_undoable() {
 #[tokio::test]
 async fn deleting_a_festival_whose_form_was_answered_is_not_undoable() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let fixture = evp_domain::example::build().expect("example.json parses and resolves");
     let (festival, _) = catalog::create_example(&mut tx, org_id, user_id, &fixture)

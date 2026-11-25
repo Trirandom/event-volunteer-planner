@@ -35,7 +35,7 @@ fn full_input() -> SmsSettingsInput {
 #[tokio::test]
 async fn no_settings_yet_is_none_not_an_error() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, _user_id) = seed_org(&mut tx).await;
 
     let settings = sms_settings::get(&mut tx, org_id)
@@ -47,7 +47,7 @@ async fn no_settings_yet_is_none_not_an_error() {
 #[tokio::test]
 async fn first_save_stores_both_secrets_and_reports_them_as_set() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let (settings, operation_id) =
@@ -74,7 +74,7 @@ async fn first_save_stores_both_secrets_and_reports_them_as_set() {
 #[tokio::test]
 async fn round_trips_through_encryption_unchanged() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let key = key();
 
@@ -95,7 +95,7 @@ async fn round_trips_through_encryption_unchanged() {
 #[tokio::test]
 async fn omitting_a_secret_on_update_keeps_the_one_already_stored() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let key = key();
 
@@ -130,7 +130,7 @@ async fn omitting_a_secret_on_update_keeps_the_one_already_stored() {
 #[tokio::test]
 async fn a_first_save_with_no_secret_is_refused_23502() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let input = SmsSettingsInput {
@@ -152,7 +152,7 @@ async fn a_first_save_with_no_secret_is_refused_23502() {
 #[tokio::test]
 async fn an_unknown_provider_is_refused_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
 
     let input = SmsSettingsInput {
@@ -169,7 +169,7 @@ async fn an_unknown_provider_is_refused_23514() {
 #[tokio::test]
 async fn org_a_cannot_see_org_b_s_sms_settings() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
 
     let (org_a, user_a) = seed_org(&mut tx).await;
     sms_settings::upsert(&mut tx, org_a, user_a, &key(), &full_input())

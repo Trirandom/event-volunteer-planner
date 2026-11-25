@@ -173,7 +173,7 @@ async fn roster(
 #[tokio::test]
 async fn one_volunteer_in_two_places_at_once_is_23p01() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, bar_id) = seed_event(&mut tx, org_id, user_id).await;
 
@@ -260,7 +260,7 @@ async fn one_volunteer_in_two_places_at_once_is_23p01() {
 #[tokio::test]
 async fn consecutive_shifts_for_one_volunteer_are_accepted() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, bar_id) = seed_event(&mut tx, org_id, user_id).await;
 
@@ -306,7 +306,7 @@ async fn consecutive_shifts_for_one_volunteer_are_accepted() {
 #[tokio::test]
 async fn the_same_volunteer_twice_on_one_shift_is_refused() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, bar_id) = seed_event(&mut tx, org_id, user_id).await;
     let shift_id = seed_shift(
@@ -358,7 +358,7 @@ async fn the_same_volunteer_twice_on_one_shift_is_refused() {
 #[tokio::test]
 async fn rostering_a_withdrawn_participant_is_refused() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, bar_id) = seed_event(&mut tx, org_id, user_id).await;
     let shift_id = seed_shift(
@@ -406,7 +406,7 @@ async fn rostering_a_withdrawn_participant_is_refused() {
 #[tokio::test]
 async fn withdrawing_somebody_who_holds_a_placement_is_refused() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, bar_id) = seed_event(&mut tx, org_id, user_id).await;
     let shift_id = seed_shift(
@@ -454,7 +454,7 @@ async fn withdrawing_somebody_who_holds_a_placement_is_refused() {
 #[tokio::test]
 async fn the_stored_period_is_the_shifts_own() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, bar_id) = seed_event(&mut tx, org_id, user_id).await;
     let shift_id = seed_shift(
@@ -490,7 +490,7 @@ async fn the_stored_period_is_the_shifts_own() {
 #[tokio::test]
 async fn moving_a_shift_moves_its_placements() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, bar_id) = seed_event(&mut tx, org_id, user_id).await;
     let shift_id = seed_shift(
@@ -535,7 +535,7 @@ async fn moving_a_shift_moves_its_placements() {
 #[tokio::test]
 async fn cancelling_frees_the_slot_and_keeps_the_row() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, bar_id) = seed_event(&mut tx, org_id, user_id).await;
     let shift_id = seed_shift(
@@ -611,7 +611,7 @@ async fn cancelling_frees_the_slot_and_keeps_the_row() {
 #[tokio::test]
 async fn a_participation_from_another_day_is_23503() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (saturday, bar_id) = seed_event(&mut tx, org_id, user_id).await;
     let (sunday, _other_bar) = seed_event(&mut tx, org_id, user_id).await;
@@ -652,7 +652,7 @@ async fn a_participation_from_another_day_is_23503() {
 #[tokio::test]
 async fn a_participation_of_another_org_is_invisible() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (event_id, bar_id) = seed_event(&mut tx, org_id, user_id).await;
     let shift_id = seed_shift(

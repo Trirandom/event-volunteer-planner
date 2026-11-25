@@ -231,7 +231,7 @@ async fn refused(conn: &mut PgConnection, statement: Statement<'_>) -> DbError {
 #[tokio::test]
 async fn a_shift_on_a_post_is_refused() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
 
     let error = shifts::create(
@@ -254,7 +254,7 @@ async fn a_shift_on_a_post_is_refused() {
 #[tokio::test]
 async fn moving_a_shift_onto_a_post_is_refused() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
 
@@ -276,7 +276,7 @@ async fn moving_a_shift_onto_a_post_is_refused() {
 #[tokio::test]
 async fn an_assignment_names_a_post_of_its_shifts_zone() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;
@@ -306,7 +306,7 @@ async fn an_assignment_names_a_post_of_its_shifts_zone() {
 #[tokio::test]
 async fn an_assignment_without_a_post_works_the_zone() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;
@@ -322,7 +322,7 @@ async fn an_assignment_without_a_post_works_the_zone() {
 #[tokio::test]
 async fn an_assignment_naming_another_zones_post_is_refused() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;
@@ -337,7 +337,7 @@ async fn an_assignment_naming_another_zones_post_is_refused() {
 #[tokio::test]
 async fn an_assignment_naming_a_zone_as_its_post_is_refused() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;
@@ -352,7 +352,7 @@ async fn an_assignment_naming_a_zone_as_its_post_is_refused() {
 #[tokio::test]
 async fn retagging_an_assignment_with_another_zones_post_is_refused() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;
@@ -376,7 +376,7 @@ async fn retagging_an_assignment_with_another_zones_post_is_refused() {
 #[tokio::test]
 async fn moving_a_shift_with_a_post_holder_to_another_zone_is_refused() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;
@@ -407,7 +407,7 @@ async fn moving_a_shift_with_a_post_holder_to_another_zone_is_refused() {
 #[tokio::test]
 async fn moving_a_shift_without_post_holders_to_another_zone_is_accepted() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;
@@ -429,7 +429,7 @@ async fn moving_a_shift_without_post_holders_to_another_zone_is_accepted() {
 #[tokio::test]
 async fn a_cancelled_post_holder_does_not_pin_the_shift() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;
@@ -465,7 +465,7 @@ async fn a_cancelled_post_holder_does_not_pin_the_shift() {
 #[tokio::test]
 async fn deleting_a_post_leaves_its_holder_on_the_zone() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;
@@ -500,7 +500,7 @@ async fn deleting_a_post_leaves_its_holder_on_the_zone() {
 #[tokio::test]
 async fn an_assignment_naming_another_orgs_post_is_23503() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let night = seed_night(&mut tx).await;
     let shift = seed_shift(&mut tx, &night, night.bar).await;
     let participation = seed_participation(&mut tx, &night).await;

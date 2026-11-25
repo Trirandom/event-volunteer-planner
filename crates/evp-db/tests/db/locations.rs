@@ -89,7 +89,7 @@ async fn operation_row(
 #[tokio::test]
 async fn creating_a_location_records_its_own_deletion_as_the_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -108,7 +108,7 @@ async fn creating_a_location_records_its_own_deletion_as_the_inverse() {
 #[tokio::test]
 async fn updating_a_location_records_the_pre_image_as_the_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -149,7 +149,7 @@ async fn updating_a_location_records_the_pre_image_as_the_inverse() {
 #[tokio::test]
 async fn deleting_a_location_records_its_full_pre_image_as_the_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -186,7 +186,7 @@ async fn deleting_a_location_records_its_full_pre_image_as_the_inverse() {
 #[tokio::test]
 async fn a_post_with_an_exact_address_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -219,7 +219,7 @@ async fn a_post_with_an_exact_address_is_23514() {
 #[tokio::test]
 async fn a_post_with_coordinates_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -253,7 +253,7 @@ async fn a_post_with_coordinates_is_23514() {
 #[tokio::test]
 async fn a_latitude_with_no_longitude_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -281,7 +281,7 @@ async fn a_latitude_with_no_longitude_is_23514() {
 #[tokio::test]
 async fn a_latitude_past_the_pole_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -312,7 +312,7 @@ async fn a_latitude_past_the_pole_is_23514() {
 #[tokio::test]
 async fn volunteer_bounds_are_stored_on_posts_and_patched_one_side_at_a_time() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -395,7 +395,7 @@ async fn volunteer_bounds_are_stored_on_posts_and_patched_one_side_at_a_time() {
 #[tokio::test]
 async fn a_ceiling_below_the_floor_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -425,7 +425,7 @@ async fn a_ceiling_below_the_floor_is_23514() {
 #[tokio::test]
 async fn a_negative_floor_or_a_zero_ceiling_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -460,7 +460,7 @@ async fn a_negative_floor_or_a_zero_ceiling_is_23514() {
 #[tokio::test]
 async fn form_flags_default_to_open_and_ticked_and_patch_with_an_inverse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 
@@ -524,7 +524,7 @@ async fn form_flags_default_to_open_and_ticked_and_patch_with_an_inverse() {
 #[tokio::test]
 async fn a_post_with_its_own_form_flags_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let event_id = seed_event(&mut tx, org_id, user_id).await;
 

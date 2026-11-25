@@ -247,7 +247,7 @@ async fn seed_weekend(conn: &mut PgConnection) -> Weekend {
 #[tokio::test]
 async fn one_entry_per_volunteer_with_every_day_in_scope_and_no_other() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let w = seed_weekend(&mut tx).await;
     let aurel = seed_volunteer(
         &mut tx,
@@ -294,7 +294,7 @@ async fn one_entry_per_volunteer_with_every_day_in_scope_and_no_other() {
 #[tokio::test]
 async fn a_cancelled_placement_is_no_line_and_a_decline_is_no_recipient() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let w = seed_weekend(&mut tx).await;
 
     let camille = seed_volunteer(&mut tx, w.org_id, "Camille", None, None).await;
@@ -327,7 +327,7 @@ async fn a_cancelled_placement_is_no_line_and_a_decline_is_no_recipient() {
 #[tokio::test]
 async fn an_empty_scope_is_an_empty_run() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, _user_id) = seed_org(&mut tx).await;
     let run = schedule::run(&mut tx, org_id, &[]).await.expect("load");
     assert!(run.is_empty());

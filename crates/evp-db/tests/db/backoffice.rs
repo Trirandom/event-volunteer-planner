@@ -81,7 +81,7 @@ async fn count(conn: &mut PgConnection, sql: &'static str, id: Uuid) -> i64 {
 #[tokio::test]
 async fn without_the_scope_no_organisation_is_visible() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let org_id = seed_tenant(&mut tx).await;
 
     let seen = count(
@@ -96,7 +96,7 @@ async fn without_the_scope_no_organisation_is_visible() {
 #[tokio::test]
 async fn the_scope_sees_every_organisation_and_its_memberships() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let org_id = seed_tenant(&mut tx).await;
     backoffice::enter(&mut tx).await.expect("enter the scope");
 
@@ -125,7 +125,7 @@ async fn the_scope_does_not_reach_tenant_data() {
     // The backoffice administers who may act, not what they act on: a shift
     // pattern — like every volunteer, event and submission — stays invisible.
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let org_id = seed_tenant(&mut tx).await;
     backoffice::enter(&mut tx).await.expect("enter the scope");
 
@@ -154,7 +154,7 @@ async fn the_scope_can_neither_rename_nor_delete_an_organisation() {
     // No UPDATE or DELETE policy: RLS filters the target rows silently, so
     // the statement succeeds and touches nothing.
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let org_id = seed_tenant(&mut tx).await;
     backoffice::enter(&mut tx).await.expect("enter the scope");
 
@@ -181,7 +181,7 @@ async fn a_value_other_than_on_does_not_open_the_scope() {
     // '' by an earlier transaction on the same pooled connection, or set to
     // anything else, must mean closed.
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let org_id = seed_tenant(&mut tx).await;
 
     for value in ["", "off", "true", "ON"] {
@@ -206,7 +206,7 @@ async fn a_value_other_than_on_does_not_open_the_scope() {
 #[tokio::test]
 async fn an_organisation_is_created_empty_and_listed() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     backoffice::enter(&mut tx).await.expect("enter the scope");
     let slug = unique("bo");
 
@@ -223,7 +223,7 @@ async fn an_organisation_is_created_empty_and_listed() {
 #[tokio::test]
 async fn a_taken_slug_is_a_unique_violation() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     backoffice::enter(&mut tx).await.expect("enter the scope");
     let slug = unique("bo");
 
@@ -239,7 +239,7 @@ async fn a_taken_slug_is_a_unique_violation() {
 #[tokio::test]
 async fn a_malformed_slug_is_a_check_violation() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     backoffice::enter(&mut tx).await.expect("enter the scope");
 
     let error = backoffice::create_organization(&mut tx, "Bad", "-Bad Slug-", "Europe/Paris")
@@ -251,7 +251,7 @@ async fn a_malformed_slug_is_a_check_violation() {
 #[tokio::test]
 async fn timezones_are_checked_against_the_reference_table() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
 
     assert!(
         backoffice::timezone_exists(&mut tx, "Europe/Paris")
@@ -268,7 +268,7 @@ async fn timezones_are_checked_against_the_reference_table() {
 #[tokio::test]
 async fn a_user_is_created_with_a_password_identity() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     backoffice::enter(&mut tx).await.expect("enter the scope");
     let email = format!("{}@example.test", unique("coord"));
 
@@ -290,7 +290,7 @@ async fn a_user_is_created_with_a_password_identity() {
 #[tokio::test]
 async fn a_taken_email_is_a_unique_violation_whatever_its_case() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     backoffice::enter(&mut tx).await.expect("enter the scope");
     let email = format!("{}@example.test", unique("dup"));
 
@@ -306,7 +306,7 @@ async fn a_taken_email_is_a_unique_violation_whatever_its_case() {
 #[tokio::test]
 async fn assigning_twice_changes_the_role_instead_of_failing() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     backoffice::enter(&mut tx).await.expect("enter the scope");
     let org = backoffice::create_organization(&mut tx, "Org", &unique("bo"), "Europe/Paris")
         .await
@@ -349,7 +349,7 @@ async fn assigning_twice_changes_the_role_instead_of_failing() {
 #[tokio::test]
 async fn assigning_an_unknown_user_is_a_foreign_key_violation() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     backoffice::enter(&mut tx).await.expect("enter the scope");
     let org = backoffice::create_organization(&mut tx, "Org", &unique("bo"), "Europe/Paris")
         .await
@@ -364,7 +364,7 @@ async fn assigning_an_unknown_user_is_a_foreign_key_violation() {
 #[tokio::test]
 async fn removing_a_membership_reports_whether_there_was_one() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     backoffice::enter(&mut tx).await.expect("enter the scope");
     let org = backoffice::create_organization(&mut tx, "Org", &unique("bo"), "Europe/Paris")
         .await
@@ -396,7 +396,7 @@ async fn removing_a_membership_reports_whether_there_was_one() {
 #[tokio::test]
 async fn every_write_leaves_an_audit_row_attributed_to_the_backoffice() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     backoffice::enter(&mut tx).await.expect("enter the scope");
     let org = backoffice::create_organization(&mut tx, "Org", &unique("bo"), "Europe/Paris")
         .await

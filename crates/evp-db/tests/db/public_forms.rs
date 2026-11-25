@@ -237,7 +237,7 @@ async fn count(conn: &mut PgConnection, sql: &'static str, id: Uuid) -> i64 {
 #[tokio::test]
 async fn a_live_open_form_resolves_from_another_scope_and_scopes_the_transaction() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_a, user_a) = seed_org(&mut tx).await;
     let slug = unique_slug();
     let form = seed_form(&mut tx, org_a, user_a, None, &slug).await;
@@ -283,7 +283,7 @@ async fn a_live_open_form_resolves_from_another_scope_and_scopes_the_transaction
 #[tokio::test]
 async fn an_unknown_unpublished_or_closed_form_is_the_same_nothing() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let slug = unique_slug();
     let form = seed_form(&mut tx, org_id, user_id, None, &slug).await;
@@ -335,7 +335,7 @@ async fn an_unknown_unpublished_or_closed_form_is_the_same_nothing() {
 #[tokio::test]
 async fn the_slug_makes_one_forms_row_readable_and_nothing_else() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_a, user_a) = seed_org(&mut tx).await;
     let (festival, [event, _]) = seed_festival(&mut tx, org_a, user_a).await;
     let slug = unique_slug();
@@ -408,7 +408,7 @@ async fn the_slug_makes_one_forms_row_readable_and_nothing_else() {
 #[tokio::test]
 async fn two_organisations_cannot_serve_one_slug_but_may_both_hold_it() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let slug = unique_slug();
     let (org_a, user_a) = seed_org(&mut tx).await;
     let form_a = seed_form(&mut tx, org_a, user_a, None, &slug).await;
@@ -455,7 +455,7 @@ async fn two_organisations_cannot_serve_one_slug_but_may_both_hold_it() {
 #[tokio::test]
 async fn a_festival_form_covers_its_events_in_period_order() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let (festival, [early, late]) = seed_festival(&mut tx, org_id, user_id).await;
 
@@ -504,7 +504,7 @@ fn submission(
 #[tokio::test]
 async fn a_submission_is_stored_against_its_version_under_one_source() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let form = seed_form(&mut tx, org_id, user_id, None, &unique_slug()).await;
     publish(&mut tx, org_id, user_id, &form).await;
@@ -601,7 +601,7 @@ async fn a_submission_is_stored_against_its_version_under_one_source() {
 #[tokio::test]
 async fn the_new_intake_constraints_refuse_what_they_exist_to_refuse() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_a, user_a) = seed_org(&mut tx).await;
     let form_a = seed_form(&mut tx, org_a, user_a, None, &unique_slug()).await;
     let version_a = draft_id(&form_a);

@@ -415,7 +415,7 @@ fn applied(outcome: Outcome, kind: MatchKind) -> Uuid {
 #[tokio::test]
 async fn a_stranger_becomes_a_volunteer_with_a_confirmed_participation() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let typed = Typed {
@@ -472,7 +472,7 @@ async fn a_stranger_becomes_a_volunteer_with_a_confirmed_participation() {
 #[tokio::test]
 async fn an_answer_the_column_cannot_hold_is_dropped_not_fatal() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let typed = Typed {
@@ -496,7 +496,7 @@ async fn an_answer_the_column_cannot_hold_is_dropped_not_fatal() {
 #[tokio::test]
 async fn sending_again_revises_the_same_volunteer_and_replaces_their_windows() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let (first, outcome) = fx.send(&mut tx, &ADA, &fx.open_air(2)).await;
@@ -546,7 +546,7 @@ async fn sending_again_revises_the_same_volunteer_and_replaces_their_windows() {
 #[tokio::test]
 async fn a_locked_column_and_the_roster_label_survive_a_revision() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let volunteer_id = fx
@@ -593,7 +593,7 @@ async fn a_locked_column_and_the_roster_label_survive_a_revision() {
 #[tokio::test]
 async fn a_participation_a_coordinator_declined_stays_declined() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let volunteer_id = fx
@@ -626,7 +626,7 @@ async fn a_participation_a_coordinator_declined_stays_declined() {
 #[tokio::test]
 async fn an_address_claimed_under_another_name_is_held_with_the_conflict_named() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let grace = fx
@@ -667,7 +667,7 @@ async fn an_address_claimed_under_another_name_is_held_with_the_conflict_named()
 #[tokio::test]
 async fn a_similar_name_with_the_same_last_name_is_that_volunteer() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let existing = fx
@@ -693,7 +693,7 @@ async fn a_similar_name_with_the_same_last_name_is_that_volunteer() {
 #[tokio::test]
 async fn a_similar_name_alone_is_held_for_a_coordinator() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     // A legacy import: a display name, no parts, no address.
@@ -727,7 +727,7 @@ async fn a_similar_name_alone_is_held_for_a_coordinator() {
 #[tokio::test]
 async fn a_submission_held_by_the_timing_floor_or_already_applied_is_skipped() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let held = fx
@@ -763,7 +763,7 @@ async fn a_submission_held_by_the_timing_floor_or_already_applied_is_skipped() {
 #[tokio::test]
 async fn pending_lists_received_submissions_oldest_first() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let first = fx.record(&mut tx, &ADA, &fx.open_air(2), None).await;
@@ -793,7 +793,7 @@ async fn pending_lists_received_submissions_oldest_first() {
 #[tokio::test]
 async fn the_list_reads_a_form_payload_in_the_versions_order_and_words() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let typed = Typed {
@@ -855,7 +855,7 @@ async fn resolve(
 #[tokio::test]
 async fn the_queue_shows_who_it_claims_to_be_beside_who_it_could_be() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let legacy = fx
@@ -888,7 +888,7 @@ async fn the_queue_shows_who_it_claims_to_be_beside_who_it_could_be() {
 #[tokio::test]
 async fn matching_by_hand_applies_to_the_chosen_volunteer() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let legacy = fx
@@ -936,7 +936,7 @@ async fn matching_by_hand_applies_to_the_chosen_volunteer() {
 #[tokio::test]
 async fn creating_someone_new_on_an_address_in_use_leaves_the_address_with_its_owner() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let grace = fx
@@ -976,7 +976,7 @@ async fn creating_someone_new_on_an_address_in_use_leaves_the_address_with_its_o
 #[tokio::test]
 async fn matching_by_hand_never_moves_an_address_off_its_owner() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     fx.existing(
@@ -1025,7 +1025,7 @@ async fn matching_by_hand_never_moves_an_address_off_its_owner() {
 #[tokio::test]
 async fn a_rejected_submission_leaves_the_queue_and_applies_nothing() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     fx.existing(&mut tx, "Ada Lovelace", (None, None), None)
@@ -1055,7 +1055,7 @@ async fn a_rejected_submission_leaves_the_queue_and_applies_nothing() {
 #[tokio::test]
 async fn a_held_submission_reconciled_by_hand_runs_the_ladder() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let fx = fixture(&mut tx).await;
 
     let held = fx

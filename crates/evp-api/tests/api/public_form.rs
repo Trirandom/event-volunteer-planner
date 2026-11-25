@@ -269,7 +269,7 @@ async fn publish_form_with(
     reason = "test fixture — a read that fails is a broken test, not a runtime case"
 )]
 async fn stored(pool: &sqlx::PgPool, live: &Live) -> Vec<(String, Option<Value>, Value)> {
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(pool).await.expect("begin");
     sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
         .bind(live.org_id.to_string())
         .execute(&mut *tx)

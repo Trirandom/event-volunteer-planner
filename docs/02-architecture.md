@@ -105,6 +105,11 @@ A write request, end to end:
 5. **Transaction** begins. Immediately: `SET LOCAL app.current_org_id = $1`
    and `SET LOCAL app.current_role = $2`. Row-Level Security policies key off
    these, so the tenant boundary holds even if a handler forgets a `WHERE`.
+   It begins through `evp_db::begin`, never sqlx's `Pool::begin`: a request
+   cancelled while its `BEGIN` awaits the reply would otherwise return the
+   connection to the pool still inside that transaction, and the next
+   request on it would inherit both its locks and its `SET LOCAL`s
+   ([11 §2](11-engineering-standards.md#async-and-panics)).
 6. **Handler** deserialises and validates the DTO, then calls a domain service.
 7. **Domain service** loads what it needs through a repository trait, runs the
    constraint engine, and returns either a rejection or a set of changes.

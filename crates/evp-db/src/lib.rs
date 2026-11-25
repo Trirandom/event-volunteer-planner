@@ -192,6 +192,10 @@ pub async fn connect(url: &str) -> Result<PgPool, DbError> {
 /// to the end (a panic, or a runtime shutting down).
 pub async fn begin(pool: &PgPool) -> Result<sqlx::Transaction<'static, sqlx::Postgres>, DbError> {
     let pool = pool.clone();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the one caller of Pool::begin; running it on its own task is what makes it safe"
+    )]
     let begun = tokio::spawn(async move { pool.begin().await });
     match begun.await {
         Ok(begun) => begun.map_err(DbError::Query),

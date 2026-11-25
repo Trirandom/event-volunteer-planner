@@ -106,7 +106,7 @@ async fn insert_window(
 #[tokio::test]
 async fn overlapping_availability_windows_on_one_participation_is_23p01() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let participation_id = seed_participation(&mut tx, org_id, user_id).await;
 
@@ -147,7 +147,7 @@ async fn overlapping_availability_windows_on_one_participation_is_23p01() {
 #[tokio::test]
 async fn adjacent_availability_windows_that_only_touch_are_accepted() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let participation_id = seed_participation(&mut tx, org_id, user_id).await;
 
@@ -175,7 +175,7 @@ async fn adjacent_availability_windows_that_only_touch_are_accepted() {
 #[tokio::test]
 async fn a_window_with_neither_provenance_is_23514() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
     let (org_id, user_id) = seed_org(&mut tx).await;
     let participation_id = seed_participation(&mut tx, org_id, user_id).await;
 
@@ -208,7 +208,7 @@ async fn a_window_with_neither_provenance_is_23514() {
 #[tokio::test]
 async fn org_a_cannot_read_org_b_s_submissions() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
 
     let (org_a, user_a) = seed_org(&mut tx).await;
     let fixture = evp_domain::example::build().expect("example.json parses and resolves");
@@ -241,7 +241,7 @@ async fn org_a_cannot_read_org_b_s_submissions() {
 #[tokio::test]
 async fn writing_a_volunteer_stamped_with_another_org_s_id_is_rejected_by_rls() {
     let pool = pool().await;
-    let mut tx = pool.begin().await.expect("begin");
+    let mut tx = evp_db::begin(&pool).await.expect("begin");
 
     let (org_a, _user_a) = seed_org(&mut tx).await;
     let (_org_b, _user_b) = seed_org(&mut tx).await;

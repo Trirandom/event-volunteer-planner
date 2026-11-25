@@ -54,7 +54,9 @@ async fn seed_participation(pool: &PgPool, org_id: Uuid, event_id: &str) -> Stri
     let volunteer_id = Uuid::now_v7();
     let participation_id = Uuid::now_v7();
 
-    let mut tx = pool.begin().await.expect("begin fixture transaction");
+    let mut tx = evp_db::begin(pool)
+        .await
+        .expect("begin fixture transaction");
     sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
         .bind(org_id.to_string())
         .execute(&mut *tx)
@@ -101,7 +103,9 @@ async fn seed_submitted_window(
     let batch_id = Uuid::now_v7();
     let window_id = Uuid::now_v7();
 
-    let mut tx = pool.begin().await.expect("begin fixture transaction");
+    let mut tx = evp_db::begin(pool)
+        .await
+        .expect("begin fixture transaction");
     sqlx::query("SELECT set_config('app.current_org_id', $1, true)")
         .bind(org_id.to_string())
         .execute(&mut *tx)

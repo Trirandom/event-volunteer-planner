@@ -268,7 +268,9 @@ test('dragging a bar past closing time adds a slot and lengthens the day', async
   expect((await dayPeriods(page)).period?.end).not.toBe(before.period?.end);
 
   // Moving the day is not a change to one bar, so the board says so.
-  await expect(page.getByRole('status')).toContainText(/now runs until/);
+  await expect(
+    page.getByRole('status').filter({ hasText: /now runs until/ }),
+  ).toBeVisible();
   await expect(page.locator('.evp-error')).toHaveCount(0);
 });
 
@@ -299,9 +301,14 @@ test('growing a day leaves its published door times alone', async ({
   // editing accident frozen into the programme.
   expect(after.publicPeriod).toEqual(before.publicPeriod);
 
-  // And the board says only what it did.
-  await expect(page.getByRole('status')).toContainText(/now runs until/);
-  await expect(page.getByRole('status')).not.toContainText(/public/);
+  // And the board says only what it did. Every message is its own status
+  // region, so "only" is asked of all of them.
+  await expect(
+    page.getByRole('status').filter({ hasText: /now runs until/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: /public/ }),
+  ).toHaveCount(0);
 });
 
 /**
@@ -367,7 +374,11 @@ test('a drag past the end of the axis stops there and says so', async ({
 
   expect(grewBy).toBeGreaterThan(0);
   expect(grewBy).toBeLessThanOrEqual(AXIS_MARGIN_MINUTES * MINUTE_MS);
-  await expect(page.getByRole('status')).toContainText(
-    /as far as this board reaches/,
-  );
+  // Beside the day's own "now starts at" message: both are true, and each
+  // toast is its own status region.
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: /as far as this board reaches/ }),
+  ).toBeVisible();
 });

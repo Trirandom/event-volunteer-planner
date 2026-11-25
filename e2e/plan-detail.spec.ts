@@ -15,7 +15,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
-import { openExampleFestival } from './support/festival';
+import { openExampleFestival, scopeLinks } from './support/festival';
 
 signedInAsCoordinator();
 
@@ -95,9 +95,7 @@ test('each day chip carries its own colour', async ({ page }) => {
   await openAdmin(page);
   await openExampleFestival(page);
 
-  const days = page
-    .getByRole('navigation', { name: 'Festival scope' })
-    .getByRole('link');
+  const days = scopeLinks(page);
   // `count` does not wait, so the strip is waited for first: counted straight
   // after the click, it was counted before the festival had loaded.
   await expect(days.nth(2)).toBeVisible();

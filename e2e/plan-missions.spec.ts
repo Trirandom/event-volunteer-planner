@@ -24,7 +24,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
 import { openAdmin, signedInAsCoordinator } from './support/coordinator';
-import { openExampleFestival } from './support/festival';
+import { openExampleFestival, scopeLinks } from './support/festival';
 
 signedInAsCoordinator();
 
@@ -79,23 +79,25 @@ test('a mission added at festival scope lands on every day', async ({
   // How many days this festival runs, as the page itself counts them — the
   // fan-out's expected reach, read off the scope switch rather than assumed
   // from the fixture.
-  const dayCount = await page
-    .getByRole('navigation', { name: 'Festival scope' })
-    .getByRole('link')
-    .count();
+  // `count` does not wait, so the strip is waited for first.
+  await expect(scopeLinks(page).nth(1)).toBeVisible();
+  const dayCount = await scopeLinks(page).count();
   // 'Whole festival' is one of those links; the rest are the days.
   const days = dayCount - 1;
   test.skip(days < 2, 'the example festival has fewer than two days');
 
   const name = uniqueName();
   await page.getByRole('button', { name: 'Add a zone' }).click();
-  await page.getByLabel('Name').fill(name);
+  await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Where to stand').fill('Halle 3, quai ouest');
   await page.getByRole('button', { name: 'Add mission' }).click();
 
-  await expect(page.getByRole('status')).toContainText(
-    `added to all ${String(days)} days`,
-  );
+  // Filtered: the save bar (ADR-0049) is a status region of its own.
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: `added to all ${String(days)} days` }),
+  ).toBeVisible();
 
   // One card, not N: the rows fold back into the mission the coordinator
   // thought they were declaring.

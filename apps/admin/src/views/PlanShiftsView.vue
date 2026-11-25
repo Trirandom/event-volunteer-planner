@@ -44,7 +44,7 @@
  */
 import { eventColor } from '@evp/shared';
 import { Temporal } from '@evp/shared/time';
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, useTemplateRef, type Ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import HelpModal from '../components/HelpModal.vue';
@@ -79,6 +79,7 @@ import {
 } from '../board/runs';
 import { msAt, snapMs } from '../board/scale';
 import { AXIS_MARGIN_MINUTES, useAxis } from '../board/useAxis';
+import { useTrackWidth } from '../board/useTrackWidth';
 import { locale, t } from '../i18n';
 import { narrowToEvent } from '../plan/missions';
 import { focusedEventId } from '../plan/scope';
@@ -252,9 +253,15 @@ const axisClock = computed(
  * different stretch of night on each would make the second page a different
  * festival.
  */
+const trackWidth = useTrackWidth(
+  useTemplateRef<HTMLElement>('scroller'),
+  useTemplateRef<HTMLElement>('trackGutter'),
+);
+
 const {
   scale,
   laneWidth,
+  zoom,
   axisHeight,
   axisTimezone,
   reach,
@@ -273,7 +280,7 @@ const {
   offsetStyle,
   eventLineStyle,
   clockAt,
-} = useAxis({ windows, timezone: axisClock, locale });
+} = useAxis({ windows, timezone: axisClock, locale, trackWidth });
 
 // ---------------------------------------------------------------------------
 // Editing
@@ -1317,7 +1324,7 @@ function onMissionCutInput(event: Event, row: MissionRow): void {
 function onZoomInput(event: Event): void {
   const value = numberFrom(event.target);
   if (value !== null) {
-    board.setPixelsPerHour(value);
+    zoom.setPixelsPerHour(value);
   }
 }
 
@@ -1340,7 +1347,9 @@ function onBoardWheel(event: WheelEvent): void {
   }
   event.preventDefault();
   const notches = -event.deltaY / WHEEL_NOTCH_PIXELS;
-  board.setPixelsPerHour(board.pixelsPerHour + notches * ZOOM_STEP_PER_NOTCH);
+  zoom.setPixelsPerHour(
+    zoom.pixelsPerHour.value + notches * ZOOM_STEP_PER_NOTCH,
+  );
 }
 
 const isPending = computed(() => scopePending.value || boardPending.value);
@@ -1463,10 +1472,10 @@ function runLabel(row: MissionRow, subject: Run): string {
         id="board-zoom"
         class="evp-zoom"
         type="range"
-        :min="board.MIN_PIXELS_PER_HOUR"
-        :max="board.MAX_PIXELS_PER_HOUR"
+        :min="Math.floor(zoom.minPixelsPerHour.value)"
+        :max="Math.ceil(zoom.maxPixelsPerHour.value)"
         step="4"
-        :value="board.pixelsPerHour"
+        :value="zoom.pixelsPerHour.value"
         @input="onZoomInput"
       />
     </label>
@@ -1483,12 +1492,13 @@ function runLabel(row: MissionRow, subject: Run): string {
     </p>
 
     <div v-else class="evp-board" :aria-busy="isSaving">
-      <div class="evp-scroll" @wheel="onBoardWheel">
+      <div ref="scroller" class="evp-scroll" @wheel="onBoardWheel">
         <div class="evp-axis">
           <!-- The gutter's twin, pinned the same way, so the ruler cannot
                slide out of step with the rows beneath it. It carries the
                column's name rather than sitting empty. -->
           <div
+            ref="trackGutter"
             class="evp-gutter evp-gutter--spacer"
             :style="{ height: axisHeight }"
           >
@@ -2097,6 +2107,13 @@ kbd {
 .evp-row {
   display: flex;
   min-width: max-content;
+  /* Fitted at the lowest zoom, the track ends exactly at the board's edge
+     (`board/useAxis.ts`), and whatever hangs past the end of the axis
+     (the last tick's label, an end handle, a slot at its minimum width)
+     would otherwise give the board a few pixels to scroll. `clip`, not
+     `hidden`: it makes no scroll container, so the gutter stays pinned to
+     the board's and anything that overflows downwards still shows. */
+  overflow-x: clip;
 }
 
 .evp-axis {

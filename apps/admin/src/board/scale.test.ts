@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   clampMs,
+  fitPixelsPerMinute,
   foldedTimeScale,
   isFolded,
   msAt,
@@ -225,6 +226,71 @@ describe('foldedTimeScale', () => {
 
   it('refuses a marker with no width', () => {
     expect(() => foldedTimeScale(ORIGIN, ORIGIN + HOUR, 1, [], 0)).toThrow();
+  });
+});
+
+describe('fitPixelsPerMinute', () => {
+  const SPAN = { startMs: ORIGIN, endMs: ORIGIN + 10 * HOUR };
+  const NIGHT = { startMs: ORIGIN + 3 * HOUR, endMs: ORIGIN + 7 * HOUR };
+  const MARKER = 10;
+
+  function widthAt(pixelsPerMinute: number, folds = [NIGHT]): number {
+    return scaleWidth(
+      foldedTimeScale(SPAN.startMs, SPAN.endMs, pixelsPerMinute, folds, MARKER),
+    );
+  }
+
+  it('fits an unfolded axis to the width exactly', () => {
+    expect(fitPixelsPerMinute(SPAN.startMs, SPAN.endMs, [], MARKER, 600)).toBe(
+      1,
+    );
+  });
+
+  it('fills the width across a fold, marker included', () => {
+    const fit = fitPixelsPerMinute(
+      SPAN.startMs,
+      SPAN.endMs,
+      [NIGHT],
+      MARKER,
+      610,
+    );
+    expect(widthAt(fit)).toBeCloseTo(610, 6);
+    expect(
+      isFolded(
+        foldedTimeScale(SPAN.startMs, SPAN.endMs, fit, [NIGHT], MARKER),
+        NIGHT.startMs + HOUR,
+      ),
+    ).toBe(true);
+  });
+
+  it('fits the plain axis when the fitted zoom is too narrow to fold', () => {
+    // 4 h at a third of a pixel a minute is 80 px, which still folds; one
+    // hour is 20 px, under a 30 px marker, so that fold is dropped.
+    const hour = { startMs: ORIGIN + 3 * HOUR, endMs: ORIGIN + 4 * HOUR };
+    const fit = fitPixelsPerMinute(SPAN.startMs, SPAN.endMs, [hour], 30, 200);
+    expect(fit).toBeCloseTo(1 / 3, 9);
+  });
+
+  it('never overshoots, so the fitted board has nothing to scroll', () => {
+    for (const width of [37, 250, 611, 1283, 4096]) {
+      const fit = fitPixelsPerMinute(
+        SPAN.startMs,
+        SPAN.endMs,
+        [NIGHT],
+        MARKER,
+        width,
+      );
+      expect(widthAt(fit), `width ${String(width)}`).toBeLessThanOrEqual(width);
+      expect(widthAt(fit), `width ${String(width)}`).toBeGreaterThan(
+        width - 0.001,
+      );
+    }
+  });
+
+  it('refuses a width with nothing to fill', () => {
+    expect(() =>
+      fitPixelsPerMinute(SPAN.startMs, SPAN.endMs, [], MARKER, 0),
+    ).toThrow();
   });
 });
 

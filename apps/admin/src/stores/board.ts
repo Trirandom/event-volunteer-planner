@@ -36,8 +36,15 @@ const MAX_CUT_MINUTES = 24 * 60;
  * nothing finer can be declared against on the volunteer form. */
 const MIN_CUT_MINUTES = 15;
 
+/** The floor before a board has been measured. Once it has, the floor is the
+ * zoom that fits it to its box (`board/useAxis.ts`), which for a week-long
+ * festival in a narrow window is well under this. */
 const MIN_PIXELS_PER_HOUR = 12;
 const MAX_PIXELS_PER_HOUR = 240;
+/** What the store will hold at all: a whole festival fitted to a phone is
+ * under one pixel an hour, and a store that refused that would leave the
+ * board wider than its box at its own floor. */
+const STORED_MIN_PIXELS_PER_HOUR = 0.1;
 
 function clampCut(minutes: number): number {
   if (!Number.isFinite(minutes)) {
@@ -85,7 +92,7 @@ export const useBoardStore = defineStore('board', () => {
       return;
     }
     pixelsPerHour.value = Math.min(
-      Math.max(Math.round(value), MIN_PIXELS_PER_HOUR),
+      Math.max(Math.round(value * 10) / 10, STORED_MIN_PIXELS_PER_HOUR),
       MAX_PIXELS_PER_HOUR,
     );
   }

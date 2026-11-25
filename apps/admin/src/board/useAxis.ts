@@ -36,6 +36,7 @@ import { eventLanes, type EventLane, type EventLanes } from './eventLanes';
 import { axisFolds } from './folds';
 import type { EventWindow } from './runs';
 import {
+  fitPixelsPerMinute,
   foldedTimeScale,
   isFolded,
   scaleWidth,
@@ -139,12 +140,26 @@ export interface MarginSpan {
   readonly endMs: number;
 }
 
+/** The zoom as this board draws it, which is the shared setting held above
+ * this board's own floor. */
+export interface BoardZoom {
+  readonly pixelsPerHour: ComputedRef<number>;
+  /** Where the track exactly fills the viewport; `MIN_PIXELS_PER_HOUR` until
+   * the board has been measured. */
+  readonly minPixelsPerHour: ComputedRef<number>;
+  /** `MAX_PIXELS_PER_HOUR`, unless the floor is already above it: a single
+   * short day on a wide screen still fills the screen. */
+  readonly maxPixelsPerHour: ComputedRef<number>;
+  readonly setPixelsPerHour: (value: number) => void;
+}
+
 export interface BoardAxis {
   /** The scale, or `null` when no day is in view — every consumer has to
    * handle that anyway, because a board with no days has nothing to draw. */
   readonly scale: ComputedRef<TimeScale | null>;
   /** The full width of the track, in CSS pixels. */
   readonly laneWidth: ComputedRef<number>;
+  readonly zoom: BoardZoom;
   /** The ruler's height, `rem`, including however deep the event strip is. */
   readonly axisHeight: ComputedRef<string>;
   /** The zone every label on this axis is rendered in. */
@@ -211,6 +226,13 @@ export interface AxisOptions {
    * file-top comment means, not the edge margin's width.
    */
   readonly marginMinutes?: number;
+  /**
+   * The width the track has to fill, from `useTrackWidth`. Zooming out stops
+   * where the track spans it exactly: any further and the board ends short of
+   * the right edge with blank space beside it, which shows nothing a
+   * coordinator could not already see at the floor.
+   */
+  readonly trackWidth?: MaybeRefOrGetter<number | null>;
 }
 
 /**
@@ -320,6 +342,47 @@ export function useAxis(options: AxisOptions): BoardAxis {
     candidateFolds.value.filter((fold) => !openedFolds.value.has(fold.startMs)),
   );
 
+  /**
+   * The floor is per board and recomputed live, never written into the store:
+   * the store's zoom is shared by three pages with different gutters, and a
+   * floor that had raised it on one would quietly ratchet the others in.
+   * Opening a fold moves it too — the opened stretch has to fit as well.
+   */
+  const minPixelsPerMinute = computed(() => {
+    const window = span.value;
+    const width = toValue(options.trackWidth) ?? null;
+    if (window === null || width === null || width <= 0) {
+      return board.MIN_PIXELS_PER_HOUR / 60;
+    }
+    return fitPixelsPerMinute(
+      window.startMs,
+      window.endMs,
+      folds.value,
+      FOLD_PIXELS,
+      width,
+    );
+  });
+
+  const pixelsPerMinute = computed(() =>
+    Math.max(board.pixelsPerMinute, minPixelsPerMinute.value),
+  );
+
+  const zoom: BoardZoom = {
+    pixelsPerHour: computed(() => pixelsPerMinute.value * 60),
+    minPixelsPerHour: computed(() => minPixelsPerMinute.value * 60),
+    maxPixelsPerHour: computed(() =>
+      Math.max(board.MAX_PIXELS_PER_HOUR, minPixelsPerMinute.value * 60),
+    ),
+    setPixelsPerHour(value: number): void {
+      // At or under the floor the store gets its own minimum, not the floor:
+      // it rounds, and a floor rounded *up* is a board a few pixels wider
+      // than its box. Above it, the stored value is where the next notch
+      // starts, so nothing is left sitting invisibly under the floor.
+      const floor = minPixelsPerMinute.value * 60;
+      board.setPixelsPerHour(value <= floor ? 0 : value);
+    },
+  };
+
   const scale = computed(() => {
     const window = span.value;
     return window === null
@@ -327,7 +390,7 @@ export function useAxis(options: AxisOptions): BoardAxis {
       : foldedTimeScale(
           window.startMs,
           window.endMs,
-          board.pixelsPerMinute,
+          pixelsPerMinute.value,
           folds.value,
           FOLD_PIXELS,
         );
@@ -370,7 +433,7 @@ export function useAxis(options: AxisOptions): BoardAxis {
     const choices = [15, 30, 60, 120, 180, 360, 720, 1440];
     return (
       choices.find(
-        (minutes) => minutes * board.pixelsPerMinute >= MIN_TICK_PIXELS,
+        (minutes) => minutes * pixelsPerMinute.value >= MIN_TICK_PIXELS,
       ) ?? 1440
     );
   });
@@ -432,7 +495,7 @@ export function useAxis(options: AxisOptions): BoardAxis {
     if (
       window === null ||
       current === null ||
-      60 * board.pixelsPerMinute < MIN_HOUR_LINE_PIXELS
+      60 * pixelsPerMinute.value < MIN_HOUR_LINE_PIXELS
     ) {
       return [];
     }
@@ -567,6 +630,7 @@ export function useAxis(options: AxisOptions): BoardAxis {
   return {
     scale,
     laneWidth,
+    zoom,
     axisHeight,
     axisTimezone,
     reach,

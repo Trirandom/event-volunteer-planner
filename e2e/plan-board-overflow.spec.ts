@@ -107,3 +107,97 @@ test('the availability board scrolls inside itself, not the page', async ({
 
   await expectOnlyTheBoardScrolls(page);
 });
+
+/**
+ * The other edge: zoomed all the way out, the board must still reach the
+ * right edge of its box. Below the fit zoom the track stopped short and the
+ * rest of the board was blank, which shows nothing the fitted board does not
+ * (`board/useAxis.ts`, `fitPixelsPerMinute`).
+ *
+ * Measured at the slider's minimum and again after a Ctrl+wheel past it,
+ * because the wheel is the gesture that used to drive the board below it.
+ */
+async function expectFitAtMinimumZoom(
+  page: Page,
+  zoomSelector: string,
+): Promise<void> {
+  const zoom = page.locator(zoomSelector);
+  await zoom.fill((await zoom.getAttribute('min')) ?? '');
+  await expectTrackFillsTheBoard(page);
+
+  await page.keyboard.down('Control');
+  await page.locator('.evp-scroll').hover();
+  await page.mouse.wheel(0, 2000);
+  await page.keyboard.up('Control');
+  await expectTrackFillsTheBoard(page);
+}
+
+async function expectTrackFillsTheBoard(page: Page): Promise<void> {
+  const measured = await page.evaluate(() => {
+    const scroller = document.querySelector('.evp-scroll');
+    const track = document.querySelector('.evp-axis-track');
+    return {
+      board: scroller?.scrollWidth ?? Number.NaN,
+      boardVisible: scroller?.clientWidth ?? Number.NaN,
+      trackRight: track?.getBoundingClientRect().right ?? Number.NaN,
+      boardRight:
+        (scroller?.getBoundingClientRect().left ?? Number.NaN) +
+        (scroller?.clientWidth ?? Number.NaN),
+    };
+  });
+  expect(measured.board, 'nothing to scroll sideways at the floor').toBe(
+    measured.boardVisible,
+  );
+  expect(
+    Math.abs(measured.trackRight - measured.boardRight),
+    `the track must end at the board's right edge (${JSON.stringify(measured)})`,
+  ).toBeLessThan(1);
+}
+
+test('the shifts board fills its box at the lowest zoom', async ({ page }) => {
+  await openAdmin(page);
+  await openExampleFestival(page);
+  await openSection(page, 'Shifts');
+  await page.waitForURL(/\/festivals\/[^/]+\/shifts$/);
+  await expect(page.locator('.evp-scroll')).toBeVisible();
+
+  await expectFitAtMinimumZoom(page, '#board-zoom');
+});
+
+test('the availability board fills its box at the lowest zoom', async ({
+  page,
+}) => {
+  await openAdmin(page);
+  await openExampleFestival(page);
+  await openSection(page, 'Availability');
+  await page.waitForURL(/\/festivals\/[^/]+\/availability$/);
+
+  const board = page.locator('.evp-scroll');
+  await expect(
+    page.locator('.evp-scroll, .evp-availability .evp-empty').first(),
+  ).toBeVisible();
+  test.skip(
+    !(await board.isVisible()),
+    'no availability windows in this organisation, so no board to fit',
+  );
+
+  await expectFitAtMinimumZoom(page, '#availability-zoom');
+});
+
+test('the assignments board fills its box at the lowest zoom', async ({
+  page,
+}) => {
+  await openAdmin(page);
+  await openExampleFestival(page);
+  await openSection(page, 'Assignments');
+  await page.waitForURL(/\/festivals\/[^/]+\/assignments$/);
+
+  const board = page.locator('.evp-scroll');
+  await expect(page.locator('.evp-scroll, .evp-empty').first()).toBeVisible();
+  test.skip(
+    !(await board.isVisible()),
+    'no shifts to staff in this organisation, so no board to fit',
+  );
+
+  await expectFitAtMinimumZoom(page, '#roster-zoom');
+});

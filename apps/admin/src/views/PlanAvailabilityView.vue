@@ -35,7 +35,7 @@
  */
 import { eventColor } from '@evp/shared';
 import { Temporal } from '@evp/shared/time';
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 
 import type { ReplaceAvailabilityRejection } from '../api/availability';
 import HelpModal from '../components/HelpModal.vue';
@@ -47,6 +47,7 @@ import { useRoster } from '../api/useRoster';
 import type { EventWindow } from '../board/runs';
 import { msAt, snapMs } from '../board/scale';
 import { useAxis } from '../board/useAxis';
+import { useTrackWidth } from '../board/useTrackWidth';
 import { locale, t } from '../i18n';
 import {
   availabilityRows,
@@ -63,7 +64,6 @@ import {
 import { focusedEventId } from '../plan/scope';
 import { durationLabel } from '../plan/submissions';
 import { useRouteParam } from '../router/params';
-import { useBoardStore } from '../stores/board';
 
 /**
  * ADR-0029's floor, and the same step the shift board snaps to: nothing finer
@@ -162,9 +162,15 @@ const axisClock = computed(
     scope.value?.selected?.timezone ?? scope.value?.festival?.timezone ?? 'UTC',
 );
 
+const trackWidth = useTrackWidth(
+  useTemplateRef<HTMLElement>('scroller'),
+  useTemplateRef<HTMLElement>('trackGutter'),
+);
+
 const {
   scale,
   laneWidth,
+  zoom,
   axisHeight,
   axisTimezone,
   reach,
@@ -186,14 +192,13 @@ const {
   timezone: axisClock,
   locale,
   marginMinutes: AVAILABILITY_MARGIN_MINUTES,
+  trackWidth,
 });
 
 // ---------------------------------------------------------------------------
 // Zoom — the same knob the shift board turns, because it is the same axis
 // (`board/useAxis.ts` holds one shared `pixelsPerHour`, deliberately).
 // ---------------------------------------------------------------------------
-
-const board = useBoardStore();
 
 function numberFrom(target: EventTarget | null): number | null {
   if (!(target instanceof HTMLInputElement)) {
@@ -206,7 +211,7 @@ function numberFrom(target: EventTarget | null): number | null {
 function onZoomInput(event: Event): void {
   const value = numberFrom(event.target);
   if (value !== null) {
-    board.setPixelsPerHour(value);
+    zoom.setPixelsPerHour(value);
   }
 }
 
@@ -229,7 +234,9 @@ function onBoardWheel(event: WheelEvent): void {
   }
   event.preventDefault();
   const notches = -event.deltaY / WHEEL_NOTCH_PIXELS;
-  board.setPixelsPerHour(board.pixelsPerHour + notches * ZOOM_STEP_PER_NOTCH);
+  zoom.setPixelsPerHour(
+    zoom.pixelsPerHour.value + notches * ZOOM_STEP_PER_NOTCH,
+  );
 }
 
 const rows = computed<readonly AvailabilityRow[]>(() =>
@@ -785,10 +792,10 @@ function rowSummary(row: AvailabilityRow): string {
         id="availability-zoom"
         class="evp-zoom"
         type="range"
-        :min="board.MIN_PIXELS_PER_HOUR"
-        :max="board.MAX_PIXELS_PER_HOUR"
+        :min="Math.floor(zoom.minPixelsPerHour.value)"
+        :max="Math.ceil(zoom.maxPixelsPerHour.value)"
         step="4"
-        :value="board.pixelsPerHour"
+        :value="zoom.pixelsPerHour.value"
         @input="onZoomInput"
       />
     </label>
@@ -809,9 +816,10 @@ function rowSummary(row: AvailabilityRow): string {
 
     <template v-else>
       <div class="evp-board" :aria-busy="isSaving">
-        <div class="evp-scroll" @wheel="onBoardWheel">
+        <div ref="scroller" class="evp-scroll" @wheel="onBoardWheel">
           <div class="evp-axis">
             <div
+              ref="trackGutter"
               class="evp-gutter evp-gutter--spacer"
               :style="{ height: axisHeight }"
             >
@@ -1199,6 +1207,13 @@ kbd {
 .evp-row {
   display: flex;
   min-width: max-content;
+  /* Fitted at the lowest zoom, the track ends exactly at the board's edge
+     (`board/useAxis.ts`), and whatever hangs past the end of the axis
+     (the last tick's label, an end handle, a slot at its minimum width)
+     would otherwise give the board a few pixels to scroll. `clip`, not
+     `hidden`: it makes no scroll container, so the gutter stays pinned to
+     the board's and anything that overflows downwards still shows. */
+  overflow-x: clip;
 }
 
 .evp-axis {

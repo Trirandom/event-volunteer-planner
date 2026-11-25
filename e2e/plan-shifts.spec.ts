@@ -42,7 +42,10 @@ const AXIS_MARGIN_MINUTES = 120;
 
 /** Zoomed out, so that even the drag that deliberately overshoots the margin
  * stays inside the viewport. The board remembers zoom across navigations on
- * purpose (`stores/board.ts`), so it is set rather than assumed. */
+ * purpose (`stores/board.ts`), so it is set rather than assumed — and then
+ * measured rather than assumed (`drawnPixelsPerHour`), because the board
+ * will not go below the zoom that fits it to its box, and one day in this
+ * viewport fits at well over this. */
 const PIXELS_PER_HOUR = 20;
 
 interface Period {
@@ -229,13 +232,29 @@ async function bringIntoReach(
   }
 }
 
+/**
+ * The zoom the board is actually drawn at, read off the ruler: its width over
+ * the time it spans. Exact on a one-day board, which has no night to fold.
+ */
+async function drawnPixelsPerHour(
+  page: Page,
+  handle: Locator,
+): Promise<number> {
+  const track = await page.locator('.evp-axis-track').boundingBox();
+  expect(track).not.toBeNull();
+  const spanMs =
+    (await numberOf(handle, 'aria-valuemax')) -
+    (await numberOf(handle, 'aria-valuemin'));
+  return (track?.width ?? 0) / (spanMs / (60 * MINUTE_MS));
+}
+
 /** Drag an edge by a number of minutes on the board's own scale. */
 async function dragEdge(
   page: Page,
   handle: Locator,
   minutes: number,
 ): Promise<void> {
-  const dx = (minutes / 60) * PIXELS_PER_HOUR;
+  const dx = (minutes / 60) * (await drawnPixelsPerHour(page, handle));
   await bringIntoReach(page, handle, dx);
 
   const box = await handle.boundingBox();

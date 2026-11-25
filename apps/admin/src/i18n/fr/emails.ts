@@ -118,9 +118,14 @@ export default {
   /** Written to the volunteer. Dates and times arrive formatted in the
    * event’s own timezone. */
   message: {
-    line: '{day}, {start}–{end} : {mission}',
-    /** A shift lapping midnight: both days are printed. */
-    lineAcrossDays: '{day}, {start} – {endDay}, {end} : {mission}',
+    /** Heads one event's shifts on one night (ADR-0055): the event's
+     * name, then the day the night belongs to. */
+    heading: '{event} – {weekday} {date}',
+    /** A shift under its heading. One lapping midnight names no second
+     * day: the heading already says which night it is. */
+    hours: '{start}–{end} : {mission}',
+    /** A shift read on its own, outside any heading. */
+    line: '{heading}, {hours}',
     none: 'Aucun créneau ne t’a encore été attribué.',
   },
 };

@@ -13,8 +13,10 @@ import { afterAll, describe, expect, it } from 'vitest';
 import fixtureJson from '../../../../crates/evp-domain/fixtures/schedule_render.json?raw';
 import { i18n } from '../i18n';
 import {
+  assignationsHtml,
   escapeHtml,
   formatLine,
+  groupsOf,
   htmlToText,
   renderTemplate,
   unknownPlaceholders,
@@ -26,9 +28,26 @@ const Fixture = v.object({
     v.object({
       locale: v.picklist(['fr', 'en']),
       timezone: v.string(),
+      event: v.string(),
       start: v.string(),
       end: v.string(),
       mission: v.string(),
+      expected: v.string(),
+    }),
+  ),
+  schedules: v.array(
+    v.object({
+      locale: v.picklist(['fr', 'en']),
+      timezone: v.string(),
+      lines: v.array(
+        v.object({
+          eventId: v.string(),
+          event: v.string(),
+          mission: v.string(),
+          start: v.string(),
+          end: v.string(),
+        }),
+      ),
       expected: v.string(),
     }),
   ),
@@ -67,12 +86,29 @@ describe('the schedule fixture shared with the server', () => {
           key: 'k',
           mission: line.mission,
           eventId: 'e',
-          eventName: '',
+          eventName: line.event,
           timezone: line.timezone,
           startMs: Temporal.Instant.from(line.start).epochMilliseconds,
           endMs: Temporal.Instant.from(line.end).epochMilliseconds,
         }),
       ).toBe(line.expected);
+    },
+  );
+
+  it.each(fixture.schedules)(
+    'groups a $locale schedule of $lines.length lines',
+    async (schedule) => {
+      await i18n.setLocale(schedule.locale);
+      const lines = schedule.lines.map((line, index) => ({
+        key: String(index),
+        mission: line.mission,
+        eventId: line.eventId,
+        eventName: line.event,
+        timezone: schedule.timezone,
+        startMs: Temporal.Instant.from(line.start).epochMilliseconds,
+        endMs: Temporal.Instant.from(line.end).epochMilliseconds,
+      }));
+      expect(assignationsHtml(groupsOf(lines), 'none')).toBe(schedule.expected);
     },
   );
 

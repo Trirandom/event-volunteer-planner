@@ -67,7 +67,7 @@ pub async fn run(
     // One statement for every placement in scope: a query per person would be
     // a few hundred round trips for one festival.
     let placements = sqlx::query(
-        "SELECT a.volunteer_id, s.event_id, s.location_id, l.name AS mission, e.timezone, \
+        "SELECT a.volunteer_id, s.event_id, s.location_id, l.name AS mission, e.name AS event_name, e.timezone, \
                 lower(s.period) AS line_start, upper(s.period) AS line_end \
            FROM assignments a \
            JOIN shifts s ON s.id = a.shift_id AND s.org_id = a.org_id \
@@ -87,6 +87,7 @@ pub async fn run(
         let volunteer_id: Uuid = row.try_get("volunteer_id").map_err(DbError::Query)?;
         lines.entry(volunteer_id).or_default().push(ScheduleLine {
             event_id: row.try_get("event_id").map_err(DbError::Query)?,
+            event_name: row.try_get("event_name").map_err(DbError::Query)?,
             location_id: row.try_get("location_id").map_err(DbError::Query)?,
             mission: row.try_get("mission").map_err(DbError::Query)?,
             timezone: row.try_get("timezone").map_err(DbError::Query)?,

@@ -14,10 +14,11 @@
 
 use std::collections::BTreeMap;
 
-use jiff::civil::Weekday;
+use jiff::civil::{Date, Time, Weekday};
 use jiff::tz::TimeZone;
-use jiff::{SignedDuration, Timestamp, Zoned};
+use jiff::{Timestamp, Zoned};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::lines::ScheduleLine;
 
@@ -173,8 +174,64 @@ pub fn format_time(instant: Timestamp, zone: &TimeZone, locale: Locale) -> Strin
     }
 }
 
-/// One schedule line as the volunteer reads it — `emails.message.line` and
-/// `lineAcrossDays` in the admin catalogue.
+/// When one night hands over to the next day. A shift that starts before it
+/// belongs to the night before: 00:30 on Sunday is "Saturday night" to
+/// everyone at the party (ADR-0055). This is the default of
+/// `events.night_ends_at`, which nothing exposes or edits yet. When something
+/// does, this value becomes that column.
+const NIGHT_ENDS_AT: Time = Time::constant(6, 0, 0, 0);
+
+/// The day a shift is listed under: the local date it starts on, or the one
+/// before when it starts before [`NIGHT_ENDS_AT`].
+#[must_use]
+pub fn event_day(start: Timestamp, zone: &TimeZone) -> Date {
+    let local = start.to_zoned(zone.clone());
+    let day = local.date();
+    if local.time() < NIGHT_ENDS_AT {
+        day.yesterday().unwrap_or(day)
+    } else {
+        day
+    }
+}
+
+/// `Open Air – samedi 05/09` / `Open Air – Saturday 09/05`. The event is
+/// named because that is the name on the posters. The weekday is kept
+/// because people say "Saturday night", and the date because there may be
+/// two Saturdays.
+#[must_use]
+pub fn format_heading(event: &str, day: Date, locale: Locale) -> String {
+    let weekday = weekday_name(locale, day.weekday());
+    let (month, date) = (day.month(), day.day());
+    match locale {
+        Locale::Fr => format!("{event} – {weekday} {date:02}/{month:02}"),
+        Locale::En => format!("{event} – {weekday} {month:02}/{date:02}"),
+    }
+}
+
+/// `22:00–01:00 : Démontage`. A line under its heading names no day, not even
+/// the next one for a shift lapping midnight: the heading says which night it
+/// is, and a second date on the line is what sent people on the wrong day.
+///
+/// # Errors
+///
+/// [`UnknownTimeZone`] when the line's zone was not supplied.
+pub fn format_hours(
+    line: &ScheduleLine,
+    zones: &Zones,
+    locale: Locale,
+) -> Result<String, UnknownTimeZone> {
+    let zone = zones.get(&line.timezone)?;
+    let start = format_time(line.start, zone, locale);
+    let end = format_time(line.end, zone, locale);
+    let mission = &line.mission;
+    Ok(match locale {
+        Locale::Fr => format!("{start}–{end} : {mission}"),
+        Locale::En => format!("{start}–{end}: {mission}"),
+    })
+}
+
+/// One line read on its own, outside a group, as in the list of changes:
+/// `Open Air – samedi 05/09, 22:00–01:00 : Démontage`.
 ///
 /// # Errors
 ///
@@ -185,24 +242,50 @@ pub fn format_line(
     locale: Locale,
 ) -> Result<String, UnknownTimeZone> {
     let zone = zones.get(&line.timezone)?;
-    let day = format_day(line.start, zone, locale);
-    // The last millisecond, not the end instant: a shift ending at midnight
-    // ended on the day it started, and "samedi 22:00 – dimanche 00:00" says
-    // a night nobody worked.
-    let last = line
-        .end
-        .checked_sub(SignedDuration::from_millis(1))
-        .unwrap_or(line.end);
-    let end_day = format_day(last, zone, locale);
-    let start = format_time(line.start, zone, locale);
-    let end = format_time(line.end, zone, locale);
-    let mission = &line.mission;
-    Ok(match (locale, day == end_day) {
-        (Locale::Fr, true) => format!("{day}, {start}–{end} : {mission}"),
-        (Locale::Fr, false) => format!("{day}, {start} – {end_day}, {end} : {mission}"),
-        (Locale::En, true) => format!("{day}, {start}–{end}: {mission}"),
-        (Locale::En, false) => format!("{day}, {start} – {end_day}, {end}: {mission}"),
-    })
+    let heading = format_heading(&line.event_name, event_day(line.start, zone), locale);
+    Ok(format!("{heading}, {}", format_hours(line, zones, locale)?))
+}
+
+/// One heading of a schedule and the lines under it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Group {
+    pub heading: String,
+    pub lines: Vec<String>,
+}
+
+/// A schedule as headed groups, one per event and event day. The groups come
+/// in the order of their first line, and each group's lines in the order
+/// given. That order is chronological once [`super::lines::merge_adjacent`]
+/// has sorted them. Grouping is by the event's id, not its name, so two
+/// events that share a name are still told apart.
+///
+/// # Errors
+///
+/// [`UnknownTimeZone`] when a line's zone was not supplied.
+pub fn groups(
+    lines: &[ScheduleLine],
+    zones: &Zones,
+    locale: Locale,
+) -> Result<Vec<Group>, UnknownTimeZone> {
+    let mut keyed: Vec<((Uuid, Date), Group)> = Vec::new();
+    for line in lines {
+        let day = event_day(line.start, zones.get(&line.timezone)?);
+        let hours = format_hours(line, zones, locale)?;
+        match keyed
+            .iter_mut()
+            .find(|(key, _)| *key == (line.event_id, day))
+        {
+            Some((_, group)) => group.lines.push(hours),
+            None => keyed.push((
+                (line.event_id, day),
+                Group {
+                    heading: format_heading(&line.event_name, day, locale),
+                    lines: vec![hours],
+                },
+            )),
+        }
+    }
+    Ok(keyed.into_iter().map(|(_, group)| group).collect())
 }
 
 /// The sentences a schedule email is built around. Each is plain text; the
@@ -300,13 +383,14 @@ pub fn default_template(locale: Locale, kind: TemplateKind) -> Template {
 #[cfg(test)]
 mod tests {
     use jiff::Timestamp;
+    use jiff::civil::{Date, date};
     use jiff::tz::TimeZone;
     use rstest::rstest;
     use uuid::Uuid;
 
     use super::{
-        Locale, TemplateKind, UnknownTimeZone, Zones, default_template, format_day, format_line,
-        format_time,
+        Group, Locale, TemplateKind, UnknownTimeZone, Zones, default_template, event_day,
+        format_day, format_heading, format_hours, format_line, format_time, groups,
     };
     use crate::schedule::lines::ScheduleLine;
     use crate::schedule::render::unknown_placeholders;
@@ -328,6 +412,7 @@ mod tests {
     fn line(start: &str, end: &str) -> ScheduleLine {
         ScheduleLine {
             event_id: Uuid::nil(),
+            event_name: "Open Air".to_owned(),
             location_id: Uuid::nil(),
             mission: "Bar & Snack".to_owned(),
             timezone: "Europe/Paris".to_owned(),
@@ -388,40 +473,160 @@ mod tests {
         );
     }
 
+    fn shift(event: &str, mission: &str, start: &str, end: &str) -> ScheduleLine {
+        ScheduleLine {
+            event_name: event.to_owned(),
+            mission: mission.to_owned(),
+            ..line(start, end)
+        }
+    }
+
     #[rstest]
-    #[case(Locale::Fr, "samedi 5 septembre, 10:00–14:00 : Bar & Snack")]
-    #[case(Locale::En, "Saturday, September 5, 10:00 AM–02:00 PM: Bar & Snack")]
-    fn a_line_within_one_day(#[case] locale: Locale, #[case] expected: &str) {
+    // 10:00 local: the day it is.
+    #[case("2026-09-05T08:00:00Z", date(2026, 9, 5))]
+    // 00:30 on Sunday is still Saturday night.
+    #[case("2026-09-05T22:30:00Z", date(2026, 9, 5))]
+    // The last minute before the rollover, and the rollover itself.
+    #[case("2026-09-06T03:59:00Z", date(2026, 9, 5))]
+    #[case("2026-09-06T04:00:00Z", date(2026, 9, 6))]
+    // The second 02:30 of 25 October (after the clocks go back) is still the
+    // night of the 24th.
+    #[case("2026-10-25T01:30:00Z", date(2026, 10, 24))]
+    fn a_shift_belongs_to_the_night_it_starts_in(#[case] start: &str, #[case] expected: Date) {
+        assert_eq!(event_day(utc(start), &paris()), expected);
+    }
+
+    #[rstest]
+    #[case(Locale::Fr, "Open Air – samedi 05/09")]
+    #[case(Locale::En, "Open Air – Saturday 09/05")]
+    fn a_heading_is_the_event_and_its_day(#[case] locale: Locale, #[case] expected: &str) {
+        assert_eq!(
+            format_heading("Open Air", date(2026, 9, 5), locale),
+            expected
+        );
+    }
+
+    #[rstest]
+    #[case(Locale::Fr, "10:00–14:00 : Bar & Snack")]
+    #[case(Locale::En, "10:00 AM–02:00 PM: Bar & Snack")]
+    fn hours_name_no_day(#[case] locale: Locale, #[case] expected: &str) {
         let shift = line("2026-09-05T08:00:00Z", "2026-09-05T12:00:00Z");
         assert_eq!(
-            format_line(&shift, &zones(), locale).expect("zone supplied"),
+            format_hours(&shift, &zones(), locale).expect("zone supplied"),
             expected
         );
     }
 
     #[test]
-    fn a_shift_ending_at_midnight_stays_on_its_day() {
-        let shift = line("2026-09-05T20:00:00Z", "2026-09-05T22:00:00Z");
+    fn hours_across_midnight_do_not_name_the_next_day() {
+        let shift = line("2026-09-05T20:00:00Z", "2026-09-05T23:00:00Z");
         assert_eq!(
-            format_line(&shift, &zones(), Locale::Fr).expect("zone supplied"),
-            "samedi 5 septembre, 22:00–00:00 : Bar & Snack"
+            format_hours(&shift, &zones(), Locale::Fr).expect("zone supplied"),
+            "22:00–01:00 : Bar & Snack"
         );
     }
 
     #[rstest]
-    #[case(
-        Locale::Fr,
-        "samedi 5 septembre, 22:00 – dimanche 6 septembre, 02:00 : Bar & Snack"
-    )]
-    #[case(
-        Locale::En,
-        "Saturday, September 5, 10:00 PM – Sunday, September 6, 02:00 AM: Bar & Snack"
-    )]
-    fn a_shift_across_midnight_names_both_days(#[case] locale: Locale, #[case] expected: &str) {
-        let shift = line("2026-09-05T20:00:00Z", "2026-09-06T00:00:00Z");
+    #[case(Locale::Fr, "Open Air – samedi 05/09, 22:00–01:00 : Démontage")]
+    #[case(Locale::En, "Open Air – Saturday 09/05, 10:00 PM–01:00 AM: Démontage")]
+    fn a_line_alone_is_its_heading_then_its_hours(#[case] locale: Locale, #[case] expected: &str) {
+        let shift = shift(
+            "Open Air",
+            "Démontage",
+            "2026-09-05T20:00:00Z",
+            "2026-09-05T23:00:00Z",
+        );
         assert_eq!(
             format_line(&shift, &zones(), locale).expect("zone supplied"),
             expected
+        );
+    }
+
+    fn group(heading: &str, lines: &[&str]) -> Group {
+        Group {
+            heading: heading.to_owned(),
+            lines: lines.iter().map(|&line| line.to_owned()).collect(),
+        }
+    }
+
+    #[test]
+    fn one_night_of_one_event_is_one_group() {
+        let lines = [
+            shift(
+                "Open Air",
+                "Montage",
+                "2026-09-05T08:00:00Z",
+                "2026-09-05T12:00:00Z",
+            ),
+            shift(
+                "Open Air",
+                "Bar",
+                "2026-09-05T12:00:00Z",
+                "2026-09-05T14:00:00Z",
+            ),
+            shift(
+                "Open Air",
+                "Démontage",
+                "2026-09-05T20:00:00Z",
+                "2026-09-05T23:00:00Z",
+            ),
+        ];
+        assert_eq!(
+            groups(&lines, &zones(), Locale::Fr).expect("zone supplied"),
+            vec![group(
+                "Open Air – samedi 05/09",
+                &[
+                    "10:00–14:00 : Montage",
+                    "14:00–16:00 : Bar",
+                    "22:00–01:00 : Démontage"
+                ],
+            )]
+        );
+    }
+
+    #[test]
+    fn events_and_nights_are_groups_in_the_order_of_their_first_shift() {
+        let club = Uuid::from_u128(0xC1);
+        let lines = [
+            shift(
+                "Camping",
+                "Bar",
+                "2026-09-04T20:00:00Z",
+                "2026-09-04T22:00:00Z",
+            ),
+            ScheduleLine {
+                event_id: club,
+                ..shift(
+                    "Club",
+                    "Gate",
+                    "2026-09-04T21:00:00Z",
+                    "2026-09-04T23:00:00Z",
+                )
+            },
+            // 02:00 on Saturday: still Friday's night at the camping.
+            shift(
+                "Camping",
+                "Sécu",
+                "2026-09-05T00:00:00Z",
+                "2026-09-05T02:00:00Z",
+            ),
+            shift(
+                "Camping",
+                "Montage",
+                "2026-09-05T08:00:00Z",
+                "2026-09-05T12:00:00Z",
+            ),
+        ];
+        assert_eq!(
+            groups(&lines, &zones(), Locale::Fr).expect("zone supplied"),
+            vec![
+                group(
+                    "Camping – vendredi 04/09",
+                    &["22:00–00:00 : Bar", "02:00–04:00 : Sécu"],
+                ),
+                group("Club – vendredi 04/09", &["23:00–01:00 : Gate"]),
+                group("Camping – samedi 05/09", &["10:00–14:00 : Montage"]),
+            ]
         );
     }
 

@@ -53,13 +53,14 @@ import { variableHtml } from '../plan/emailEditor';
 import {
   assignationsHtml,
   escapeHtml,
-  formatLine,
+  groupsOf,
   htmlToText,
   recipientsOf,
   renderTemplate,
   TEMPLATE_VARIABLES,
   unknownPlaceholders,
   type Recipient,
+  type ScheduleGroup,
   type TemplateValues,
 } from '../plan/emails';
 import { narrowToEvent } from '../plan/missions';
@@ -323,8 +324,7 @@ function valuesFor(recipient: Recipient): TemplateValues {
     festivalName: escapeHtml(current?.festival?.name ?? ''),
     organizationName: escapeHtml(organizationName.value),
     assignations: assignationsHtml(
-      recipient.lines,
-      formatLine,
+      groupsOf(recipient.lines),
       t('emails.message.none'),
     ),
   };
@@ -394,14 +394,14 @@ function show(recipient: Recipient): void {
 
 interface MessageRow {
   readonly recipient: Recipient;
-  readonly lines: readonly string[];
+  readonly groups: readonly ScheduleGroup[];
   readonly text: string;
 }
 
 const rows = computed<readonly MessageRow[]>(() =>
   recipients.value.map((recipient) => ({
     recipient,
-    lines: recipient.lines.map(formatLine),
+    groups: groupsOf(recipient.lines),
     text: htmlToText(
       renderTemplate(settledTemplate.value, valuesFor(recipient)),
     ),
@@ -819,17 +819,24 @@ const visibleRows = computed(() => {
               <td class="evp-shifts">
                 <span
                   class="evp-shift-count"
-                  :class="{ 'evp-warning-text': row.lines.length === 0 }"
+                  :class="{
+                    'evp-warning-text': row.recipient.lines.length === 0,
+                  }"
                 >
                   {{
-                    t('emails.table.shiftCount', { count: row.lines.length })
+                    t('emails.table.shiftCount', {
+                      count: row.recipient.lines.length,
+                    })
                   }}
                 </span>
-                <ul v-if="row.lines.length > 0" class="evp-lines">
-                  <li v-for="(text, index) in row.lines" :key="index">
-                    {{ text }}
-                  </li>
-                </ul>
+                <template v-for="group in row.groups" :key="group.key">
+                  <p class="evp-group-heading">{{ group.heading }}</p>
+                  <ul class="evp-lines">
+                    <li v-for="(text, index) in group.lines" :key="index">
+                      {{ text }}
+                    </li>
+                  </ul>
+                </template>
               </td>
               <td class="evp-message">
                 <p class="evp-message-text">{{ row.text }}</p>
@@ -1159,9 +1166,14 @@ h2 {
   font-weight: 600;
 }
 
+.evp-group-heading {
+  font-weight: 600;
+  margin: 0.5rem 0 0;
+}
+
 .evp-lines {
   font-variant-numeric: tabular-nums;
-  margin: 0.25rem 0 0;
+  margin: 0.125rem 0 0;
   padding-left: 1rem;
 }
 

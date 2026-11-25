@@ -16,11 +16,14 @@
  */
 import {
   eventTimeZone,
-  formatDay,
+  formatDayMonth,
   formatTime,
+  formatWeekday,
   nameCollator,
   type ViewerLocale,
+  type ZonedFormatOptions,
 } from '@evp/shared/intl';
+import { Temporal } from '@evp/shared/time';
 
 import { isAssignable, type Participation } from '../api/participations';
 import { locale, t } from '../i18n';
@@ -147,30 +150,88 @@ export function recipientsOf(
 }
 
 /**
- * One schedule line as the volunteer reads it, in the event's own timezone.
+ * When one night hands over to the next day: a shift starting before it is
+ * listed under the night before, because 00:30 on Sunday is "Saturday night"
+ * to everyone at the party (ADR-0055). The server's `NIGHT_ENDS_AT` is the
+ * same hour.
+ */
+const NIGHT_ENDS_AT_HOUR = 6;
+
+/** The local day a line is listed under, at the time the line starts. */
+function eventDay(line: ScheduleLine): Temporal.ZonedDateTime {
+  const local = Temporal.Instant.fromEpochMilliseconds(
+    line.startMs,
+  ).toZonedDateTimeISO(line.timezone);
+  return local.hour < NIGHT_ENDS_AT_HOUR ? local.subtract({ days: 1 }) : local;
+}
+
+function zoned(line: ScheduleLine): ZonedFormatOptions {
+  return { locale: locale.value, timeZone: eventTimeZone(line.timezone) };
+}
+
+function headingOf(line: ScheduleLine, day: Temporal.ZonedDateTime): string {
+  const options = zoned(line);
+  return t('emails.message.heading', {
+    event: line.eventName,
+    weekday: formatWeekday(day.epochMilliseconds, options),
+    date: formatDayMonth(day.epochMilliseconds, options),
+  });
+}
+
+/** `22:00–01:00 : Démontage`. It names no day, not even for a shift lapping
+ * midnight, because its heading says which night it is. */
+function formatHours(line: ScheduleLine): string {
+  const options = zoned(line);
+  return t('emails.message.hours', {
+    start: formatTime(line.startMs, options),
+    end: formatTime(line.endMs, options),
+    mission: line.mission,
+  });
+}
+
+/**
+ * One schedule line read on its own, outside a heading, in the event's own
+ * timezone: `Open Air – samedi 05/09, 22:00–01:00 : Démontage`.
  *
  * The server writes the same line in `evp_domain::schedule::locale` when it
  * sends; `fixtures/schedule_render.json` holds the two to one output.
  */
 export function formatLine(line: ScheduleLine): string {
-  const options = {
-    locale: locale.value,
-    timeZone: eventTimeZone(line.timezone),
-  };
-  const day = formatDay(line.startMs, options);
-  // The last millisecond, not the end instant: a shift ending at midnight
-  // ended on the day it started, and "samedi 22:00 – dimanche 00:00" says a
-  // night nobody worked.
-  const endDay = formatDay(line.endMs - 1, options);
-  const parts = {
-    day,
-    start: formatTime(line.startMs, options),
-    end: formatTime(line.endMs, options),
-    mission: line.mission,
-  };
-  return day === endDay
-    ? t('emails.message.line', parts)
-    : t('emails.message.lineAcrossDays', { ...parts, endDay });
+  return t('emails.message.line', {
+    heading: headingOf(line, eventDay(line)),
+    hours: formatHours(line),
+  });
+}
+
+/** One event's shifts on one night, under the heading that names them. */
+export interface ScheduleGroup {
+  readonly key: string;
+  readonly heading: string;
+  readonly lines: readonly string[];
+}
+
+/**
+ * A schedule as headed groups, one per event and night, in the order of
+ * their first line. Each group's lines keep the order given, which is
+ * chronological in a `Recipient`. Grouped by the event's id, not its name, so
+ * two events that share a name are still told apart. This is `groups` in
+ * `evp_domain::schedule::locale`.
+ */
+export function groupsOf(
+  lines: readonly ScheduleLine[],
+): readonly ScheduleGroup[] {
+  const groups = new Map<string, { heading: string; lines: string[] }>();
+  for (const line of lines) {
+    const day = eventDay(line);
+    const key = `${line.eventId}|${day.toPlainDate().toString()}`;
+    const group = groups.get(key) ?? {
+      heading: headingOf(line, day),
+      lines: [],
+    };
+    group.lines.push(formatHours(line));
+    groups.set(key, group);
+  }
+  return [...groups.entries()].map(([key, group]) => ({ key, ...group }));
 }
 
 // ---------------------------------------------------------------------------
@@ -299,22 +360,27 @@ export function renderTemplate(
 }
 
 /**
- * A schedule as HTML: one list item per line, or a sentence saying there is
- * nothing — never an empty list, which reads as a rendering fault.
- *
- * `format` produces the translated line text; it is escaped here, so a
- * mission called "Bar & Snack" cannot close the list early.
+ * A schedule as HTML: a bold heading and a list for each group, or a
+ * sentence saying there is nothing. It is never an empty list, which reads
+ * as a rendering fault. Headings and lines are escaped here, so an event
+ * called "Bar & Co" or a mission called "Bar & Snack" cannot close the list
+ * early.
  */
 export function assignationsHtml(
-  lines: readonly ScheduleLine[],
-  format: (line: ScheduleLine) => string,
+  groups: readonly ScheduleGroup[],
   none: string,
 ): string {
-  if (lines.length === 0) {
+  if (groups.length === 0) {
     return `<p>${escapeHtml(none)}</p>`;
   }
-  const items = lines.map((line) => `<li>${escapeHtml(format(line))}</li>`);
-  return `<ul>${items.join('')}</ul>`;
+  return groups
+    .map(
+      (group) =>
+        `<p><strong>${escapeHtml(group.heading)}</strong></p><ul>` +
+        group.lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('') +
+        '</ul>',
+    )
+    .join('');
 }
 
 const BLOCKS = new Set([

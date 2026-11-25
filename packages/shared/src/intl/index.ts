@@ -91,6 +91,30 @@ export function formatDay(
   }).format(epochMilliseconds);
 }
 
+/** `samedi` / `Saturday`. */
+export function formatWeekday(
+  epochMilliseconds: number,
+  { locale, timeZone }: ZonedFormatOptions,
+): string {
+  return formatter(locale, timeZone, { weekday: 'long' }).format(
+    epochMilliseconds,
+  );
+}
+
+/** `05/09` / `09/05` — a schedule heading's date, next to a weekday that
+ * already says which week it is. Asked for separately from the weekday
+ * because `Intl` joins the two with a comma in `en`, and the server, which
+ * writes the same heading, does not (ADR-0055). */
+export function formatDayMonth(
+  epochMilliseconds: number,
+  { locale, timeZone }: ZonedFormatOptions,
+): string {
+  return formatter(locale, timeZone, {
+    day: '2-digit',
+    month: '2-digit',
+  }).format(epochMilliseconds);
+}
+
 /** `05.09.26` / `05/09/26` — the board's day band, where a full date would
  * not fit and the year still may not be dropped. */
 export function formatDateShort(

@@ -2,88 +2,205 @@
   "_comment": [
     "Shared by crates/evp-domain/tests/schedule_fixture.rs and apps/admin/src/plan/emails.fixture.test.ts.",
     "The admin app previews the schedule email; the server sends it. Every case here must come out identically on both sides.",
-    "Times are UTC instants; each line is formatted in its own time zone."
+    "Times are UTC instants; each line is formatted in its own time zone.",
+    "Each schedule is the lines of one volunteer, already merged and in order, rendered as {{assignations}} (ADR-0055)."
   ],
   "lines": [
     {
       "locale": "fr",
       "timezone": "Europe/Paris",
+      "event": "Open Air",
       "start": "2026-09-05T08:00:00Z",
       "end": "2026-09-05T12:00:00Z",
       "mission": "Bar & Snack",
-      "expected": "samedi 5 septembre, 10:00–14:00 : Bar & Snack"
+      "expected": "Open Air – samedi 05/09, 10:00–14:00 : Bar & Snack"
     },
     {
       "locale": "en",
       "timezone": "Europe/Paris",
+      "event": "Open Air",
       "start": "2026-09-05T08:00:00Z",
       "end": "2026-09-05T12:00:00Z",
       "mission": "Bar & Snack",
-      "expected": "Saturday, September 5, 10:00 AM–02:00 PM: Bar & Snack"
+      "expected": "Open Air – Saturday 09/05, 10:00 AM–02:00 PM: Bar & Snack"
     },
     {
       "locale": "fr",
       "timezone": "Europe/Paris",
+      "event": "Open Air",
       "start": "2026-09-05T20:00:00Z",
       "end": "2026-09-05T22:00:00Z",
       "mission": "Bar",
-      "expected": "samedi 5 septembre, 22:00–00:00 : Bar"
+      "expected": "Open Air – samedi 05/09, 22:00–00:00 : Bar"
     },
     {
       "locale": "en",
       "timezone": "Europe/Paris",
+      "event": "Open Air",
       "start": "2026-09-05T20:00:00Z",
       "end": "2026-09-05T22:00:00Z",
       "mission": "Bar",
-      "expected": "Saturday, September 5, 10:00 PM–12:00 AM: Bar"
+      "expected": "Open Air – Saturday 09/05, 10:00 PM–12:00 AM: Bar"
     },
     {
       "locale": "fr",
       "timezone": "Europe/Paris",
+      "event": "Open Air",
       "start": "2026-09-05T20:00:00Z",
       "end": "2026-09-06T00:00:00Z",
       "mission": "Bar",
-      "expected": "samedi 5 septembre, 22:00 – dimanche 6 septembre, 02:00 : Bar"
+      "expected": "Open Air – samedi 05/09, 22:00–02:00 : Bar"
     },
     {
       "locale": "en",
       "timezone": "Europe/Paris",
+      "event": "Open Air",
       "start": "2026-09-05T20:00:00Z",
       "end": "2026-09-06T00:00:00Z",
       "mission": "Bar",
-      "expected": "Saturday, September 5, 10:00 PM – Sunday, September 6, 02:00 AM: Bar"
+      "expected": "Open Air – Saturday 09/05, 10:00 PM–02:00 AM: Bar"
     },
     {
       "locale": "fr",
       "timezone": "Europe/Paris",
+      "event": "Open Air",
+      "start": "2026-09-05T22:30:00Z",
+      "end": "2026-09-06T00:30:00Z",
+      "mission": "Bar",
+      "expected": "Open Air – samedi 05/09, 00:30–02:30 : Bar"
+    },
+    {
+      "locale": "fr",
+      "timezone": "Europe/Paris",
+      "event": "Open Air",
+      "start": "2026-09-06T03:59:00Z",
+      "end": "2026-09-06T04:30:00Z",
+      "mission": "Gate",
+      "expected": "Open Air – samedi 05/09, 05:59–06:30 : Gate"
+    },
+    {
+      "locale": "fr",
+      "timezone": "Europe/Paris",
+      "event": "Open Air",
+      "start": "2026-09-06T04:00:00Z",
+      "end": "2026-09-06T06:00:00Z",
+      "mission": "Démontage",
+      "expected": "Open Air – dimanche 06/09, 06:00–08:00 : Démontage"
+    },
+    {
+      "locale": "fr",
+      "timezone": "Europe/Paris",
+      "event": "Open Air",
       "start": "2026-10-25T00:30:00Z",
       "end": "2026-10-25T02:30:00Z",
       "mission": "Accueil",
-      "expected": "dimanche 25 octobre, 02:30–03:30 : Accueil"
+      "expected": "Open Air – samedi 24/10, 02:30–03:30 : Accueil"
     },
     {
       "locale": "fr",
       "timezone": "Europe/Paris",
+      "event": "Open Air",
       "start": "2026-08-01T10:00:00Z",
       "end": "2026-08-01T12:00:00Z",
       "mission": "Gate",
-      "expected": "samedi 1 août, 12:00–14:00 : Gate"
+      "expected": "Open Air – samedi 01/08, 12:00–14:00 : Gate"
     },
     {
       "locale": "en",
       "timezone": "America/New_York",
+      "event": "Open Air",
       "start": "2026-01-01T15:00:00Z",
       "end": "2026-01-01T17:00:00Z",
       "mission": "Gate",
-      "expected": "Thursday, January 1, 10:00 AM–12:00 PM: Gate"
+      "expected": "Open Air – Thursday 01/01, 10:00 AM–12:00 PM: Gate"
     },
     {
       "locale": "fr",
       "timezone": "Pacific/Chatham",
+      "event": "Open Air",
       "start": "2026-12-31T10:00:00Z",
       "end": "2026-12-31T11:00:00Z",
       "mission": "Gate",
-      "expected": "jeudi 31 décembre, 23:45 – vendredi 1 janvier, 00:45 : Gate"
+      "expected": "Open Air – jeudi 31/12, 23:45–00:45 : Gate"
+    }
+  ],
+  "schedules": [
+    {
+      "locale": "fr",
+      "timezone": "Europe/Paris",
+      "lines": [
+        {
+          "eventId": "0190f000-0000-7000-8000-00000000000a",
+          "event": "Open Air",
+          "mission": "Montage",
+          "start": "2026-09-05T08:00:00Z",
+          "end": "2026-09-05T12:00:00Z"
+        },
+        {
+          "eventId": "0190f000-0000-7000-8000-00000000000a",
+          "event": "Open Air",
+          "mission": "Bar",
+          "start": "2026-09-05T12:00:00Z",
+          "end": "2026-09-05T14:00:00Z"
+        },
+        {
+          "eventId": "0190f000-0000-7000-8000-00000000000a",
+          "event": "Open Air",
+          "mission": "Prévention VHSS",
+          "start": "2026-09-05T16:00:00Z",
+          "end": "2026-09-05T18:00:00Z"
+        },
+        {
+          "eventId": "0190f000-0000-7000-8000-00000000000a",
+          "event": "Open Air",
+          "mission": "Bar",
+          "start": "2026-09-05T18:00:00Z",
+          "end": "2026-09-05T20:00:00Z"
+        },
+        {
+          "eventId": "0190f000-0000-7000-8000-00000000000a",
+          "event": "Open Air",
+          "mission": "Démontage",
+          "start": "2026-09-05T20:00:00Z",
+          "end": "2026-09-05T23:00:00Z"
+        }
+      ],
+      "expected": "<p><strong>Open Air – samedi 05/09</strong></p><ul><li>10:00–14:00 : Montage</li><li>14:00–16:00 : Bar</li><li>18:00–20:00 : Prévention VHSS</li><li>20:00–22:00 : Bar</li><li>22:00–01:00 : Démontage</li></ul>"
+    },
+    {
+      "locale": "en",
+      "timezone": "Europe/Paris",
+      "lines": [
+        {
+          "eventId": "0190f000-0000-7000-8000-00000000000a",
+          "event": "Camping",
+          "mission": "Bar",
+          "start": "2026-09-04T20:00:00Z",
+          "end": "2026-09-04T22:00:00Z"
+        },
+        {
+          "eventId": "0190f000-0000-7000-8000-00000000000c",
+          "event": "Club <Nuit> & Co",
+          "mission": "Gate",
+          "start": "2026-09-04T21:00:00Z",
+          "end": "2026-09-04T23:00:00Z"
+        },
+        {
+          "eventId": "0190f000-0000-7000-8000-00000000000a",
+          "event": "Camping",
+          "mission": "Sécu",
+          "start": "2026-09-05T00:00:00Z",
+          "end": "2026-09-05T02:00:00Z"
+        },
+        {
+          "eventId": "0190f000-0000-7000-8000-00000000000a",
+          "event": "Camping",
+          "mission": "Montage",
+          "start": "2026-09-05T08:00:00Z",
+          "end": "2026-09-05T12:00:00Z"
+        }
+      ],
+      "expected": "<p><strong>Camping – Friday 09/04</strong></p><ul><li>10:00 PM–12:00 AM: Bar</li><li>02:00 AM–04:00 AM: Sécu</li></ul><p><strong>Club &lt;Nuit&gt; &amp; Co – Friday 09/04</strong></p><ul><li>11:00 PM–01:00 AM: Gate</li></ul><p><strong>Camping – Saturday 09/05</strong></p><ul><li>10:00 AM–02:00 PM: Montage</li></ul>"
     }
   ],
   "render": [

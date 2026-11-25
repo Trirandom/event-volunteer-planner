@@ -222,6 +222,7 @@ mod tests {
     fn line(post: Uuid, start: &str, end: &str) -> ScheduleLine {
         ScheduleLine {
             event_id: Uuid::from_u128(0xE),
+            event_name: "Open Air".to_owned(),
             location_id: post,
             mission: if post == BAR { "Bar" } else { "Gate" }.to_owned(),
             timezone: "Europe/Paris".to_owned(),
@@ -365,16 +366,16 @@ mod tests {
         assert_eq!(message.subject, "Tes créneaux bénévoles – Soundclash <26>");
         assert!(message.html.contains("Bonjour Aurel,"));
         assert!(message.html.contains("au Soundclash &lt;26&gt; !"));
-        assert!(
-            message
-                .html
-                .contains("<li>samedi 5 septembre, 10:00–18:00 : Bar</li>")
-        );
+        assert!(message.html.contains(
+            "<p><strong>Open Air – samedi 05/09</strong></p><ul><li>10:00–18:00 : Bar</li></ul>"
+        ));
         assert!(message.html.contains("L’équipe Asso &amp; Co"));
         assert!(
             message
                 .text
-                .contains("• samedi 5 septembre, 10:00–18:00 : Bar")
+                .contains("Open Air – samedi 05/09\n\n• 10:00–18:00 : Bar"),
+            "{}",
+            message.text
         );
         assert!(message.text.contains("L’équipe Asso & Co"));
     }
@@ -408,12 +409,12 @@ mod tests {
         assert!(
             message
                 .html
-                .contains("<li>Ajouté : samedi 5 septembre, 16:00–18:00 : Gate</li>")
+                .contains("<li>Ajouté : Open Air – samedi 05/09, 16:00–18:00 : Gate</li>")
         );
         assert!(
             message
                 .html
-                .contains("<li>Retiré : samedi 5 septembre, 10:00–14:00 : Bar</li>")
+                .contains("<li>Retiré : Open Air – samedi 05/09, 10:00–14:00 : Bar</li>")
         );
         assert!(
             message
@@ -435,7 +436,7 @@ mod tests {
         assert!(
             message
                 .html
-                .contains("Retiré : samedi 5 septembre, 10:00–14:00 : Bar")
+                .contains("Retiré : Open Air – samedi 05/09, 10:00–14:00 : Bar")
         );
     }
 
